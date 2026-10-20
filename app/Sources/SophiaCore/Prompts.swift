@@ -88,7 +88,7 @@ public enum Prompts {
     }
 
     /// Added to the system prompt when the conversation process starts.
-    public static func context(_ store: NotebookStore) -> String {
+    public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil) -> String {
         let pages = pageList(store)
         let library = LibraryStore(root: store.url.deletingLastPathComponent())
         let separate = store.isSeparate
@@ -120,12 +120,49 @@ public enum Prompts {
         Your memory for this notebook:
         \(memoryText(store))
 
-        Your long-term notes: \(store.shownNotes.count) (use `recall`).\(store.memory.isEmpty && !store.shownNotes.isEmpty ? " Your memory is empty, so here are the latest:\n" + notesText(store, limit: 10) : "")
+        Your long-term notes: \(store.shownNotes.count) (use `recall`).\(thread.isEmpty && store.memory.isEmpty && !store.shownNotes.isEmpty ? " Your memory is empty, so here are the latest:\n" + notesText(store, limit: 10) : "")
         \(elsewhere)
 
         Pages:
         \(pages.isEmpty ? "None yet." : pages)
+
+        Current conversation: \(thread.isEmpty ? "Contents" : thread).
+        \(thread.isEmpty ? "" : "Page in hand:\n" + (store.readPage(thread)?.body ?? "(page unavailable)"))
+        Relevant notes:
+        \(store.notes(for: thread).map { $0.line }.joined(separator: "\n"))
+        Creating exchange (from the conversation that made this page):
+        \((store.threadEntries(for: thread).contains { $0.str("purpose") == "clear" } ? [] : store.creatingExchange(for: thread)).map { $0.line }.joined(separator: "\n"))
+        Conversation in hand:
+        \((store.carried(for: thread, before: before) + store.window(for: thread, before: before)).compactMap(contextLine).joined(separator: "\n"))
+        Earlier searches and pages read are not still in hand. Look them up again silently when needed. Before continuing a cut-off turn, check what it already saved.
         """
+    }
+
+    static func contextLine(_ e: JSONObject) -> String? {
+        if NotebookStore.isMessage(e) { return "[\(e.str("id") ?? "")] \(e.str("role") ?? ""): \(e.str("text") ?? "")" }
+        if e["recovered"] == .bool(true) { return nil }
+        if e.str("tool") == "write_page" {
+            return e["refused"] == .bool(true) ? "Write refused on \(e.str("file") ?? ""): \(e.str("reason") ?? ""). \(e.str("current") ?? "")"
+                : "Saved \(e.str("file") ?? "") (\(e["revised"] == .bool(true) ? "revision" : "new page"))."
+        }
+        if ["release_edit", "undo_release", "undo_page", "edit_page"].contains(e.str("purpose") ?? "") { return e.line }
+        return nil
+    }
+
+    /// Derived from the origin thread's previous turn, with no foreign conversation words.
+    public static func turnPrefix(_ store: NotebookStore, thread: String, before: String? = nil) -> String {
+        let end = before.flatMap { id in store.transcript.firstIndex { $0.str("id") == id } } ?? store.transcript.count
+        let previous = store.transcript[..<end].lastIndex { NotebookStore.thread(of: $0) == thread && NotebookStore.isPersonMessage($0) } ?? -1
+        let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
+        var out = bookChanges(store, since: previous + 1)
+        for e in changes where e["recovered"] != .bool(true) {
+            if e.str("file") == thread && ((e.str("tool") == "write_page" && NotebookStore.thread(of: e) != thread) || e.str("purpose") == "undo_page") {
+                out += "[Sophia app] This page changed: \(contextLine(e) ?? e.line)\n"
+            }
+        }
+        let others = Set(changes.filter { $0["recovered"] != .bool(true) && NotebookStore.isMessage($0) && NotebookStore.thread(of: $0) != thread }.map { NotebookStore.thread(of: $0) })
+        for page in others.sorted() { out += "[Sophia app] Another conversation was active: \(page.isEmpty ? "Contents" : page).\n" }
+        return out
     }
 
     /// The session-end request for one session's messages.
@@ -141,12 +178,13 @@ public enum Prompts {
         let iso = ISO8601DateFormatter()
         let mine = messages.map { m -> String in
             let when = m.str("at").flatMap { iso.date(from: $0) }.map { " (\(day.string(from: $0)))" } ?? ""
-            return "\(m.str("id") ?? "")\(when): \(m.str("text") ?? "")"
+            return "\(m.str("id") ?? "") [page: \(NotebookStore.thread(of: m))]\(when): \(m.str("text") ?? "")"
         }.joined(separator: "\n")
         let opening = catchUp
             ? "[Sophia app] The person has come back. Their messages below, from when they were last here, have no notes yet. Write your notes on them, and your memory as it should now stand, as one JSON object and nothing else."
             : "[Sophia app] The person ended the session. Write your notes on this session, and your memory as it should now stand, as one JSON object and nothing else."
-        let records = store.currentLearning.suffix(30).map { "\($0.str("id") ?? "") [\($0.str("kind") ?? "")]: \($0.str("text") ?? "")" }.joined(separator: "\n")
+        let checkpointAt = store.transcript.last { $0.str("purpose") == "checkpoint" }?.str("at") ?? ""
+        let records = store.learning.filter { ($0.str("at") ?? "") >= checkpointAt }.map { "\($0.str("id") ?? "") [\($0.str("kind") ?? "")]: \($0.str("text") ?? "")" }.joined(separator: "\n")
         return """
         \(opening)
 
@@ -185,7 +223,7 @@ public enum Prompts {
 
     /// Put before the person's message when they changed the book since their previous message:
     /// their edits as changed lines, and edits they let Sophia change or took back. Empty if nothing changed.
-    public static func bookChanges(_ store: NotebookStore, since index: Int) -> String {
+    public static func bookChanges(_ store: NotebookStore, since index: Int, before: Int? = nil) -> String {
         func clip(_ s: String) -> String { s.count > 1500 ? String(s.prefix(1500)) + " …" : s }
         func place(_ e: JSONObject?) -> String {
             let section = e?.str("section") ?? ""
@@ -194,7 +232,7 @@ public enum Prompts {
         }
         func entry(_ id: String?) -> JSONObject? { store.transcript.first { $0.str("id") == id } }
         var lines: [String] = []
-        for e in store.transcript[min(index, store.transcript.count)...] {
+        for e in store.transcript[min(index, store.transcript.count)..<min(before ?? store.transcript.count, store.transcript.count)] where e["recovered"] != .bool(true) {
             switch e.str("purpose") {
             case "edit_page":
                 lines.append("- Edited \(place(e)):")
@@ -207,8 +245,9 @@ public enum Prompts {
                 lines.append("- Let you change their edit in \(place(entry(e.str("entry")))). You may now revise those lines.")
             case "undo_release":
                 lines.append("- Took back letting you change their edit in \(place(entry(entry(e.str("entry"))?.str("entry")))). Those lines are protected again.")
-            case "undo_page" where entry(e.str("entry"))?.str("purpose") == "edit_page":
-                lines.append("- Undid their edit to \(place(entry(e.str("entry")))).")
+            case "undo_page":
+                let action = entry(e.str("entry"))
+                lines.append("- Undid \(action?.str("purpose") == "edit_page" ? "their edit to" : "a page write on") \(place(action)).")
             default: break
             }
         }

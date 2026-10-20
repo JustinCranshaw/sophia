@@ -224,10 +224,12 @@ struct PageView: View {
                 // Undo offers the latest write to this page, by either author.
                 if let w = session.undoableWrite(for: file), let e = session.store.transcript.first(where: { $0.str("id") == w }) {
                     let mine = e.str("purpose") == "edit_page"
+                    let release = e.str("purpose") == "release_edit"
+                    let recovered = e["recovered"] == .bool(true)
                     HStack {
-                        Banner(tone: .saved, text: mine ? "You edited \(editedPlace(e)). The previous version is kept."
+                        Banner(tone: .saved, text: release ? "Sophia may change your edit on your next message." : recovered ? "A page change was recovered." : mine ? "You edited \(editedPlace(e)). The previous version is kept."
                                : e["revised"] == .bool(true) ? "Sophia revised this page. The previous version is kept." : "Sophia added this page to your book.")
-                        Button(mine ? "Undo your edit" : "Undo Sophia's change") { session.undoWrite(w) }
+                        Button(release ? "Undo permission to change your edit" : mine ? "Undo your edit" : recovered ? "Undo recovered change" : "Undo Sophia's change") { session.undoWrite(w) }
                     }
                 }
                 let store = session.store

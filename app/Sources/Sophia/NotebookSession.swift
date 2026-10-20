@@ -21,26 +21,36 @@ final class NotebookSession: ObservableObject {
     let session: String
 
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
-    @Published var place: Place = .contents { didSet { if case .page(let f) = place, f == editing?.file { return }; commitEdit() } }
+    @Published var place: Place = .contents { didSet {
+        switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
+        if case .page(let f) = place, f == editing?.file { return }; commitEdit()
+    } }
+    @Published private(set) var activeThread = ""
+    var conversationName: String { activeThread.isEmpty ? "Contents" : store.readPage(activeThread)?.title ?? activeThread }
+    var visibleActivity: String? { running?.thread == activeThread && request == nil ? activity : nil }
+    var visibleThinking: Bool { isResponding && running?.thread == activeThread && request == nil }
+    var visibleStreaming: String { running?.thread == activeThread && request == nil ? streaming : "" }
     @Published var bookShown = true { didSet { if !bookShown { commitEdit() } } }
     @Published var streaming = ""
     @Published var isResponding = false
     @Published var activity: String?
     @Published var problem: String?
-    @Published var lastWrites: [String] = []          // transcript ids of page writes and edits since the person's last message
-    @Published var lastReleases: [String] = []        // the person's releases of their edits, undoable until their next message
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
     @Published var lastDeleted: [JSONObject]?        // records; Undo lasts until the next message
     @Published var pendingSection: String?           // a section to scroll to once its page is laid out
 
     private var engine: ClaudeEngine?
+    private var engines: [String: ClaudeEngine] = [:]
+    private struct Turn { let id: String; let thread: String; let text: String }
+    private var running: Turn?
+    private var queue: [Turn] = []
+    private var checkpointEngine: ClaudeEngine?
+    func isPending(_ thread: String) -> Bool { NotebookStore.isPending(thread: thread, running: running?.thread, queued: queue.map(\.thread)) }
     private var request: Request?
     private var requestText = ""
-    private var stopping = false
     private var pendingTools: [String: String] = [:]
     private var turnTexts: [String] = []                // Sophia's text blocks in the current reply
-    private var queued: String?            // a message the person sent while notes or a briefing were being written
     private var briefAfterNotes = false
     private var dropBriefing = false
     private var musicWarnings: [String: [MusicWarnings]] = [:]   // each page's current notation warnings, as last rendered
@@ -49,7 +59,7 @@ final class NotebookSession: ObservableObject {
     private var terminating: Any?
 
     init(url: URL) throws {
-        store = try NotebookStore(url: url)
+        store = try NotebookStore.open(url: url)
         library = LibraryStore(root: url.deletingLastPathComponent())
         session = store.newSessionID()
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
@@ -64,7 +74,7 @@ final class NotebookSession: ObservableObject {
     }
 
     deinit {
-        engine?.stop()
+        engines.values.forEach { $0.stop() }; checkpointEngine?.stop()
         if let terminating { NotificationCenter.default.removeObserver(terminating) }
     }
 
@@ -85,269 +95,189 @@ final class NotebookSession: ObservableObject {
         return nil
     }
 
-    private func ensureEngine() -> Bool {
-        if let e = engine, e.isRunning { return true }
-        guard let claude = ClaudeEngine.locateClaude() else {
-            problem = "Sophia runs on Claude Code, which isn't installed. Install it from claude.com/code, run `claude` once in Terminal to sign in, then try again."
-            return false
-        }
+    private func ensureEngine(thread: String, before: String? = nil, internalRequest: Bool = false) -> Bool {
+        if !internalRequest, let e = engines[thread], e.isRunning { engine = e; return true }
+        guard let claude = ClaudeEngine.locateClaude() else { problem = "Install Claude Code and sign in to continue."; return false }
         guard let prompt = Self.sophiaPrompt() else { problem = "SOPHIA.md is missing from the app."; return false }
         let tools = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("sophia-mcp").path
         let e = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: tools, notebookURL: store.url,
-                                           systemPrompt: prompt, context: Prompts.context(store), resume: store.claudeSession,
-                                           session: session))
-        e.onEvent = { [weak self] in self?.handle($0) }
+                                           systemPrompt: prompt, context: Prompts.context(store, thread: thread, before: before),
+                                           session: session, page: thread))
+        let identity = ObjectIdentifier(e)
+        e.onEvent = { [weak self] event in self?.handle(event, identity: identity, thread: thread, internalRequest: internalRequest) }
         do { try e.start() } catch { problem = "Couldn't start Claude Code: \(error.localizedDescription)"; return false }
+        if internalRequest { checkpointEngine = e } else { engines[thread] = e }
         engine = e
         return true
     }
 
-    func shutdown() { commitEdit(); engine?.stop(); engine = nil }
+    func shutdown() { commitEdit(); engines.values.forEach { $0.stop() }; checkpointEngine?.stop(); engines = [:]; engine = nil }
 
-    private func handle(_ event: ClaudeEngine.Event) {
+    private func handle(_ event: ClaudeEngine.Event, identity: ObjectIdentifier, thread: String, internalRequest: Bool) {
+        // A terminating process may report its exit after a replacement has started.
+        let source = internalRequest ? checkpointEngine : engines[thread]
+        guard let source, ObjectIdentifier(source) == identity else { return }
+        let current = engine.map { ObjectIdentifier($0) == identity } == true
         switch event {
-        case .started(let sid, let source, _, _):
+        case .started(_, let source, _, _):
             if source != "none" {
-                // Billing guard: Sophia only runs on the person's subscription login.
-                engine?.stop()
-                isResponding = false
-                problem = "Claude Code is set to use an API key (\(source)), which bills separately from your subscription. Sophia won't continue on it. Remove the key from Claude Code's settings or environment, then try again."
-                return
+                engine?.cancel()
+                if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
+                engine = nil; running = nil; request = nil; isResponding = false; streaming = ""; activity = nil
+                problem = "Claude Code is set to use an API key (\(source)), which bills separately. Sophia won't continue on it."
+                changed()
             }
-            if store.claudeSession != sid, !sid.isEmpty { store.claudeSession = sid }
         case .textDelta(let t):
-            if request == nil { streaming += t }
+            if current && !internalRequest { streaming += t }
         case .assistantText(let t):
-            if request != nil { requestText += t; return }
-            // The person already read the first version; a second full version after a tool call is noise.
+            guard current else { return }
+            if internalRequest { requestText += t; return }
             defer { turnTexts.append(t) }
             if Prompts.isRestatement(t, of: turnTexts) { streaming = ""; changed(); return }
-            try? store.appendTranscript(["role": .string("sophia"), "session": .string(session), "text": .string(t)])
-            streaming = ""
-            changed()
+            try? store.appendTranscript(["role": .string("sophia"), "page": .string(thread), "session": .string(session), "text": .string(t)])
+            streaming = ""; changed()
         case .toolUse(let id, let name, let input):
+            guard current else { return }
             pendingTools[id] = name
             if name == "WebSearch" {
                 let q = input["query"]?.string ?? ""
                 activity = "Searching: \(q)"
-                try? store.appendTranscript(["role": .string("tool"), "session": .string(session), "tool": .string("WebSearch"), "query": .string(q)])
-                changed()
-            } else if name == "mcp__sophia__write_page" {
-                activity = "Sophia is writing “\(input["title"]?.string ?? "a page")”…"
-            }
+                try? store.appendTranscript(["role": .string("tool"), "page": .string(thread), "session": .string(session), "tool": .string("WebSearch"), "query": .string(q)])
+            } else if name == "mcp__sophia__write_page" { activity = "Sophia is writing…" }
+            changed()
         case .toolResult(let id):
-            // Sophia's tools write the notebook files themselves; pick up what they wrote.
-            guard let name = pendingTools.removeValue(forKey: id), name.hasPrefix("mcp__sophia__") else { break }
+            guard current, let name = pendingTools.removeValue(forKey: id), name.hasPrefix("mcp__sophia__") else { return }
             let before = Set(store.pageWrites.compactMap { $0.str("id") })
             let goalsBefore = Set(store.learning.compactMap { $0.str("id") })
-            store.reload()
-            library.reload()
+            store.reload(); library.reload()
             if name == "mcp__sophia__set_goal" {
                 for g in store.learning where g.str("kind") == "goal" && !goalsBefore.contains(g.str("id") ?? "") {
-                    try? store.appendTranscript(["role": .string("client"), "session": .string(session),
-                                                 "purpose": .string("goal_noted"), "record": g["id"]!])
+                    try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("goal_noted"), "record": g["id"]!])
                 }
             }
-            if name == "mcp__sophia__write_page" {
-                activity = nil
-                let new = store.pageWrites.filter { !before.contains($0.str("id") ?? "") }
-                for w in new { if let wid = w.str("id") { lastWrites.append(wid) } }
-                if let file = new.last?.str("file") { showWrittenPage(file) }
+            if name == "mcp__sophia__write_page", let file = store.pageWrites.last(where: { !before.contains($0.str("id") ?? "") })?.str("file") { showWrittenPage(file) }
+            changed()
+        case .turnDone(let isError, let message, _):
+            guard current else { return }
+            turnTexts = []; pendingTools = [:]; isResponding = false; activity = nil; streaming = ""
+            if isError { problem = "Sophia stopped with an error: \(message ?? "Unknown error")" }
+            if internalRequest { finishRequest(failed: isError) }
+            else {
+                if !isError && !source.stopRequested, running != nil {
+                    try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("replied")])
+                }
+                running = nil
+                dispatchNext()
             }
             changed()
-        case .turnDone(let isError, let message, let sid):
-            turnTexts = []
-            isResponding = false
-            activity = nil
-            streaming = ""
-            if let sid, !sid.isEmpty, store.claudeSession != sid { store.claudeSession = sid }
-            if isError && !stopping {
-                let m = message ?? "Unknown error"
-                problem = m.localizedCaseInsensitiveContains("login") || m.localizedCaseInsensitiveContains("auth")
-                    ? "Claude Code isn't signed in. Open Terminal, run `claude`, and sign in with your Claude account. (\(m))"
-                    : "Sophia stopped with an error: \(m)"
-            }
-            let failed = isError && !stopping
-            stopping = false
-            finishRequest(failed: failed)
-            changed()
-        case .exited(let code, let stderr):
+        case .exited(let code, let stderr, let stopRequested):
+            if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
+            guard current else { return }
             engine = nil
-            if isResponding {
-                isResponding = false
-                streaming = ""
-                if !stopping {
-                    problem = "The connection to Claude Code closed (exit \(code)). Your notebook is untouched. \(stderr.split(separator: "\n").last.map(String.init) ?? "")"
-                }
-                request = nil
-                queued = nil
-                briefAfterNotes = false
+            if !stopRequested && isResponding {
+                problem = "The connection to Claude Code closed (exit \(code)). \(stderr.split(separator: "\n").last.map(String.init) ?? "")"
+                isResponding = false; streaming = ""; activity = nil
+                if internalRequest { finishRequest(failed: true) } else { running = nil; dispatchNext() }
             }
-            stopping = false
             changed()
         }
     }
 
-    // MARK: The person's messages
-
-    /// The person can type while notes or a briefing are being written; the message waits for them.
-    var canSend: Bool { !isResponding || (request != nil && queued == nil) }
-    /// Sophia is answering the person (as opposed to writing notes or a briefing), so Stop applies.
-    var isReplying: Bool { isResponding && request == nil }
+    var canSend: Bool { !isPending(activeThread) }
+    var isReplying: Bool { isResponding && request == nil && running?.thread == activeThread }
 
     func send(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, canSend else { return }
-        problem = nil
-        lastWrites = []
-        lastReleases = []
-        lastDeleted = nil
-        // A long quiet with the window left open gets no briefing; Sophia is told the time instead.
-        let quiet = store.lastConversationAt.map { Date().timeIntervalSince($0) } ?? 0
-        // She hears about the person's edits and releases since their previous message with this one.
-        let since = (store.transcript.lastIndex(where: NotebookStore.isPersonMessage) ?? -1) + 1
-        // And about notation warnings on pages she hasn't heard of yet, once each.
+        problem = nil; lastDeleted = nil
+        do {
+            let entry = try store.appendTranscript(["role": .string("person"), "page": .string(activeThread), "session": .string(session), "text": .string(t)])
+            queue.append(Turn(id: entry.str("id")!, thread: activeThread, text: t))
+        } catch { problem = error.localizedDescription; return }
+        briefAfterNotes = false
+        if request == .briefing { dropBriefing = true }
+        dispatchNext(); changed()
+    }
+
+    private func dispatchNext() {
+        guard !queue.isEmpty, NotebookStore.nextStep(thread: queue[0].thread, pending: isResponding || request != nil) == .reply else { return }
+        let turn = queue.removeFirst()
+        guard ensureEngine(thread: turn.thread, before: turn.id) else { changed(); return }
+        running = turn; isResponding = true
         let music = musicWarnings.keys.sorted().flatMap { musicWarnings[$0]! }.filter { !toldMusic.contains($0) }
         toldMusic.formUnion(music)
-        let outgoing = (quiet >= Self.returnGap ? Prompts.afterQuiet(quiet) : "") + Prompts.bookChanges(store, since: since)
-            + Prompts.musicWarnings(music) + t
-        try? store.appendTranscript(["role": .string("person"), "session": .string(session), "text": .string(t)])
-        changed()
-        if request != nil {
-            // They've started talking, so a briefing would only interrupt.
-            queued = outgoing
-            briefAfterNotes = false
-            if request == .briefing { dropBriefing = true }
-            return
-        }
-        guard ensureEngine() else { return }
-        isResponding = true
-        engine?.send(outgoing)
+        engine?.send(Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music) + turn.text)
     }
 
-    /// Stops the current reply. The next message resumes the same conversation.
     func stop() {
-        guard isResponding else { return }
-        stopping = true
-        engine?.cancel()
-        isResponding = false
-        streaming = ""
-        activity = nil
-        request = nil
-        try? store.appendTranscript(["role": .string("client"), "session": .string(session), "purpose": .string("stopped")])
-        changed()
+        guard let turn = running else { return }
+        // Detach first: late output from this process cannot complete or corrupt a replacement.
+        engines[turn.thread] = nil; engine?.cancel(); engine = nil
+        isResponding = false; running = nil; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
+        try? store.appendTranscript(["role": .string("client"), "page": .string(turn.thread), "session": .string(session), "purpose": .string("stopped")])
+        dispatchNext(); changed()
     }
-
-    // MARK: Checkpoint and briefing
 
     var hasUncheckpointedMessages: Bool { !store.unnotedMessages.isEmpty }
-
-    /// Coming back after a while: first notes on any messages left without them (the person may
-    /// have closed the window without ending the session), then a short briefing.
     private func pickUp() {
         if !store.unnotedMessages.isEmpty, writeNotes(catchUp: true) { briefAfterNotes = true } else { requestBriefing() }
     }
-
     func endSession() { writeNotes(catchUp: false) }
 
     @discardableResult
     private func writeNotes(catchUp: Bool) -> Bool {
         let messages = store.unnotedMessages
-        guard !isResponding, let last = messages.last?.str("id"), ensureEngine() else { return false }
+        guard !isResponding, let last = messages.last?.str("id"), ensureEngine(thread: "", internalRequest: true) else { return false }
         request = .checkpoint(through: last, entries: Set(messages.compactMap { $0.str("id") }), catchUp: catchUp)
-        requestText = ""
-        isResponding = true
-        activity = catchUp ? "Writing notes on your last session…" : "Sophia is writing notes on this session…"
+        requestText = ""; isResponding = true; activity = nil
         engine?.send(Prompts.checkpoint(store, messages: messages, catchUp: catchUp))
         return true
     }
 
     func requestBriefing() {
-        guard !isResponding, ensureEngine() else { return }
-        request = .briefing
-        requestText = ""
-        dropBriefing = false
-        isResponding = true
-        activity = "Sophia is reading back over the notebook…"
+        guard !isResponding, ensureEngine(thread: "", internalRequest: true) else { return }
+        request = .briefing; requestText = ""; dropBriefing = false; isResponding = true; activity = nil
         engine?.send(Prompts.briefing(store))
     }
 
     private func finishRequest(failed: Bool) {
         guard let r = request else { return }
         request = nil
-        let text = requestText
-        requestText = ""
-        let checks = RecordChecks(store: store)
+        let text = requestText; requestText = ""
+        // Detach before stopping: its expected exit cannot clear the next conversation process.
+        let finished = checkpointEngine; checkpointEngine = nil; engine = nil; finished?.stop()
         switch r {
-        case .checkpoint(_, _, let catchUp) where failed:
-            // Nothing is marked as noted, so the next return tries again.
-            if catchUp { problem = "Couldn't write notes on your last session. Sophia will try again next time." }
         case .checkpoint(let through, let entries, let catchUp):
-            let (items, memory, parsed) = RecordChecks.parseCheckpoint(text)
-            let out = checks.check(items, allowedKinds: RecordChecks.checkpointKinds, quoteEntries: entries)
-            var kept: [JSON] = []
-            for rec in out.kept {
-                if let saved = try? store.appendLearning(rec, by: "sophia", session: session) { kept.append(saved["id"]!) }
-            }
-            var notes = out.notes
-            if let memory, let result = try? store.setMemory(memory, session: session) { notes += result.problems }
-            if !parsed && !text.isEmpty { notes.append("Sophia's notes weren't in the expected format, so nothing was kept.") }
-            try? store.appendTranscript(["role": .string("client"), "session": .string(session), "purpose": .string("checkpoint"),
-                                         "through": .string(through), "catch_up": .bool(catchUp),
-                                         "kept": .array(kept), "not_kept": .array(notes.map { .string($0) })])
-        case .briefing where failed || dropBriefing:
-            dropBriefing = false
+            let result = try? store.finishCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
+            if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
+            else { briefAfterNotes = false }
         case .briefing:
-            var obj = RecordChecks.extractJSON(text)?.object ?? [:]
-            let said = obj.str("text")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let words = said.split(whereSeparator: { $0.isWhitespace }).count
-            if said.isEmpty || words > RecordChecks.briefingWordLimit {
-                // Nothing worth picking up, or a recap nobody asked for: say nothing. The entry isn't shown.
-                try? store.appendTranscript(["role": .string("client"), "session": .string(session), "purpose": .string("briefing_dropped"),
-                                             "words": .number(Double(words))])
-                break
+            if !failed && !dropBriefing, var obj = RecordChecks.extractJSON(text)?.object {
+                obj["kind"] = .string("briefing")
+                let out = RecordChecks(store: store).check([.object(obj)], allowedKinds: RecordChecks.briefingKinds, session: session)
+                if let rec = out.kept.first, let saved = try? store.appendLearning(rec, by: "sophia", session: session) {
+                    try? store.appendTranscript(["role": .string("sophia"), "page": .string(""), "session": .string(session), "purpose": .string("briefing"), "record": saved["id"]!, "text": saved["text"]!, "refs": saved["refs"] ?? .array([])])
+                }
             }
-            obj["kind"] = .string("briefing")
-            let out = checks.check([.object(obj)], allowedKinds: RecordChecks.briefingKinds, session: session)
-            if let rec = out.kept.first, let saved = try? store.appendLearning(rec, by: "sophia", session: session) {
-                try? store.appendTranscript(["role": .string("sophia"), "session": .string(session), "purpose": .string("briefing"),
-                                             "record": saved["id"]!, "text": saved["text"]!, "refs": saved["refs"] ?? .array([])])
-            } else {
-                try? store.appendTranscript(["role": .string("client"), "session": .string(session), "purpose": .string("briefing_failed"),
-                                             "not_kept": .array(out.notes.map { .string($0) })])
-            }
+            dropBriefing = false
         }
-        if case .checkpoint = r, briefAfterNotes {
-            briefAfterNotes = false
-            requestBriefing()
-        } else if let q = queued {
-            queued = nil
-            if ensureEngine() { isResponding = true; engine?.send(q) }
-        }
+        if briefAfterNotes { briefAfterNotes = false; requestBriefing() } else { dispatchNext() }
         changed()
     }
 
     // MARK: Pages Sophia writes
 
-    /// A page Sophia just wrote opens in the book, unless the person is reading another page,
-    /// their goals, or the notes there; then the card in the conversation points to it.
-    private func showWrittenPage(_ file: String) {
-        switch place {
-        case .page(let f) where f != file: if !bookShown { place = .page(file) }
-        case .goals, .notes, .about: if !bookShown { place = .page(file) }
-        default: place = .page(file)
-        }
-        bookShown = true
-    }
+    /// Reveal the book while preserving the selected place and the composer's focus.
+    private func showWrittenPage(_ file: String) { bookShown = true }
 
     /// Shows a place in the book, opening the book if it is hidden.
     func show(_ p: Place) { place = p; bookShown = true }
 
-    /// The person's undo of a page Sophia wrote. Available until their next message.
+    /// Undo the latest eligible action, rechecked under the notebook lock.
     func undoWrite(_ entryID: String) {
         do {
-            try store.undoPageWrite(entryID, session: session)
-            lastWrites.removeAll { $0 == entryID }
+            if let e = store.transcript.first(where: { $0.str("id") == entryID }), store.isReleaseUndoable(e) { try store.undoRelease(entryID, session: session) }
+            else { try store.undoPageWrite(entryID, session: session) }
             if case .page(let f) = place, !store.pageFiles.contains(f) { place = .contents }
         } catch { problem = error.localizedDescription }
         changed()
@@ -355,9 +285,8 @@ final class NotebookSession: ObservableObject {
 
     /// The most recent write to a page, by either author, if the person can still undo it.
     func undoableWrite(for file: String) -> String? {
-        lastWrites.last { id in
-            store.transcript.first { $0.str("id") == id }?.str("file") == file && !store.isUndone(id) && store.isLatestWrite(id)
-        }
+        guard let e = store.latestPageAction(for: file), store.isUndoable(e) || store.isReleaseUndoable(e) else { return nil }
+        return e.str("id")
     }
 
     // MARK: The person's edits
@@ -410,8 +339,7 @@ final class NotebookSession: ObservableObject {
         let base = e.conflict ?? e.range
         do {
             switch try store.editPage(file: e.file, section: base.key, baseHash: base.hash, text: t, session: session) {
-            case .saved(let entry):
-                if let id = entry.str("id") { lastWrites.append(id) }
+            case .saved:
                 endEditing()
             case .unchanged:
                 endEditing()
@@ -442,19 +370,18 @@ final class NotebookSession: ObservableObject {
         beginEdit(file: file, key: "(page)", atVisibleTop: true)
     }
 
-    /// The person lets Sophia change the lines a refused revision ran into. Undoable until their next message.
+    /// Permission applies on the next message; it remains undoable until the next page action.
     func release(_ refusal: JSONObject) {
         let edits = (refusal["edits"]?.array ?? []).compactMap(\.string)
-        do { lastReleases += try store.releaseEdits(edits, session: session).compactMap { $0.str("id") } }
+        do { _ = try store.releaseEdits(edits, session: session) }
         catch { problem = error.localizedDescription }
         changed()
     }
 
     func undoRelease(_ refusal: JSONObject) {
         let edits = Set((refusal["edits"]?.array ?? []).compactMap(\.string))
-        for id in lastReleases where edits.contains(store.transcript.first { $0.str("id") == id }?.str("entry") ?? "") {
-            try? store.undoRelease(id, session: session)
-            lastReleases.removeAll { $0 == id }
+        for release in store.transcript where edits.contains(release.str("entry") ?? "") && store.isReleaseUndoable(release) {
+            try? store.undoRelease(release.str("id")!, session: session)
         }
         changed()
     }
