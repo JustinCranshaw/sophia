@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C2 · A: Anchored stream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="harness.css">
+<style>
+/* Shared marks (identical in all three prototypes) */
+.yourline{border-left:3px solid #9DB0E6;padding-left:10px}
+.yourtag{font-family:var(--sans);font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px;white-space:nowrap}
+.rev{background:var(--ins);border-radius:2px}
+
+/* ---- A: Anchored stream, prototype-specific ---- */
+.proto .book{position:static}            /* so data-anchor offsets are measured from the window */
+.anc{display:block;height:0;position:relative;top:-86px;margin-bottom:-16px}
+.selwrap .popover{white-space:nowrap}
+.anc2{display:block;height:0;position:relative;top:-84px;margin-bottom:-16px}
+.anc3{top:-74px;margin-bottom:-6px}
+.chat .checkpoint span{white-space:normal;text-align:center;max-width:300px}
+.bannerbar{position:sticky;top:41px;z-index:2;background:#fff;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.bannerbar .banner{margin-top:12px}
+.side .it.pg.cur,.side .nbk.cur{background:var(--accent-soft);font-weight:600}
+/* current page highlight, keyed to the scenario */
+.proto[data-s="1"] .side [data-pg="p"],.proto[data-s="1b"] .side [data-pg="p"],.proto[data-s="5"] .side [data-pg="p"],
+.proto[data-s="6"] .side [data-pg="p"],.proto[data-s="7"] .side [data-pg="p"],
+.proto[data-s="2"] .side [data-pg="q"],.proto[data-s="7b"] .side [data-pg="q"],
+.proto[data-s="11a"] .side [data-pg="03"],.proto[data-s="11b"] .side [data-pg="22"],
+.proto[data-s="3"] .side .nbk.open,.proto[data-s="11c"] .side .nbk.open{background:var(--accent-soft);font-weight:600}
+
+/* bookhead: "Discussed N times" lives here, outside the article */
+.disc{border:1px solid var(--line2);background:#fff;border-radius:999px;padding:2px 10px;font-size:12px;color:var(--ink2);display:inline-flex;gap:6px;align-items:center}
+.disc[aria-pressed=true]{background:var(--accent-soft);border-color:#C6D0EE;color:var(--ink);font-weight:600}
+.disc.none{border-style:dashed;color:var(--muted);cursor:default}
+
+/* chat header + Finder-style scope bar */
+.chattop{position:sticky;top:0;z-index:4;background:#fff;border-bottom:1px solid var(--line)}
+.chattop .chathead{position:static;border-bottom:0}
+.ntbtn{margin-left:auto;font-size:12px;border:1px solid var(--line2);background:#fff;border-radius:6px;padding:2px 8px;color:var(--ink2);white-space:nowrap}
+.ntbtn kbd{font-family:var(--sans);color:var(--muted);margin-left:4px}
+.scopebar{display:flex;align-items:center;gap:8px;padding:0 14px 8px;font-size:12px;color:var(--muted)}
+.scopebar .seg button{padding:2px 10px}
+.scopebar .seg button:disabled{color:var(--faint);cursor:default}
+.scopebar .cnt{margin-left:auto;white-space:nowrap}
+
+/* stream marks: page-change boundary, New Topic divider, collapsed topic headers */
+.pgb{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--accent-ink);margin:2px 0 -6px}
+.pgb .to{font-weight:600;white-space:nowrap}
+.pgb .sec{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pgb::after{content:"";flex:1;border-top:1px solid #C6D0EE;min-width:16px}
+.pgb time{order:3;color:var(--muted);white-space:nowrap}
+.pgb.none{color:var(--muted)}
+.pgb.none::after{border-top-style:dotted;border-color:var(--line2)}
+.ntdiv{display:flex;flex-direction:column;align-items:center;gap:2px;border-top:2px solid var(--ink2);padding-top:6px;margin-top:4px;font-size:11.5px;color:var(--muted);text-align:center}
+.ntdiv b{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+.tph{border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px 10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;font-size:12px;line-height:1.4;color:var(--muted)}
+.tph .q{grid-column:1;color:var(--ink);font-size:12.5px}
+.tph .r1{grid-column:1}
+.tph .cpi::before{content:"";display:inline-block;width:12px;border-top:1px dashed var(--line2);vertical-align:3px;margin-right:4px}
+.tph .r1 b{color:var(--ink2);font-weight:600}
+.tph .cp{grid-column:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tph .cp::before{content:"";display:inline-block;width:14px;border-top:1px dashed var(--line2);vertical-align:3px;margin-right:5px}
+.tph .rd{grid-column:2;grid-row:1 / span 3;align-self:center;border:0;background:none;color:var(--accent);font-size:12px;text-decoration:underline;padding:0}
+.tph.open{border-color:var(--line2);background:#F7F8FA}
+.tphs{display:flex;flex-direction:column;gap:6px}
+.tphs .lab{padding:2px 0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px}
+.tphs .lab span{font-weight:400;letter-spacing:0;text-transform:none}
+.ro{border-left:3px solid var(--line2);padding-left:10px;display:flex;flex-direction:column;gap:14px;opacity:.82}
+.ro .rohead{font-size:11.5px;color:var(--muted);background:var(--side);border-radius:6px;padding:5px 8px}
+.gap{align-self:center;font-size:11.5px;color:var(--faint);border:1px dashed var(--line2);border-radius:999px;padding:1px 10px}
+
+/* "This page" filter view: results are scannable and open in the stream */
+.filt{display:flex;flex-direction:column;gap:3px}
+.filt .checkpoint span{max-width:none}
+.filt .fh{font-size:12px;color:var(--ink2);background:var(--accent-soft);border-radius:8px;padding:6px 10px}
+.filt .sess{display:flex;align-items:baseline;gap:8px;font-size:11.5px;font-weight:600;color:var(--ink2);border-bottom:1px solid var(--line);padding-bottom:1px;margin-top:0}
+.filt .sess span{font-weight:400;color:var(--muted)}
+.filt .sess a{margin-left:auto;font-weight:400;font-size:11.5px}
+.filt .msg{gap:2px 8px;flex-direction:row;flex-wrap:wrap;align-items:baseline}
+.filt .msg > .who{flex:none;width:48px;font-size:10px}
+.filt .msg > .bubble,.filt .msg > .prose{flex:1 1 0;min-width:0}
+.filt .msg > .pointer{flex:1 1 0;min-width:0}
+.hlsess{background:var(--accent-soft);border-radius:10px;padding:8px 10px;margin:0 -6px;display:flex;flex-direction:column;gap:12px;box-shadow:inset 3px 0 0 var(--accent)}
+.hlsess .hlcap{font-size:11.5px;color:var(--accent-ink);display:flex;gap:8px}
+.hlsess .hlcap a{margin-left:auto}
+.filt .bubble{font-size:13px;padding:2px 8px}
+.filt .prose{font-size:14px;line-height:1.45;padding-left:10px}
+.filt .bubble,.filt .prose p{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.filt .pointer{padding:3px 10px;font-size:12px;flex-direction:row;flex-wrap:wrap;gap:2px 8px;align-items:baseline}
+.filt .sess .hid{margin-left:4px;color:var(--faint)}
+.filt .ntdiv{flex-direction:row;justify-content:center;gap:8px;padding-top:3px}
+.allpeek{margin-top:6px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:8px;opacity:.75;text-align:left;width:100%}
+.allpeek .lbl{color:var(--muted)}
+.filt .gap{margin:-2px 0}
+.empty{margin:auto 0;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;padding:40px 18px;color:var(--muted);font-size:13px;line-height:1.5}
+.empty b{color:var(--ink2);font-size:14px}
+
+/* composer: the page chip */
+.onchip{align-self:flex-start;font-size:12px;border-radius:999px;padding:2px 10px;background:#fff;border:1px solid #C6D0EE;color:var(--accent-ink);display:inline-flex;gap:5px;align-items:center}
+.onchip.none{border-style:dashed;border-color:var(--line2);color:var(--muted)}
+.attach{display:flex;flex-direction:column;gap:5px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+.attach .x{align-self:flex-end;margin-top:-4px;font-size:11px;color:var(--muted)}
+.composer .sees kbd{font-family:var(--sans)}
+.thread{gap:16px}
+.chat .msg .basis{font-size:11.5px}
+</style>
+</head>
+<body class="protobody">
+<div class="proto" data-s="2" data-first="2" data-step="a" data-init="step:a">
+  <header class="proto-bar">
+    <span class="nm">C2 · A: Anchored stream <small>prototype, not the app</small></span>
+    <nav class="scenes" aria-label="Scenarios">
+      <button data-go="1">1 Ask about a sentence</button><button data-go="1b">1b Revised</button>
+      <button data-go="2">2 Open Q mid-exchange</button><button data-go="3">3 Notebook level</button>
+      <button data-go="5">5 Fresh start on P</button><button data-go="6">6 Two lines on P</button>
+      <button data-go="7">7 Back after a week</button><button data-go="7b">7b Opens Q first</button>
+      <button data-go="11a">11a Never discussed</button><button data-go="11b">11b Many sessions</button><button data-go="11c">11c Long notebook chat</button>
+    </nav>
+    <button class="seesbtn" data-sees-toggle>What Sophia sees</button>
+  </header>
+
+  <div class="proto-what">
+    <span class="grow" data-when="s:1"><b>Look at:</b> one notebook stream beside the book. "Ask Sophia about this" attaches the selection as a quote to the next message, under the page chip.</span>
+    <span class="grow" data-when="s:1b"><b>Look at:</b> the quote, Sophia's answer and her revision card (Undo) sit in the notebook stream, stamped "→ 1.3"; P's banner carries the same undo.</span>
+    <span class="grow" data-when="s:2"><b>Look at:</b> the person opened 1.4. The stream did not change: P's revision card and Undo stay on screen, a "→ 1.4" boundary marks the page change, and the chip now says 1.4.</span>
+    <span class="grow" data-when="s:3"><b>Look at:</b> no page open, so the boundary says so and these messages carry no page. set_chapter updates Contents and the sidebar; set_goal leaves g-2 proposed.</span>
+    <span class="grow" data-when="s:5"><b>Look at:</b> after ⇧⌘N, earlier topics are one-line headers above a divider. They can be read, not continued. Undo on P still holds (it belongs to the page).</span>
+    <span class="grow" data-when="s:6"><b>Look at:</b> the aside about L₁ + L₂ − 1 and its one reply sit inline in the one stream; Sophia then asks again for the swapped-sums step. Section stamps mark the detour.</span>
+    <span class="grow" data-when="s:7"><b>Look at:</b> Sat Oct 25. Catch-up notes ran on the last two messages, then the briefing appears at the end of the stream. The person lands on 1.3, the last open page.</span>
+    <span class="grow" data-when="s:7b"><b>Look at:</b> same launch, but the person opened 1.4 first. The stream, briefing included, is unchanged; only the composer chip moved to 1.4.</span>
+    <span class="grow" data-when="s:11a"><b>Look at:</b> arriving on 0.3, never discussed. The stream (All) is unchanged; only the chip and the bookhead's "Not discussed yet" say where you are. The This-page view is a sub-step.</span>
+    <span class="grow" data-when="s:11b"><b>Look at:</b> "Discussed 4 times" opens This page on 2.2: four dated sessions, checkpoints Oct 8 and 12, hidden-entry counts.</span>
+    <span class="grow" data-when="s:11c"><b>Look at:</b> All on Fri Feb 12, 2027 (projected: ~1,100 entries, 41 sessions, 24 checkpoints), split by ⇧⌘N into <b>24 topics</b>: 23 collapsed headers above, the current topic at the end. Only collapsing bounds it.</span>
+    <div class="states" data-when="s:1"><span>Step</span><button data-set="step:a" data-pressed="step:a">Selected</button><button data-set="step:b" data-pressed="step:b">Quote attached</button></div>
+    <div class="states" data-when="s:2"><span>Show</span><button data-set="step:a" data-pressed="step:a">All</button><button data-set="step:b" data-pressed="step:b">This page</button></div>
+    <div class="states" data-when="s:5"><span>Step</span><button data-set="step:a" data-pressed="step:a">Collapsed</button><button data-set="step:b" data-pressed="step:b">Reading Oct 8–17</button></div>
+    <div class="states" data-when="s:11a"><span>Show</span><button data-set="step:a" data-pressed="step:a">All</button><button data-set="step:b" data-pressed="step:b">This page</button></div>
+    <div class="states" data-when="s:11b"><span>Show</span><button data-set="step:a" data-pressed="step:a">This page</button><button data-set="step:c" data-pressed="step:c">Oct 10 in stream</button></div>
+  </div>
+
+  <div class="proto-stage"><div class="win">
+    <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+      <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+      <div class="tb-title"><span class="t">Fourier analysis</span>
+        <span class="s" data-when="s:1,1b,5,6,7">1 Transforms › 1.3 The convolution theorem</span>
+        <span class="s" data-when="s:2,7b">1 Transforms › 1.4 Sampling and aliasing</span>
+        <span class="s" data-when="s:3,11c">Contents</span>
+        <span class="s" data-when="s:11a">0 Foundations › 0.3 Orthogonality and why the coefficients fall out</span>
+        <span class="s" data-when="s:11b">2 Computation › 2.2 Zero-padding and interpolation</span>
+      </div>
+      <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+    </div>
+    <div class="cols">
+
+<!-- ============================== SIDEBAR (static) ============================== -->
+      <nav class="pane side" aria-label="Library and notebook">
+        <div class="search"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>Search notebooks</div>
+        <div class="grp"><div class="h">Library <button class="plus" aria-label="New notebook">+</button></div>
+          <a class="nbk open" href="#s3"><span class="tri"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></span><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><path d="M6 1.5v13"/></svg><span class="t">Fourier analysis</span></a>
+          <div class="tree" data-when="s:1,1b,2,3,5,6,7,7b,11a,11b">
+            <a class="it util" href="#s3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/></svg><span class="t">Goals</span><span class="count" data-when="s:1,1b,2,5,6,7,7b,11a,11b,11c">2</span><span class="count" data-when="s:3">2 · 1 to confirm</span></a>
+            <a class="it util" href="#s3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/></svg><span class="t">Sophia's notes</span><span class="count" data-when="s:1,1b,2,3,5,6,11a,11b">14</span><span class="count" data-when="s:7,7b">16</span><span class="count" data-when="s:11c">63</span></a>
+            <div class="sep"></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s3"><span class="num">0</span>Foundations</a></div><div class="pages">
+              <a class="it pg" href="#s11a"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">0.1 Complex exponentials as a basis</span></a>
+              <a class="it pg" href="#s11a"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">0.2 The Fourier series of a periodic signal</span></a>
+              <a class="it pg" data-pg="03" href="#s11a"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">0.3 Orthogonality and why the coefficients fall out</span></a>
+            </div></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s3"><span class="num">1</span>Transforms</a></div><div class="pages">
+              <a class="it pg" href="#s1"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.1 From series to transform: the continuous-time FT</span></a>
+              <a class="it pg" href="#s1"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.2 The DTFT and periodicity in frequency</span></a>
+              <a class="it pg" data-pg="p" href="#s1"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.3 The convolution theorem</span></a>
+              <a class="it pg" data-pg="q" href="#s2"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.4 Sampling and aliasing</span></a>
+              <a class="it pg" href="#s11b" data-when="s:3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.5 Zero-padding and interpolation</span><span class="badge ok">moved</span></a>
+            </div></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s3"><span class="num">2</span><span data-when="s:1,1b,2,5,6,7,7b,11a,11b,11c">Computation</span><span data-when="s:3">The FFT</span></a></div><div class="pages">
+              <a class="it pg" href="#s3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">2.1 The DFT as a sampled DTFT</span></a>
+              <a class="it pg" data-pg="22" href="#s11b" data-when="s:1,1b,2,5,6,7,7b,11a,11b,11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">2.2 Zero-padding and interpolation</span></a>
+            </div></div>
+            <a class="it pg top" href="#s3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">Reading list</span></a>
+          </div>
+          <div class="tree" data-when="s:11c">
+            <a class="it util" href="#s3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="3"/></svg><span class="t">Goals</span><span class="count" data-when="s:1,1b,2,5,6,7,7b,11a,11b,11c">2</span><span class="count" data-when="s:3">2 · 1 to confirm</span></a>
+            <a class="it util" href="#s3"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="3" y="2" width="10" height="12" rx="1.5"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3"/></svg><span class="t">Sophia's notes</span><span class="count" data-when="s:1,1b,2,3,5,6,11a,11b">14</span><span class="count" data-when="s:7,7b">16</span><span class="count" data-when="s:11c">63</span></a>
+            <div class="sep"></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s11c"><span class="num">0</span>Foundations</a></div><div class="pages"><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">0.1 Complex exponentials as a basis</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">0.2 The Fourier series of a periodic signal</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">0.3 Orthogonality and why the coefficients fall out</span></a></div></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s11c"><span class="num">1</span>Transforms</a></div><div class="pages"><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.1 From series to transform: the continuous-time FT</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.2 The DTFT and periodicity in frequency</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.3 The convolution theorem</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.4 Sampling and aliasing</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">1.5 Zero-padding and interpolation</span></a></div></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s11c"><span class="num">2</span>The FFT</a></div><div class="pages"><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">2.1 The DFT as a sampled DTFT</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">2.2 Radix-2 decimation in time</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">2.3 Windowing and spectral leakage</span></a></div></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s11c"><span class="num">3</span>Spectrograms</a></div><div class="pages"><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">3.1 The short-time Fourier transform</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">3.2 Time and frequency resolution</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">3.3 Artifacts: leakage, aliasing, and smearing</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">3.4 Overlap and hop size</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">3.5 Reassignment</span></a></div></div>
+            <div class="chg"><div class="it ch"><button class="tri" aria-expanded="true"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></button><a href="#s11c"><span class="num">4</span>Filters in practice</a></div><div class="pages"><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">4.1 FIR design by windowing</span></a><a class="it pg" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">4.2 Phase and group delay</span></a></div></div>
+            <a class="it pg top" href="#s11c"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M4 1.5h5.5l2.5 2.5v10.5H4z"/></svg><span class="t">Reading list</span></a>
+          </div>
+          <a class="nbk" href="#s3"><span class="tri shut"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></span><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><path d="M6 1.5v13"/></svg><span class="t">Graph Clustering</span></a>
+          <a class="nbk" href="#s3"><span class="tri shut"><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2.5 3.5L5 6l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg></span><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="3" y="1.5" width="10" height="13" rx="1.5"/><path d="M6 1.5v13"/></svg><span class="t">How LLMs Work</span></a>
+        </div>
+        <div class="side-foot"><div><span class="dot"></span>Claude Code · Claude subscription</div></div>
+      </nav>
+
+<!-- ============================== BOOK ============================== -->
+      <div class="pane book">
+        <!-- bookheads (conversation chrome lives here, outside the article) -->
+        <div class="bookhead" data-when="s:1,1b,5,6,7"><span class="crumb">Fourier analysis › <b>1 Transforms</b></span><button class="disc">Discussed 5 times</button></div>
+        <div class="bookhead" data-when="s:2,7b"><span class="crumb">Fourier analysis › <b>1 Transforms</b></span><button class="disc" data-when="s:2" data-set="step:b" data-pressed="step:b">Discussed 3 times</button><button class="disc" data-when="s:7b">Discussed 3 times</button></div>
+        <div class="bookhead" data-when="s:3,11c"><span class="crumb"><b>Fourier analysis</b> · Contents</span></div>
+        <div class="bookhead" data-when="s:11a"><span class="crumb">Fourier analysis › <b>0 Foundations</b></span><span class="disc none">Not discussed yet</span></div>
+        <div class="bookhead" data-when="s:11b"><span class="crumb">Fourier analysis › <b>2 Computation</b></span><button class="disc" data-set="step:a" data-pressed="step:a">Discussed 4 times</button></div>
+
+        <!-- page-owned undo on P's banner (shared component) -->
+        <div class="bannerbar" data-when="s:1b,5,6,7,11b">
+        <div class="banner saved" data-when="s:1b,5,6"><span class="grow"><b>✓ Sophia revised “What it buys you: filters”</b> · 2:14 PM · The earlier text is kept as the previous version.</span><button class="linkbtn">Undo Sophia's change</button><span class="hint">until the next change to this page</span></div>
+        <div class="banner saved" data-when="s:7"><span class="grow"><b>✓ Sophia revised “What it buys you: filters”</b> · Oct 17, 2:14 PM · The earlier text is kept as the previous version.</span><button class="linkbtn">Undo Sophia's change</button><span class="hint">until the next change to this page</span></div>
+        <div class="banner saved" data-when="s:11b"><span class="grow"><b>✓ Sophia revised “What it doesn't do”</b> · Oct 14 · The earlier text is kept as the previous version.</span><button class="linkbtn">Undo Sophia's change</button><span class="hint">until the next change to this page</span></div>
+        </div>
+
+        <div data-when="s:1,1b,5,6,7">
+<article class="page" id="page-p">
+  <h1>1.3 The convolution theorem</h1>
+  <div class="meta"><span>Written by Sophia Oct 8 · revised Oct 16 · one line is yours</span></div>
+
+  <h2>Statement</h2>
+  <p>If <i>y</i>[<i>n</i>] = Σ<sub><i>k</i></sub> <i>x</i>[<i>k</i>] <i>h</i>[<i>n</i> − <i>k</i>], then <i>Y</i>(ω) = <i>X</i>(ω) <i>H</i>(ω). Convolution in time becomes multiplication in frequency. The dual also holds: multiplying two sequences in time convolves their spectra in frequency, scaled by 1/2π.</p>
+
+  <i class="anc" data-anchor data-when="s:7"></i>
+  <h2>Derivation for the DTFT</h2>
+  <p>Write <i>Y</i>(ω) = Σ<sub><i>n</i></sub> <i>y</i>[<i>n</i>] e<sup>−iω<i>n</i></sup> and substitute the convolution sum. Swapping the order of summation leaves Σ<sub><i>k</i></sub> <i>x</i>[<i>k</i>] Σ<sub><i>n</i></sub> <i>h</i>[<i>n</i> − <i>k</i>] e<sup>−iω<i>n</i></sup>. With <i>m</i> = <i>n</i> − <i>k</i>, the inner sum is e<sup>−iω<i>k</i></sup> <i>H</i>(ω), and what remains of the outer sum is <i>X</i>(ω). The swap is justified when <i>x</i> and <i>h</i> are absolutely summable.</p>
+  <div class="words">
+    <div class="lbl">In your words · Oct 9</div>
+    <div>"Swap the sums, substitute m = n − k, and the inner sum is just X(ω) times a phase factor."</div>
+  </div>
+
+  <i class="anc" data-anchor data-when="s:1,1b"></i>
+  <h2>What it buys you: filters</h2>
+  <p data-when="s:1">A filter's output is its input convolved with the impulse response, so in frequency every component of the input is scaled by <i>H</i>(ω). That turns "what does this filter do?" into reading one function. <span class="selwrap"><span class="sel-text">A moving-average filter is a low-pass filter because its frequency response is a sinc.</span><span class="popover" role="toolbar" aria-label="Selection" data-when="step:a"><button data-set="step:b">Ask Sophia about this</button><button>Copy</button></span></span> Averaging <i>L</i> samples passes slow variation and attenuates fast oscillation.</p>
+  <p data-when="s:1b,5,6,7">A filter's output is its input convolved with the impulse response, so in frequency every component of the input is scaled by <i>H</i>(ω). That turns "what does this filter do?" into reading one function. A moving-average filter is a low-pass filter because its frequency response is a Dirichlet kernel (a periodic sinc). <span class="rev">For an <i>L</i>-point average, |<i>H</i>(ω)| = |sin(ω<i>L</i>/2)| / (<i>L</i> |sin(ω/2)|), which repeats every 2π. It is not smooth: it falls to zero at multiples of 2π/<i>L</i> and rises into sidelobes between them, so some high frequencies get through.</span> Averaging <i>L</i> samples passes slow variation and attenuates fast oscillation.</p>
+
+  <i class="anc" data-anchor data-when="s:5,6"></i>
+  <h2>Where it fails</h2>
+  <p>The theorem is about linear convolution of sequences whose DTFTs exist. The DFT samples the spectrum at <i>N</i> points, and multiplying two <i>N</i>-point DFTs gives circular convolution, which wraps the tail of the result back onto its start.</p>
+  <p class="yourline">Circular convolution of length-N sequences equals linear convolution only when N ≥ L₁ + L₂ − 1. <span class="yourtag">your line · Oct 16</span></p>
+  <p>Zero-padding both sequences to that length before the DFT makes the product match the linear result.</p>
+
+  <div class="src">
+    <div class="lbl m">Source</div>
+    <div>A. V. Oppenheim and R. W. Schafer, <i>Discrete-Time Signal Processing</i>, 3rd ed., §2.9, "Properties of the discrete-time Fourier transform."</div>
+    <div class="box"><div><b>Location:</b> §2.9.6, "The convolution theorem"</div><div class="unchecked">Cited, not opened by Sophia</div></div>
+  </div>
+</article>
+        </div>
+
+        <div data-when="s:2,7b">
+<article class="page" id="page-q">
+  <h1>1.4 Sampling and aliasing</h1>
+  <div class="meta"><span>Written by Sophia Oct 10</span></div>
+
+  <h2>Sampling as multiplication by an impulse train</h2>
+  <p>Sampling <i>x</i>(<i>t</i>) every <i>T</i> seconds can be modelled as multiplying it by an impulse train, <i>p</i>(<i>t</i>) = Σ<sub><i>n</i></sub> δ(<i>t</i> − <i>nT</i>). The product keeps the values <i>x</i>(<i>nT</i>) and discards everything between them.</p>
+
+  <h2>Replication in frequency</h2>
+  <p>The spectrum of the sampled signal is <i>X</i>(ω) repeated at every multiple of the sampling frequency ω<sub>s</sub> = 2π/<i>T</i>, scaled by 1/<i>T</i>. Each copy is identical; only its position differs.</p>
+
+  <h2>The Nyquist condition</h2>
+  <p>If <i>x</i>(<i>t</i>) has no energy above ω<sub>max</sub> and ω<sub>s</sub> &gt; 2ω<sub>max</sub>, the copies don't overlap, and <i>x</i>(<i>t</i>) can be recovered with a low-pass filter. If they overlap, high frequencies fold onto low ones. After sampling, a folded component is indistinguishable from genuine low-frequency content: that is aliasing.</p>
+
+  <div class="src">
+    <div class="lbl m">Source</div>
+    <div>A. V. Oppenheim and A. S. Willsky, <i>Signals and Systems</i>, 2nd ed., §7.1, "Representation of a continuous-time signal by its samples."</div>
+    <div class="box"><div><b>Location:</b> §7.1.1, "Impulse-train sampling"</div><div class="unchecked">Cited, not opened by Sophia</div></div>
+  </div>
+</article>
+        </div>
+
+        <div data-when="s:11a">
+<article class="page" id="page-03">
+  <h1>0.3 Orthogonality and why the coefficients fall out</h1>
+  <div class="meta"><span>Written by Sophia Oct 3, alongside 0.2</span></div>
+
+  <h2>Inner products of exponentials</h2>
+  <p>Over one period <i>T</i>, the integral of e<sup>i<i>k</i>ω₀<i>t</i></sup> · e<sup>−i<i>m</i>ω₀<i>t</i></sup> is <i>T</i> when <i>k</i> = <i>m</i> and 0 otherwise. The exponentials behave like perpendicular axes.</p>
+
+  <h2>Reading off a coefficient</h2>
+  <p>Multiply the series by e<sup>−i<i>m</i>ω₀<i>t</i></sup> and integrate over a period. Every term except the <i>m</i>-th integrates to zero, so <i>c<sub>m</sub></i> = (1/<i>T</i>) ∫ <i>x</i>(<i>t</i>) e<sup>−i<i>m</i>ω₀<i>t</i></sup> d<i>t</i>. That is why the coefficient formula needs no system of equations.</p>
+</article>
+        </div>
+
+        <div data-when="s:11b">
+<article class="page" id="page-22">
+  <h1>2.2 Zero-padding and interpolation</h1>
+  <div class="meta"><span>Written by Sophia Oct 6 · revised Oct 14</span></div>
+
+  <h2>What padding does</h2>
+  <p>Appending zeros to an <i>N</i>-sample signal before a longer DFT samples the same DTFT at more, closer-spaced frequencies. The plotted spectrum looks smoother because you are seeing more points of one curve.</p>
+
+  <h2>What it doesn't do</h2>
+  <p>Padding adds no information about the signal. Two peaks closer than about 2π/<i>N</i> stay merged however many zeros you add; only a longer record separates them.</p>
+</article>
+        </div>
+
+        <div data-when="s:11c">
+<div class="toc">
+  <div><h1>Fourier analysis</h1><p class="sum">Relearning Fourier analysis for signal-processing work.</p></div>
+  <div class="chap"><h2 class="ch">0 Foundations</h2><ol style="list-style:none;padding-left:0"><li>0.1 Complex exponentials as a basis</li><li>0.2 The Fourier series of a periodic signal</li><li>0.3 Orthogonality and why the coefficients fall out</li></ol></div>
+  <div class="chap"><h2 class="ch">1 Transforms</h2><ol style="list-style:none;padding-left:0"><li>1.1 From series to transform: the continuous-time FT</li><li>1.2 The DTFT and periodicity in frequency</li><li>1.3 The convolution theorem</li><li>1.4 Sampling and aliasing</li><li>1.5 Zero-padding and interpolation</li></ol></div>
+  <div class="chap"><h2 class="ch">2 The FFT</h2><ol style="list-style:none;padding-left:0"><li>2.1 The DFT as a sampled DTFT</li><li>2.2 Radix-2 decimation in time</li><li>2.3 Windowing and spectral leakage</li></ol></div>
+  <div class="chap"><h2 class="ch">3 Spectrograms</h2><ol style="list-style:none;padding-left:0"><li>3.1 The short-time Fourier transform</li><li>3.2 Time and frequency resolution</li><li>3.3 Artifacts: leakage, aliasing, and smearing</li><li>3.4 Overlap and hop size</li><li>3.5 Reassignment</li></ol></div>
+  <div class="chap"><h2 class="ch">4 Filters in practice</h2><ol style="list-style:none;padding-left:0"><li>4.1 FIR design by windowing</li><li>4.2 Phase and group delay</li></ol></div>
+  <div class="chap"><h2 class="ch">Not in a chapter</h2><ol style="list-style:none;padding-left:0"><li>Reading list</li></ol></div>
+</div>
+        </div>
+
+        <div data-when="s:3">
+<div class="toc" id="toc">
+  <div><h1>Fourier analysis</h1><p class="sum">Relearning Fourier analysis for signal-processing work.</p></div>
+  <div class="chap"><h2 class="ch">0 Foundations</h2><ol start="0" style="list-style:none;padding-left:0"><li>0.1 Complex exponentials as a basis</li><li>0.2 The Fourier series of a periodic signal</li><li>0.3 Orthogonality and why the coefficients fall out</li></ol></div>
+  <div class="chap"><h2 class="ch">1 Transforms</h2><ol style="list-style:none;padding-left:0"><li>1.1 From series to transform: the continuous-time FT</li><li>1.2 The DTFT and periodicity in frequency</li><li>1.3 The convolution theorem</li><li>1.4 Sampling and aliasing</li><li>1.5 Zero-padding and interpolation <span class="badge ok">moved</span></li></ol></div>
+  <div class="chap"><h2 class="ch">2 The FFT</h2><ol style="list-style:none;padding-left:0"><li>2.1 The DFT as a sampled DTFT</li><li class="moved">2.2 Zero-padding and interpolation</li></ol></div>
+  <div class="chap"><h2 class="ch">Not in a chapter</h2><ol style="list-style:none;padding-left:0"><li>Reading list</li></ol></div>
+</div>
+        </div>
+      </div>
+
+<!-- ============================== CHAT: the notebook stream ============================== -->
+      <aside class="pane chat" aria-label="Conversation">
+        <div class="chattop">
+          <div class="chathead"><span class="nm">Sophia</span><span class="ctx" style="margin-left:6px">Fourier analysis · one stream</span><button class="ntbtn" title="New Topic (⇧⌘N)">New Topic<kbd>⇧⌘N</kbd></button></div>
+          <div class="scopebar">Show
+            <span class="seg" role="group" aria-label="Scope" data-when="s:1,1b,5,6,7,7b"><button aria-pressed="true">All</button><button>This page</button></span>
+            <span class="seg" role="group" aria-label="Scope" data-when="s:3,11c"><button aria-pressed="true">All</button><button disabled title="No page open">This page</button></span>
+            <span class="seg" role="group" aria-label="Scope" data-when="s:2"><button data-set="step:a" data-pressed="step:a">All</button><button data-set="step:b" data-pressed="step:b">This page</button></span>
+            <span class="seg" role="group" aria-label="Scope" data-when="s:11a"><button data-set="step:a" data-pressed="step:a">All</button><button data-set="step:b" data-pressed="step:b">This page</button></span>
+            <span class="seg" role="group" aria-label="Scope" data-when="s:11b"><button data-set="step:c" data-pressed="step:b,c">All</button><button data-set="step:a" data-pressed="step:a">This page</button></span>
+            <span class="cnt" data-when="s:1,1b,6">248 entries · 2 topics</span>
+            <span class="cnt" data-when="s:2;step:a">254 entries · 2 topics</span>
+            <span class="cnt" data-when="s:2;step:b">1.4 · 3 sessions · 9 entries</span>
+            <span class="cnt" data-when="s:3">261 entries · 2 topics</span>
+            <span class="cnt" data-when="s:5">272 entries · 3 topics</span>
+            <span class="cnt" data-when="s:7,7b">257 entries · 2 topics</span>
+            <span class="cnt" data-when="s:11a;step:a">254 entries · 2 topics</span>
+            <span class="cnt" data-when="s:11a;step:b">0.3 · nothing yet</span>
+            <span class="cnt" data-when="s:11b;step:a">2.2 · 4 sessions · 23 entries</span>
+            <span class="cnt" data-when="s:11b;step:b,c">254 entries · 2 topics</span>
+            <span class="cnt" data-when="s:11c">1,104 entries · 24 topics</span>
+          </div>
+        </div>
+
+        <!-- s1: before asking -->
+        <div class="thread" data-when="s:1">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 14 · 118 entries</a>
+          <div class="day">Thursday, Oct 16</div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Where it fails</span><time>4:31 PM</time></div>
+          <div class="pointer gone"><b>You edited “Where it fails”</b><span>One line changed on 1.3.</span></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">I rewrote the line about circular convolution. Does it read right now?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>It does. N ≥ L₁ + L₂ − 1 is exactly the length at which the wrapped tail no longer lands on the start. I'll leave your line as it is.</p></div></div>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Oct 17</div>
+        </div>
+        <!-- s1b -->
+        <div class="thread" data-when="s:1b">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 16 · 128 entries</a>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Oct 17</div>
+          <i class="anc2" data-anchor></i>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· What it buys you: filters</span><time>2:12 PM</time></div>
+          <div class="msg you"><div class="who">You</div><span class="chip quote">From 1.3 · What it buys you: filters</span><div class="quote">A moving-average filter is a low-pass filter because its frequency response is a sinc.</div><div class="bubble">Why sinc? I'd have guessed something smoother.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+            <p>A moving average is a rectangular window in time, and a rectangle's transform is sinc-shaped. For a sequence it is a Dirichlet kernel: sinc-like near zero, but repeating every 2π.</p>
+            <p>The window's hard edges put sidelobes into the response, so it isn't smooth. I've changed the page to say so. If you made <i>L</i> larger, what would the sidelobes do?</p>
+          </div>
+            <div class="pointer saved"><b>Revised 1.3 · What it buys you: filters</b><span>“is a sinc” → “is a Dirichlet kernel (a periodic sinc)”, plus two sentences.</span><span class="go"><button class="linkbtn">Undo</button> · undoable until the next change to 1.3</span></div>
+          </div>
+        </div>
+        <!-- s:2;step:a: the stream (All) -->
+        <div class="thread" data-when="s:2;step:a">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 16 · 128 entries</a>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Oct 17</div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· What it buys you: filters</span><time>2:12 PM</time></div>
+          <div class="msg you"><div class="who">You</div><span class="chip quote">From 1.3 · What it buys you: filters</span><div class="quote">A moving-average filter is a low-pass filter because its frequency response is a sinc.</div><div class="bubble">Why sinc? I'd have guessed something smoother.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+            <p>A moving average is a rectangular window in time, and a rectangle's transform is sinc-shaped. For a sequence it is a Dirichlet kernel: sinc-like near zero, but repeating every 2π.</p>
+            <p>The window's hard edges put sidelobes into the response, so it isn't smooth. I've changed the page to say so. If you made <i>L</i> larger, what would the sidelobes do?</p>
+          </div>
+            <div class="pointer saved"><b>Revised 1.3 · What it buys you: filters</b><span>“is a sinc” → “is a Dirichlet kernel (a periodic sinc)”, plus two sentences.</span><span class="go"><button class="linkbtn">Undo</button> · undoable until the next change to 1.3</span></div>
+          </div>
+          <div class="pgb"><span class="to">→ 1.4 Sampling and aliasing</span><time>2:20 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Does the convolution theorem explain why sampling replicates the spectrum? Sampling is multiplication in time, so…</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div>
+            <details class="tools"><summary>Read 1.4 Sampling and aliasing</summary></details>
+            <div class="prose">
+            <p>Yes. It's the dual on 1.3: multiplying in time convolves the spectra. Sampling multiplies <i>x</i>(<i>t</i>) by an impulse train, and an impulse train's spectrum is another impulse train, spaced ω<sub>s</sub> apart.</p>
+            <p>Convolving <i>X</i>(ω) with those impulses puts a copy of <i>X</i>(ω) at each one. That's the replication on this page. How would you finish your sentence?</p>
+          </div></div>
+        </div>
+        <!-- s:11a;step:a: the stream (All) -->
+        <div class="thread" data-when="s:11a;step:a">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 16 · 128 entries</a>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Oct 17</div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· What it buys you: filters</span><time>2:12 PM</time></div>
+          <div class="msg you"><div class="who">You</div><span class="chip quote">From 1.3 · What it buys you: filters</span><div class="quote">A moving-average filter is a low-pass filter because its frequency response is a sinc.</div><div class="bubble">Why sinc? I'd have guessed something smoother.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+            <p>A moving average is a rectangular window in time, and a rectangle's transform is sinc-shaped. For a sequence it is a Dirichlet kernel: sinc-like near zero, but repeating every 2π.</p>
+            <p>The window's hard edges put sidelobes into the response, so it isn't smooth. I've changed the page to say so. If you made <i>L</i> larger, what would the sidelobes do?</p>
+          </div>
+            <div class="pointer saved"><b>Revised 1.3 · What it buys you: filters</b><span>“is a sinc” → “is a Dirichlet kernel (a periodic sinc)”, plus two sentences.</span><span class="go"><button class="linkbtn">Undo</button> · undoable until the next change to 1.3</span></div>
+          </div>
+          <div class="pgb"><span class="to">→ 1.4 Sampling and aliasing</span><time>2:20 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Does the convolution theorem explain why sampling replicates the spectrum? Sampling is multiplication in time, so…</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div>
+            <details class="tools"><summary>Read 1.4 Sampling and aliasing</summary></details>
+            <div class="prose">
+            <p>Yes. It's the dual on 1.3: multiplying in time convolves the spectra. Sampling multiplies <i>x</i>(<i>t</i>) by an impulse train, and an impulse train's spectrum is another impulse train, spaced ω<sub>s</sub> apart.</p>
+            <p>Convolving <i>X</i>(ω) with those impulses puts a copy of <i>X</i>(ω) at each one. That's the replication on this page. How would you finish your sentence?</p>
+          </div></div>
+        </div>
+        <!-- s2 This page: 1.4 -->
+        <div class="thread filt" data-when="s:2;step:b">
+          <i class="anc2" data-anchor></i>
+          <div class="fh">Messages sent with 1.4 open, and Sophia's replies. Other pages' entries are hidden; checkpoints and dividers stay.</div>
+          <div class="sess">Fri Oct 10 <span>· 4 entries</span><a href="#s2">Show in stream</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Next I want sampling. Why does sampling make the spectrum periodic?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Because sampling throws away everything between the samples, and many different spectra agree at those points. I've written it up as 1.4.</p></div><div class="pointer gone"><b>Wrote 1.4 Sampling and aliasing</b></div></div>
+          <div class="gap">39 entries on other pages</div>
+          <div class="checkpoint"><span>Notes written · Oct 12 · covers everything said before this point, on every page</span></div>
+          <div class="sess">Sun Oct 12 <span>· 2 entries</span><a href="#s2">Show in stream</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Is aliasing the same thing as the copies overlapping?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Yes: where the copies overlap, a high frequency lands on top of a low one and you can't tell them apart afterwards.</p></div></div>
+          <div class="gap">88 entries on other pages</div>
+          <div class="checkpoint"><span>Notes written · Oct 14 · covers everything said before this point, on every page</span></div>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="sess">Today <span>· 3 entries</span><a href="#s2">Show in stream</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Does the convolution theorem explain why sampling replicates the spectrum? Sampling is multiplication in time, so…</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Yes. It's the dual on 1.3: multiplying in time convolves the spectra.</p></div></div>
+        </div>
+        <!-- s3: no page open -->
+        <div class="thread" data-when="s:3">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 16 · 128 entries</a>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Oct 17</div>
+          <div class="pgb none"><span class="to">→ No page open</span><span class="sec">· Contents</span><time>3:02 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">What should I study next?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>You haven't yet tried predicting what a moving-average filter does to a high frequency before computing it, the open part of your first goal. Or 2.1, toward spectrograms.</p></div></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Move 2.2 Zero-padding into Chapter 1, after Sampling. Chapter 2 should be about the FFT.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Done. Zero-padding is now 1.5, and Chapter 2 is The FFT, with only 2.1 for now.</p></div>
+            <div class="pointer saved"><b>Contents changed</b><span>2.2 Zero-padding and interpolation → 1.5 · Chapter 2 renamed “The FFT”</span></div></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Actually, my real goal is to be able to read a spectrogram and know what's an artifact. Make that the goal.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>I've rewritten your second goal that way. It stays a proposal until you confirm it.</p></div>
+            <div class="pointer"><b>Goal g-2 · Proposed by Sophia · not confirmed</b><span>Be able to read a spectrogram and know what's an artifact.</span><span class="go">Review in Goals →</span></div></div>
+        </div>
+        <!-- s5 collapsed -->
+        <div class="thread" data-when="s:5;step:a">
+          <div class="tphs"><div class="lab">Earlier topics <span>· 2 · 262 entries · read only</span></div>
+          <div class="tph"><span class="q">“I'm relearning Fourier analysis for signal-processing work. Where should I start?”</span><span class="r1"><b>Sep 29 – Oct 6</b> · 104 entries · 0.1, 0.2, 1.1, 1.2, 2.1, 2.2 · <span class="cpi">Covered by notes written Oct 8</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Can we do the convolution theorem properly this time?”</span><span class="r1"><b>Oct 8 – Oct 17</b> · 158 entries · 1.3, 1.4, 2.2, Reading list · <span class="cpi">Notes written Oct 16</span></span><button class="rd" data-set="step:b">Read</button></div></div>
+          <div class="ntdiv"><b>New Topic</b><span>Fri Oct 17, 3:40 PM</span></div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Where it fails</span><time>3:41 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Start fresh on “Where it fails”: why does multiplying two DFTs wrap the result around?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Good. My notes say you wrote that condition yourself on Oct 16, so let's test it rather than restate it. Take <i>x</i> of length 3 and <i>h</i> of length 2 with 3-point DFTs: which output sample picks up the wrapped tail?</p></div></div>
+        </div>
+        <!-- s5 reading the earlier topic -->
+        <div class="thread" data-when="s:5;step:b">
+          <i class="anc2" data-anchor></i>
+          <div class="tphs"><div class="lab">Earlier topics <span>· 2 · 262 entries · read only</span></div>
+          <div class="tph"><span class="q">“I'm relearning Fourier analysis for signal-processing work. Where should I start?”</span><span class="r1"><b>Sep 29 – Oct 6</b> · 104 entries · 0.1, 0.2, 1.1, 1.2, 2.1, 2.2 · <span class="cpi">Covered by notes written Oct 8</span></span><button class="rd">Read</button></div>
+          <div class="tph open"><span class="q">“Can we do the convolution theorem properly this time?”</span><span class="r1"><b>Oct 8 – Oct 17</b> · 158 entries · 1.3, 1.4, 2.2, Reading list · <span class="cpi">Notes written Oct 16</span></span><button class="rd" data-set="step:a">Close</button></div></div>
+          <div class="ro">
+            <div class="rohead">Read only. This topic can't be continued; nothing here has a Reply. Sophia can look things up in it with recall, but it isn't her live context.</div>
+            <div class="day">Wednesday, Oct 8</div>
+            <div class="pgb none"><span class="to">→ No page open</span><time>10:03 AM</time></div>
+            <div class="msg you"><div class="who">You</div><div class="bubble">Can we do the convolution theorem properly this time?</div></div>
+            <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Yes. I'll write it up as a page, and then you can derive it with me checking.</p></div><div class="pointer gone"><b>Wrote 1.3 The convolution theorem</b></div></div>
+            <div class="gap">151 more entries · Oct 8 – Oct 17</div>
+            <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· What it buys you: filters</span><time>2:12 PM</time></div>
+          <div class="msg you"><div class="who">You</div><span class="chip quote">From 1.3 · What it buys you: filters</span><div class="quote">A moving-average filter is a low-pass filter because its frequency response is a sinc.</div><div class="bubble">Why sinc? I'd have guessed something smoother.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+            <p>A moving average is a rectangular window in time, and a rectangle's transform is sinc-shaped. For a sequence it is a Dirichlet kernel: sinc-like near zero, but repeating every 2π.</p>
+            <p>The window's hard edges put sidelobes into the response, so it isn't smooth. I've changed the page to say so. If you made <i>L</i> larger, what would the sidelobes do?</p>
+          </div>
+            <div class="pointer saved"><b>Revised 1.3 · What it buys you: filters</b><span>“is a sinc” → “is a Dirichlet kernel (a periodic sinc)”, plus two sentences.</span><span class="go"><button class="linkbtn">Undo</button> · undoable until the next change to 1.3</span></div>
+          </div>
+            <div class="gap">4 more entries · to 3:38 PM</div>
+          </div>
+          <div class="ntdiv"><b>New Topic</b><span>Fri Oct 17, 3:40 PM</span></div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Where it fails</span><time>3:41 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Start fresh on “Where it fails”: why does multiplying two DFTs wrap the result around?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Good. My notes say you wrote that condition yourself on Oct 16, so let's test it rather than restate it. Take <i>x</i> of length 3 and <i>h</i> of length 2 with 3-point DFTs: which output sample picks up the wrapped tail?</p></div></div>
+        </div>
+        <!-- s6 -->
+        <div class="thread" data-when="s:6">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 16 · 128 entries</a>
+          <div class="checkpoint"><span>Notes written · Oct 16 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Oct 17</div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· What it buys you: filters</span><time>2:12 PM</time></div>
+          <div class="msg you"><div class="who">You</div><span class="chip quote">From 1.3 · What it buys you: filters</span><div class="quote">A moving-average filter is a low-pass filter because its frequency response is a sinc.</div><div class="bubble">Why sinc? I'd have guessed something smoother.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+            <p>A moving average is a rectangular window in time, and a rectangle's transform is sinc-shaped. For a sequence it is a Dirichlet kernel: sinc-like near zero, but repeating every 2π.</p>
+            <p>The window's hard edges put sidelobes into the response, so it isn't smooth. I've changed the page to say so. If you made <i>L</i> larger, what would the sidelobes do?</p>
+          </div>
+            <div class="pointer saved"><b>Revised 1.3 · What it buys you: filters</b><span>“is a sinc” → “is a Dirichlet kernel (a periodic sinc)”, plus two sentences.</span><span class="go"><button class="linkbtn">Undo</button> · undoable until the next change to 1.3</span></div>
+          </div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Derivation for the DTFT</span><time>3:05 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Can you check my derivation of the theorem for the DTFT? I want to do it without looking.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Sure. Start from <i>Y</i>(ω) = Σ<sub><i>n</i></sub> <i>y</i>[<i>n</i>] e<sup>−iω<i>n</i></sup> and substitute the convolution sum. Then swap the two sums and write what you get. Just that step for now.</p></div></div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Where it fails</span><time>3:09 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Is it L₁ + L₂ − 1 or L₁ + L₂?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>L₁ + L₂ − 1, as your line has it. Linear convolution of lengths L₁ and L₂ has L₁ + L₂ − 1 samples, so <i>N</i> must be at least that for nothing to wrap.</p><p>Back to the derivation: after you swap the sums, what does <i>Y</i>(ω) look like?</p></div></div>
+        </div>
+        <!-- s7, s7b: the same stream -->
+        <div class="thread" data-when="s:7,7b">
+          <a class="earlier" href="#s5">Show Oct 8 – Oct 17 · 151 entries</a>
+          <div class="day">Friday, Oct 17</div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Derivation for the DTFT</span><time>3:05 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Can you check my derivation of the theorem for the DTFT? I want to do it without looking.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Sure. Start from <i>Y</i>(ω) = Σ<sub><i>n</i></sub> <i>y</i>[<i>n</i>] e<sup>−iω<i>n</i></sup> and substitute the convolution sum. Then swap the two sums and write what you get. Just that step for now.</p></div></div>
+          <div class="checkpoint"><span>Notes written · Oct 17 · covers everything said before this point, on every page</span></div>
+          <div class="pgb"><span class="to">→ 1.3 The convolution theorem</span><span class="sec">· Where it fails</span><time>3:09 PM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Is it L₁ + L₂ − 1 or L₁ + L₂?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>L₁ + L₂ − 1, as your line has it. Linear convolution of lengths L₁ and L₂ has L₁ + L₂ − 1 samples, so <i>N</i> must be at least that for nothing to wrap.</p><p>Back to the derivation: after you swap the sums, what does <i>Y</i>(ω) look like?</p></div></div>
+          <div class="day">Saturday, Oct 25 · eight days later</div>
+          <div class="checkpoint"><span>Catch-up notes · Oct 25 · covered the last two messages</span></div>
+          <div class="msg sophia"><div class="who">Sophia</div>
+            
+            <div class="prose"><p>Eight days ago you were partway through the DTFT derivation on 1.3: I'd asked you to write the swapped-sums step, and you hadn't answered yet. You could pick that up, or start 2.1 if you'd rather head toward reading spectrograms.</p></div>
+          </div>
+        </div>
+        <!-- s11a This page: never discussed -->
+        <div class="thread" data-when="s:11a;step:b" style="min-height:calc(100% - 200px)">
+          <div class="empty"><b>Nothing has been said with 0.3 open.</b>
+            <span>Sophia wrote this page on Oct 3, alongside 0.2. Messages you send while it is open are stamped 0.3 and will show here, inside the one stream.</span>
+            <span>All is unchanged: 254 entries, the latest at 2:20 PM on 1.4.</span>
+            <button class="linkbtn" data-set="step:a">Show All</button>
+            <div class="allpeek"><div class="lbl m">In All, the latest entries</div>
+              <div class="pgb"><span class="to">→ 1.4 Sampling and aliasing</span><time>2:20 PM</time></div>
+              <div class="msg you"><div class="who">You</div><div class="bubble">Does the convolution theorem explain why sampling replicates the spectrum? Sampling is multiplication in time, so…</div></div>
+              <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Yes. It's the dual on 1.3: multiplying in time convolves the spectra. …</p></div></div></div></div>
+        </div>
+        <!-- s11b This page: 2.2, four sessions -->
+        <div class="thread filt" data-when="s:11b;step:a">
+          <div class="sess">Mon Oct 6 <span>· 6 entries · earlier topic</span><a href="#s11b">Show in stream ↗</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">If I pad with zeros, do I get more frequency resolution?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>You get more points on the same curve, not finer resolution. I've written that up as 2.2.</p></div></div>
+          <div class="checkpoint"><span>Notes written · Oct 8 · covers everything said before this point, on every page</span></div>
+          <div class="sess">Fri Oct 10 <span>· 5 entries</span><span class="hid">· 33 hidden before</span><a href="#s11b" data-set="step:c">Show in stream ↗</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">So zero-padding adds information, right? The peaks look sharper.</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>It doesn't add any. The peaks look sharper because you're seeing the same DTFT at more points; what can be told apart is fixed by <i>N</i>.</p></div></div>
+          <div class="sess">Sun Oct 12 <span>· 5 entries</span><span class="hid">· 27 hidden before</span><a href="#s11b">Show in stream ↗</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Can you add a worked example to 2.2?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="pointer gone"><b>Revised 2.2 · What padding does</b><span>Undone by you</span></div></div>
+          <div class="checkpoint" style="margin-top:-2px"><span>Notes written · Oct 12 · covers everything said before this point, on every page</span></div>
+          <div class="sess">Tue Oct 14 <span>· 7 entries</span><span class="hid">· 19 hidden before</span><a href="#s11b">Show in stream ↗</a></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Two peaks 0.01 apart and N = 256. Will padding to 4096 separate them?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="pointer saved"><b>Revised 2.2 · What it doesn't do</b><span class="go"><button class="linkbtn">Undo</button> · until the next change to 2.2</span></div></div>
+        </div>
+        <!-- s11b step c: "Show in stream" lands in All with the Oct 10 session highlighted -->
+        <div class="thread" data-when="s:11b;step:c">
+          <a class="earlier" href="#s11b">Show earlier · Sep 29 – Oct 9</a>
+          <div class="day">Friday, Oct 10</div>
+          <div class="pgb"><span class="to">→ 1.4 Sampling and aliasing</span><time>11:20 AM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Next I want sampling. Why does sampling make the spectrum periodic?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Because sampling throws away everything between the samples, and many different spectra agree at those points. I've written it up as 1.4.</p></div><div class="pointer gone"><b>Wrote 1.4 Sampling and aliasing</b></div></div>
+          <i class="anc2" data-anchor></i>
+          <div class="hlsess">
+            <div class="hlcap"><span>From This page · 2.2 · Fri Oct 10 · 5 entries</span><a href="#s11b" data-set="step:a">Back to This page</a></div>
+            <div class="pgb"><span class="to">→ 2.2 Zero-padding and interpolation</span><time>11:42 AM</time></div>
+            <div class="msg you"><div class="who">You</div><div class="bubble">So zero-padding adds information, right? The peaks look sharper.</div></div>
+            <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>It doesn't add any. The peaks look sharper because you're seeing the same DTFT at more points; what can be told apart is fixed by <i>N</i>.</p></div></div>
+            <div class="msg you"><div class="who">You</div><div class="bubble">Then why does every tutorial pad?</div></div>
+            <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Because a smoother plot is easier to read, and a peak's position is easier to estimate between bins. That's display, not resolution.</p></div></div>
+          </div>
+          <div class="pgb"><span class="to">→ 1.4 Sampling and aliasing</span><time>11:58 AM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">Back to sampling: what happens exactly at ω_s = 2ω_max?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>That's the edge: a component at exactly half the sampling rate can't be told from its alias, which is why the condition is a strict inequality.</p></div></div>
+          <div class="gap">27 more entries before 2.2's next session</div>
+        </div>
+        <!-- s11c: four and a half months on -->
+        <div class="thread" data-when="s:11c">
+          <div class="tphs"><div class="lab">Earlier topics <span>· 23 · 1,082 entries · read only · Sep 29 – Feb 10</span></div>
+          <div class="tph"><span class="q">“I'm relearning Fourier analysis for signal-processing work. Where should I start?”</span><span class="r1"><b>Sep 29 – Oct 6</b> · 104 entries · 0.1, 0.2, 1.1, 1.2, 2.1, 1.5 · <span class="cpi">Covered by notes written Oct 8</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Can we do the convolution theorem properly this time?”</span><span class="r1"><b>Oct 8 – Oct 17</b> · 158 entries · 1.3, 1.4, 1.5, Reading list · <span class="cpi">Covered by notes written Oct 25</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“OK, the swapped-sums step. I think I have it.”</span><span class="r1"><b>Oct 25 – Oct 31</b> · 54 entries · 1.3, 2.1 · <span class="cpi">Notes written Oct 31</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“DFT versus DTFT, in one sentence?”</span><span class="r1"><b>Nov 2 – Nov 6</b> · 39 entries · 2.1 · <span class="cpi">Notes written Nov 6</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Why does the FFT want N to be a power of two?”</span><span class="r1"><b>Nov 7 – Nov 12</b> · 51 entries · 2.2 · <span class="cpi">Notes written Nov 12</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Start a page on windowing. Hann vs rectangular.”</span><span class="r1"><b>Nov 13 – Nov 15</b> · 26 entries · 2.3 · <span class="cpi">Notes written Nov 15</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“What are the vertical stripes in my spectrogram?”</span><span class="r1"><b>Nov 16 – Nov 21</b> · 59 entries · 3.1 · <span class="cpi">Notes written Nov 21</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Is a spectrogram just a sequence of DFTs?”</span><span class="r1"><b>Nov 22 – Nov 24</b> · 16 entries · 3.1 · <span class="cpi">Notes written Nov 24</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Explain the time–frequency resolution trade-off.”</span><span class="r1"><b>Nov 26 – Dec 1</b> · 64 entries · 3.2 · <span class="cpi">Notes written Dec 1</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Can we revisit zero-padding? I think I get it.”</span><span class="r1"><b>Dec 3 – Dec 5</b> · 31 entries · 1.5 · <span class="cpi">Notes written Dec 5</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“What is the overlap between STFT frames for?”</span><span class="r1"><b>Dec 7 – Dec 12</b> · 52 entries · 3.4 · <span class="cpi">Notes written Dec 12</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Reorganize chapter 3; it's a mess.”</span><span class="r1"><b>Dec 14 – Dec 15</b> · 20 entries · Contents · <span class="cpi">Notes written Dec 15</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Why is a windowed sinc a good FIR filter?”</span><span class="r1"><b>Dec 18 – Dec 22</b> · 44 entries · 4.1 · <span class="cpi">Notes written Dec 22</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Back after the holidays. Where were we?”</span><span class="r1"><b>Dec 28 – Jan 3</b> · 37 entries · 4.1 · <span class="cpi">Notes written Jan 3</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“How does the z-transform relate to the DTFT?”</span><span class="r1"><b>Jan 4 – Jan 8</b> · 56 entries · 1.2, 4.2 · <span class="cpi">Notes written Jan 8</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Why do my spectrogram's harmonics smear?”</span><span class="r1"><b>Jan 10 – Jan 12</b> · 24 entries · 3.3 · <span class="cpi">Notes written Jan 12</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Why doesn't a linear-phase filter distort?”</span><span class="r1"><b>Jan 13 – Jan 17</b> · 48 entries · 4.2 · <span class="cpi">Notes written Jan 17</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Quiz me on chapter 1. What stuck?”</span><span class="r1"><b>Jan 18 – Jan 20</b> · 28 entries · 1.1 – 1.5 · <span class="cpi">Notes written Jan 20</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“What is the mel scale doing to the spectrogram?”</span><span class="r1"><b>Jan 22 – Jan 26</b> · 41 entries · 3.1 · <span class="cpi">Notes written Jan 26</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Is spectrogram aliasing the same as on 1.4?”</span><span class="r1"><b>Jan 28 – Jan 31</b> · 34 entries · 1.4, 3.3 · <span class="cpi">Notes written Jan 31</span></span><button class="rd">Read</button></div>
+          <i class="anc2 anc3" data-anchor></i><div class="tph"><span class="q">“I want to understand the Gabor limit properly.”</span><span class="r1"><b>Feb 1 – Feb 4</b> · 46 entries · 3.2 · <span class="cpi">Notes written Feb 4</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Make the goal about artifacts more specific.”</span><span class="r1"><b>Feb 5 – Feb 7</b> · 21 entries · Goals · <span class="cpi">Notes written Feb 7</span></span><button class="rd">Read</button></div>
+          <div class="tph"><span class="q">“Why is the phase spectrogram so noisy?”</span><span class="r1"><b>Feb 8 – Feb 10</b> · 29 entries · 3.5 · <span class="cpi">Notes written Feb 10</span></span><button class="rd">Read</button></div></div>
+          <div class="ntdiv"><b>New Topic</b><span>Thu Feb 11, 9:14 AM · 20 entries on 3.5 Reassignment</span></div>
+          <div class="checkpoint"><span>Notes written · Feb 11 · covers everything said before this point, on every page</span></div>
+          <div class="day">Friday, Feb 12</div>
+          <div class="pgb none"><span class="to">→ No page open</span><span class="sec">· Contents</span><time>8:40 AM</time></div>
+          <div class="msg you"><div class="who">You</div><div class="bubble">What's left on my spectrogram goal?</div></div>
+          <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Telling a window artifact from a real component in a recording you haven't seen before. 3.3 has the cases; want to try one cold?</p></div></div>
+        </div>
+
+        <div class="composer" data-when="s:1;step:a">
+          <span class="onchip">On: 1.3 The convolution theorem</span>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Message Sophia…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+        <div class="composer" data-when="s:1;step:b">
+          <span class="onchip">On: 1.3 The convolution theorem</span>
+          <div class="attach" data-when="step:b"><span class="chip quote">From 1.3 · What it buys you: filters</span><div class="quote">A moving-average filter is a low-pass filter because its frequency response is a sinc.</div></div>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Ask about the quote…">Why sinc? I'd have guessed something smoother.</textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+        <div class="composer" data-when="s:1b,5,6,7">
+          <span class="onchip">On: 1.3 The convolution theorem</span>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Message Sophia…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+        <div class="composer" data-when="s:2,7b">
+          <span class="onchip">On: 1.4 Sampling and aliasing</span>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Message Sophia…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+        <div class="composer" data-when="s:3,11c">
+          <span class="onchip none">No page open</span>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Message Sophia…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+        <div class="composer" data-when="s:11a">
+          <span class="onchip">On: 0.3 Orthogonality and why the coefficients fall out</span>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Ask about this page, or anything else…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+        <div class="composer" data-when="s:11b">
+          <span class="onchip">On: 2.2 Zero-padding and interpolation</span>
+          <div class="box"><textarea rows="1" aria-label="Message Sophia" placeholder="Message Sophia…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+                  </div>
+      </aside>
+    </div>
+  </div></div>
+
+  <aside class="sees-panel" hidden>
+    <div class="sh">What Sophia sees · diagnostic, not part of the app <button data-sees-toggle aria-label="Close">×</button></div>
+    <div data-when="s:1">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>body of <code>p:1-3</code> (the page in view at launch, 2:05 PM)</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span></li><li>one line per other page discussed since notes Oct 16: <span class="dim">none</span></li></ul>
+      <h4>With this message</h4><ul><li>entry stamped <code>page: p:1-3</code>, <code>section: what-it-buys-you-filters</code></li><li>the quote: "A moving-average filter is a low-pass filter because its frequency response is a sinc."</li><li><code>bookChanges</code> since your last message: none</li><li>no page-change line (still on p:1-3)</li></ul>
+      <h4>Not given</h4><ul><li class="no">the topic before the Oct 8 divider (recall only)</li><li class="no">this topic's entries older than the cap (recall only)</li><li class="no">other notebooks, except titles</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li><li>Navigating never restarts it; only launch and ⇧⌘N do.</li></ul>
+    </div>
+    <div data-when="s:1b">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>body of <code>p:1-3</code> (page in view at launch)</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span></li><li>one line per other page discussed since notes Oct 16: <span class="dim">none</span></li></ul>
+      <h4>With this message</h4><ul><li>the quote, stamped <code>p:1-3 · what-it-buys-you-filters</code></li><li><code>bookChanges</code>: none</li><li>tool: <code>write_page p:1-3</code> → recorded; previous version kept; Undo offered while it is the latest write to 1.3 (banner and card share one gate)</li></ul>
+      <h4>Not given</h4><ul><li class="no">the topic before Oct 8 (recall only)</li><li class="no">entries older than the cap</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li></ul>
+    </div>
+    <div data-when="s:2">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>body of <code>p:1-3</code>: still the page in view at launch, <b>not</b> 1.4</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span> (the whole sinc exchange is in it, verbatim)</li><li>one line per other page discussed since notes Oct 16: <span class="dim">none</span></li></ul>
+      <h4>With this message</h4><ul><li><code>[Sophia app] The person is now on p:1-4</code></li><li><code>bookChanges</code> since your last message: p:1-3 revised by Sophia, 2:14 PM (her own write)</li><li>entry stamped <code>page: p:1-4</code></li></ul>
+      <h4>Not given</h4><ul><li class="no">the body of 1.4: Sophia reads it with <code>read_page p:1-4</code> (the "Read 1.4" row)</li><li class="no">1.4's Oct 10 and Oct 12 exchanges: in this topic but beyond the cap; <code>recall(page:)</code> finds them only after the shared fix</li><li class="no">the This-page filter: it is view-only</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li><li>The P→Q line is one live session: nothing to reconstruct or point to.</li></ul>
+    </div>
+    <div data-when="s:3">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>no page body: no page was open</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span></li></ul>
+      <h4>With this message</h4><ul><li>first message: <code>[Sophia app] The person is now on no page</code></li><li>entries carry <b>no</b> <code>page</code> field</li><li>tool: <code>set_chapter</code> (2-2-zero-padding.md → Chapter 1 after 1-4; Chapter 2 renamed) · reaches the book at once</li><li>tool: <code>set_goal</code> g-2, by Sophia → provisional until the person confirms</li></ul>
+      <h4>Not given</h4><ul><li class="no">Contents is not a page: there is no Contents body or Contents scope</li><li class="no">entries older than the cap</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li></ul>
+    </div>
+    <div data-when="s:5">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles · <b>memory and notes kept</b></li><li>Not yet in notes: 9 of your messages since the Oct 16 checkpoint. Starting fresh does not run a checkpoint (shared proposal); they are covered at the next one.</li><li>body of <code>p:1-3</code> (page in view at the divider)</li><li>the stream since the last divider (Fri Oct 17, 3:40 PM): <b>0 entries</b></li><li>one line per other page discussed since notes Oct 16: <code>p:1-4</code> (6 entries today)</li></ul>
+      <h4>With this message</h4><ul><li>entry stamped <code>p:1-3 · where-it-fails</code></li><li><code>bookChanges</code>: none</li></ul>
+      <h4>Not given</h4><ul><li class="no">the Oct 8 – Oct 17 topic, verbatim</li><li class="no">a way to make an earlier topic live context again</li></ul>
+      <h4>Provider session</h4><ul><li>⇧⌘N wrote a <code>clear</code> entry and restarted the engine; this start is reconstructed by design. Transcript untouched; checkpoint unaffected.</li></ul>
+    </div>
+    <div data-when="s:6">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>body of <code>p:1-3</code></li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span>: includes the swapped-sums ask from 3:05 PM</li></ul>
+      <h4>With this message</h4><ul><li>entry stamped <code>p:1-3 · where-it-fails</code> (same page, so no page-change line; the section is on the entry)</li><li><code>bookChanges</code>: none</li></ul>
+      <h4>Not given</h4><ul><li class="no">any separation between the aside and the derivation: both are one context; Sophia keeps the open ask only because it is in the stream</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li></ul>
+    </div>
+    <div data-when="s:7">
+      <h4>At start of this conversation</h4><ul><li>launch Sat Oct 25: catch-up notes first, on the 2 unnoted messages</li><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles (notes now through Oct 25)</li><li>body of <code>p:1-3</code>, the last open page, where the person lands</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span>: includes the unanswered swapped-sums ask</li><li>one line per other page since the checkpoint: <span class="dim">none</span></li></ul>
+      <h4>With this message</h4><ul><li>the briefing is Sophia's first turn after launch; nothing from the person yet</li></ul>
+      <h4>Not given</h4><ul><li class="no">anything from the Sep 29 – Oct 6 topic, except through notes and recall</li></ul>
+      <h4>Provider session</h4><ul><li>An 8-day-old session id: resumed only if the sentinel test passes, otherwise rebuilt and labelled.</li></ul>
+    </div>
+    <div data-when="s:7b">
+      <h4>At start of this conversation</h4><ul><li>same launch as 7: catch-up notes, then the briefing</li><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>body of <code>p:1-3</code> (the page the person landed on)</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span></li></ul>
+      <h4>With this message</h4><ul><li>nothing yet. The next message will carry <code>[Sophia app] The person is now on p:1-4</code></li></ul>
+      <h4>Not given</h4><ul><li class="no">the body of 1.4 until she calls <code>read_page p:1-4</code></li></ul>
+      <h4>Provider session</h4><ul><li>Same as 7. Opening 1.4 changes nothing in the session.</li></ul>
+    </div>
+    <div data-when="s:11a">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>body of the page in view at launch (not 0.3)</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span></li></ul>
+      <h4>With this message</h4><ul><li>if the person writes here: <code>[Sophia app] The person is now on p:0-3</code>, entry stamped <code>p:0-3</code></li></ul>
+      <h4>Not given</h4><ul><li class="no">that 0.3 has never been discussed (she can learn it only by <code>recall</code>)</li><li class="no">the body of 0.3 until <code>read_page p:0-3</code></li><li class="no">the filter: view-only</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li></ul>
+    </div>
+    <div data-when="s:11b">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles, including the memory line "Open: whether zero-padding 'adds information' (they think it does; it doesn't) [t-0231, n-19]"</li><li>body of the page in view at launch</li><li>the stream since the last divider (Wed Oct 8), <b>capped</b> to the newest 60 entries <span class="dim">(cap value assumed)</span>: 2.2's Oct 10–14 sessions are in this topic but beyond the cap</li></ul>
+      <h4>With this message</h4><ul><li>the filter sends nothing; a message from here is stamped <code>p:2-2</code> with a page-change line</li></ul>
+      <h4>Not given</h4><ul><li class="no">the Oct 6 session (above the Oct 8 divider): recall only</li><li class="no"><code>recall(page: p:2-2)</code> matches only note refs today; the shared fix is needed for it to find these messages</li></ul>
+      <h4>Provider session</h4><ul><li>One session for the whole notebook. Resumed at launch only if the sentinel test passes; otherwise rebuilt from the items above and labelled once.</li><li>Undo on 2.2 is derived from the store (latest write: Sophia, Oct 14), not from the session.</li></ul>
+    </div>
+    <div data-when="s:11c">
+      <h4>At start of this conversation</h4><ul><li><code>Prompts.context</code>: SOPHIA.md, goals g-1 (confirmed) and g-2 (provisional), 4 memory lines, notes index, all page titles</li><li>no page body (Contents)</li><li>the stream since the last divider (Thu Feb 11): 22 entries, under the cap</li><li>one line per other page discussed since notes Feb 11: <code>p:3-5</code> · 63 notes, 4 memory lines</li></ul>
+      <h4>With this message</h4><ul><li><code>[Sophia app] The person is now on no page</code>; entries carry no page</li></ul>
+      <h4>Not given</h4><ul><li class="no">all 23 earlier topics (1,082 entries): only through notes, memory and recall</li><li class="no">the topic headers: they are view-only</li></ul>
+      <h4>Provider session</h4><ul><li>One notebook session, restarted at every divider: 23 reconstructed starts so far, plus 41 launches, each labelled once if resume fails.</li></ul>
+    </div>
+  </aside>
+</div>
+<script src="harness.js"></script>
+</body>
+</html>

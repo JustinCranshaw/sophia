@@ -1,0 +1,76 @@
+:root { color-scheme: light dark; --size: 17px; --leading: 24px; --paragraph: 14px; }
+html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+body {
+  color: CanvasText; font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: var(--size); line-height: var(--leading); overflow-wrap: break-word;
+  -webkit-user-select: text;
+}
+body.book { font-family: ui-serif, Georgia, serif; }
+article { display: flow-root; padding: 3px 0; }
+article > :first-child { margin-top: 0; }
+article > :last-child { margin-bottom: 0; }
+p, ul, ol, blockquote, pre, table, section { margin: 0 0 var(--paragraph); }
+h1, h2, h3, h4, h5, h6 { font-size: 1.15em; line-height: 1.3; margin: 1.1em 0 0.6em; font-weight: 600; }
+.book h1 { font-size: 30px; letter-spacing: -0.3px; }
+.book h2 { font-size: 21px; }
+.book h3 { font-size: 18px; }
+ul, ol { padding-left: 1.5em; }
+li { margin: 0.4em 0; }
+li > :last-child { margin-bottom: 0; }
+blockquote { border-left: 3px solid color-mix(in srgb, LinkText 60%, transparent); padding-left: 12px; opacity: 0.85; font-style: italic; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; }
+code { background: color-mix(in srgb, CanvasText 7%, transparent); border-radius: 3px; padding: 0.1em 0.2em; }
+pre { padding: 10px; border-radius: 6px; background: color-mix(in srgb, CanvasText 7%, transparent); overflow-x: auto; white-space: pre; }
+pre code { background: none; padding: 0; font-size: inherit; }
+a { color: LinkText; }
+table { display: block; overflow-x: auto; border-collapse: collapse; }
+td, th { padding: 6px 10px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent); text-align: left; }
+hr { border: none; border-top: 1px solid color-mix(in srgb, CanvasText 20%, transparent); margin: var(--paragraph) 0; }
+.katex { font-size: 1.08em; }
+.katex-display { margin: 0.6em 0; padding: 0.2em 0; overflow-x: auto; overflow-y: hidden; }
+eq { white-space: nowrap; }
+eqn { display: block; }
+section.eqno { display: flex; align-items: center; gap: 1em; }
+section.eqno eqn { flex: 1; min-width: 0; }
+
+/* The page editor (editor.js). Sections are edited in place, framed by a thin strip. */
+body.editable article { padding-left: 28px; }
+#content > [data-line] { position: relative; }
+.edit-affordance {
+  position: absolute; left: -28px; top: 0.15em; width: 22px; height: 22px; padding: 0;
+  border: none; border-radius: 5px; background: transparent; color: color-mix(in srgb, CanvasText 45%, transparent);
+  font: 14px -apple-system, sans-serif; cursor: pointer; opacity: 0; -webkit-user-select: none;
+}
+.edit-affordance::before { content: "✎"; }
+.edit-affordance:hover { background: color-mix(in srgb, CanvasText 8%, transparent); color: CanvasText; }
+[data-line]:hover > .edit-affordance, .edit-affordance:focus-visible,
+#content:has(.opening-block:hover) .opening-affordance { opacity: 1; }
+.editing { margin: 0 0 var(--paragraph) -10px; border-left: 2px solid color-mix(in srgb, LinkText 55%, transparent);
+  background: color-mix(in srgb, LinkText 4%, transparent); border-radius: 0 6px 6px 0; }
+.strip { font: 12px -apple-system, sans-serif; color: color-mix(in srgb, CanvasText 60%, transparent);
+  padding: 5px 10px; border-bottom: 1px solid color-mix(in srgb, CanvasText 10%, transparent); -webkit-user-select: none; }
+.strip.dimmed { opacity: 0.55; }
+.strip button { font: inherit; color: LinkText; background: none; border: none; padding: 0; cursor: pointer; }
+.strip button:disabled { color: color-mix(in srgb, CanvasText 35%, transparent); cursor: default; }
+.strip .conflict { color: CanvasText; margin-top: 3px; }
+.theirs { padding: 6px 10px; border-top: 1px dashed color-mix(in srgb, CanvasText 20%, transparent); opacity: 0.8; }
+.cm-math { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; color: color-mix(in srgb, CanvasText 80%, LinkText); }
+.cm-math-error { text-decoration: underline wavy #d33; text-decoration-skip-ink: none; }
+.cm-math-preview { padding: 4px 10px 6px 24px; color: color-mix(in srgb, CanvasText 85%, transparent); }
+.cm-math-preview .katex-error { font-family: ui-monospace, monospace; font-size: 0.85em; }
+
+/* Music (music.js): abcjs's SVG scaled to the column, in the text color. The ABC source stays
+   in the figure, unseen, for VoiceOver and copying; on a hard failure it shows, bordered. */
+figure.abc { position: relative; margin: 0 0 var(--paragraph); }
+.abc-music svg { display: block; width: 100%; height: auto; }
+figure.abc[data-drawn]:not(.abc-failed) > .abc-source {
+  position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%);
+}
+.abc-failed > .abc-source { background: none; border: 1px solid color-mix(in srgb, CanvasText 25%, transparent); margin-bottom: 4px; }
+.abc-warnings { font: 12px -apple-system, sans-serif; color: color-mix(in srgb, CanvasText 60%, transparent); -webkit-user-select: none; }
+.abc-warnings summary { cursor: pointer; }
+.abc-warnings ul { margin: 4px 0 0; padding-left: 1.5em; -webkit-user-select: text; }
+.abc-warnings li { margin: 2px 0; }
+.abc-scratch { position: absolute; left: -10000px; top: 0; width: 800px; visibility: hidden; }
+.cm-music-preview { padding: 4px 10px 6px 24px; }
+.cm-music-preview figure.abc { margin: 0; }

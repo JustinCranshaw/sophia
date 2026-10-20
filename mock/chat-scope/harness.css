@@ -1,0 +1,46 @@
+/* Chat-scope prototype harness (C2). Prototype chrome only: not part of the app.
+   Shared by the three prototypes; owned by the facilitator. Link after ../styles.css. */
+
+body.protobody{min-height:100vh}
+
+/* Top strip: prototype name, scenario buttons, inspector toggle (one row at 1440 wide) */
+.proto-bar{position:sticky;top:0;z-index:30;background:#1C1D21;color:#fff;padding:5px 12px;display:flex;flex-wrap:nowrap;gap:10px;align-items:center;min-height:40px}
+.proto-bar .nm{font-size:12.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.proto-bar .nm small{font-weight:400;color:#C9CDD4;margin-left:6px;display:block;font-size:10.5px}
+.proto-bar .scenes{display:flex;flex-wrap:wrap;gap:1px;min-width:0;flex:1 1 auto}
+.proto-bar .scenes button,.proto-bar .seesbtn{border:0;background:transparent;color:#C9CDD4;font-size:11.5px;padding:4px 6px;border-radius:6px;white-space:nowrap}
+.proto-bar .scenes button:hover,.proto-bar .seesbtn:hover{color:#fff}
+.proto-bar .scenes button[aria-pressed=true]{background:#fff;color:#1C1D21;font-weight:600}
+.proto-bar .seesbtn{margin-left:auto;flex:none;border:1px dashed #8A8F99;font-family:var(--mono);font-size:11.5px}
+.proto-bar .seesbtn[aria-pressed=true]{background:#F2C94C;color:#1C1D21;border-color:#F2C94C}
+
+/* "Look at" line under the strip: one or two lines that say what this state shows */
+.proto-what{max-width:1408px;margin:0 auto;padding:8px 16px 6px;font-size:13px;line-height:1.45;color:var(--ink2);min-height:36px;display:flex;gap:16px;align-items:flex-start}
+.proto-what b{color:var(--ink)}
+.proto-what .grow{flex:1 1 auto}
+.proto-what .states{flex:none}
+
+/* The window fills the rest of a 1440x900 viewport */
+.proto-stage{padding:0 16px 12px}
+.proto .win{max-width:1408px}
+.proto .cols{height:calc(100vh - var(--proto-top, 88px) - 48px - 14px);min-height:520px}
+
+/* Shared component: notebook-wide checkpoint marker (identical in every prototype) */
+.checkpoint{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--muted)}
+.checkpoint::before,.checkpoint::after{content:"";flex:1;height:0;border-top:1px dashed var(--line2)}
+.checkpoint span{text-align:center;max-width:78%}
+
+/* Shared component: selection popover sits over the selected sentence */
+.selwrap{position:relative}
+.selwrap .popover{position:absolute;left:0;top:-44px;z-index:5;white-space:nowrap}
+
+/* Diagnostic inspector: deliberately not product-styled */
+.sees-panel{position:fixed;right:16px;top:calc(var(--proto-bar, 44px) + 12px);width:400px;max-height:calc(100vh - var(--proto-bar, 44px) - 28px);overflow:auto;z-index:40;background:#14161A;color:#E6E8EC;border:2px dashed #F2C94C;border-radius:10px;padding:12px 14px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.5;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.sees-panel .sh{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#F2C94C;margin-bottom:8px}
+.sees-panel .sh button{margin-left:auto;border:0;background:none;color:#C9CDD4;font-size:14px}
+.sees-panel h4{margin:10px 0 3px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#9DB2F2;font-weight:600}
+.sees-panel ul{margin:0;padding-left:16px}
+.sees-panel li{margin:1px 0}
+.sees-panel .no{color:#E8A090}
+.sees-panel .dim{color:#8A8F99}
+.sees-panel code{color:#B7E4C7}

@@ -1,0 +1,640 @@
+// Checks for SophiaCore. Run with: swift run sophia-checks
+// (Swift's test frameworks ship with Xcode; this runs with the Command Line Tools alone.)
+import Foundation
+
+if let i = CommandLine.arguments.firstIndex(of: "--probes"), i + 1 < CommandLine.arguments.count {
+    runProbes(dir: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+    exit(0)
+}
+if let i = CommandLine.arguments.firstIndex(of: "--music"), i + 1 < CommandLine.arguments.count {
+    runMusic(dir: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+    exit(0)
+}
+if let i = CommandLine.arguments.firstIndex(of: "--live"), i + 1 < CommandLine.arguments.count {
+    runLive(dir: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+    exit(0)
+}
+
+var failures = 0
+var current = ""
+
+func expect(_ ok: @autoclosure () throws -> Bool, line: Int = #line) {
+    let passed = (try? ok()) ?? false
+    if !passed { failures += 1; print("  FAILED in \(current), main.swift:\(line)") }
+}
+
+func expectThrows(_ body: () throws -> Any) {
+    do { _ = try body(); failures += 1; print("  FAILED in \(current): expected an error") } catch {}
+}
+
+import Foundation
+@testable import SophiaCore
+
+func tempStore() throws -> NotebookStore {
+let url = FileManager.default.temporaryDirectory.appendingPathComponent("sophia-test-\(UUID().uuidString)")
+return try NotebookStore(url: url)
+}
+
+func j(_ s: String) -> JSON { JSON.parse(s)! }
+
+// MARK: RecordCheckTests
+func keepsVerifiedQuoteAndStampsNothingFromSophia() throws {
+    let store = try tempStore()
+    let msg = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"),
+                                          "text": .string("Positive on one triangle,   negative on the other.")])
+    let id = msg.str("id")!
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"attempt","by":"person","status":"met","text":"Signs right.","quote":{"entry":"\#(id)","text":"Positive on one triangle, negative on the other."},"refs":["\#(id)"]}"#)],
+        allowedKinds: RecordChecks.checkpointKinds, session: "s-1")
+    expect(out.kept.count == 1)
+    expect(out.kept[0]["by"] == nil)        // the store stamps `by`, never Sophia
+    expect(out.kept[0]["status"] == nil)
+    expect(out.kept[0]["quote"] != nil)
+    let saved = try store.appendLearning(out.kept[0], by: "sophia", session: "s-1")
+    expect(saved.str("by") == "sophia")
+}
+
+func misquoteBecomesParaphrase() throws {
+    let store = try tempStore()
+    let id = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("I think it's balanced.")]).str("id")!
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"attempt","text":"Close.","quote":{"entry":"\#(id)","text":"I know it is balanced"},"refs":["\#(id)"]}"#)],
+        allowedKinds: RecordChecks.checkpointKinds, session: "s-1")
+    expect(out.kept.count == 1)
+    expect(out.kept[0]["quote"] == nil)
+    expect(out.kept[0]["paraphrase"] == .bool(true))
+}
+
+func quoteFromAnEarlierSessionIsRemoved() throws {
+    let store = try tempStore()
+    let id = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("My old attempt")]).str("id")!
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"attempt","text":"Read.","quote":{"entry":"\#(id)","text":"My old attempt"},"refs":["\#(id)"]}"#)],
+        allowedKinds: RecordChecks.checkpointKinds, session: "s-2")
+    expect(out.kept.first?["quote"] == nil)
+}
+
+func rejectsDisallowedKindsAndEvidenceFreeRecords() throws {
+    let store = try tempStore()
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"profile","text":"Strong at maths","refs":[]}"#),
+         j(#"{"kind":"question","text":"You have a strong intuition.","refs":["t-9999"]}"#),
+         j(#"{"kind":"goal","text":"Learn everything"}"#)],
+        allowedKinds: RecordChecks.checkpointKinds, session: "s-1")
+    expect(out.kept.isEmpty)
+    expect(out.notes.contains { $0.contains("don't exist") })
+}
+
+func readMustRestOnAnAttemptNotAPage() throws {
+    let store = try tempStore()
+    let file = try store.writePage(title: "A page", content: "Body", revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"read","text":"Understands it.","refs":["p:\#(file)"]}"#)],
+        allowedKinds: RecordChecks.checkpointKinds, session: "s-1")
+    expect(out.kept.isEmpty)
+}
+
+func briefingCannotQuoteButCanCite() throws {
+    let store = try tempStore()
+    let id = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("Hello")]).str("id")!
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"briefing","text":"Last time…","quote":{"entry":"\#(id)","text":"Hello"},"refs":["\#(id)"]}"#)],
+        allowedKinds: RecordChecks.briefingKinds, session: "s-2")
+    expect(out.kept.count == 1)
+    expect(out.kept[0]["quote"] == nil)
+}
+
+// MARK: Coming back
+func catchUpCoversEverythingSinceTheLastNotesAcrossSessions() throws {
+    let store = try tempStore()
+    func say(_ text: String, _ session: String) throws -> String {
+        try store.appendTranscript(["role": .string("person"), "session": .string(session), "text": .string(text)]).str("id")!
+    }
+    let old = try say("Noted already", "s-1")
+    _ = try store.appendTranscript(["role": .string("client"), "session": .string("s-1"), "purpose": .string("checkpoint"),
+                                    "through": .string(old), "kept": .array([])])
+    let a = try say("I honestly don't remember", "s-2")
+    let b = try say("It's the expected surprise", "s-3")   // a relaunch: same sitting, new session
+    expect(store.unnotedMessages.compactMap { $0.str("id") } == [a, b])
+
+    // Quotes may come from any message in the span, but not from one already noted.
+    let entries = Set(store.unnotedMessages.compactMap { $0.str("id") })
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"attempt","text":"Recalled it.","quote":{"entry":"\#(b)","text":"the expected surprise"}}"#),
+         j(#"{"kind":"attempt","text":"Earlier.","quote":{"entry":"\#(a)","text":"I honestly don't remember"}}"#),
+         j(#"{"kind":"attempt","text":"Again.","quote":{"entry":"\#(old)","text":"Noted already"}}"#)],
+        allowedKinds: RecordChecks.checkpointKinds, quoteEntries: entries)
+    expect(out.kept.count == 2)
+    expect(out.kept[0]["quote"] != nil && out.kept[1]["quote"] != nil)
+
+    // Once a checkpoint covers them, they aren't offered again.
+    _ = try store.appendTranscript(["role": .string("client"), "session": .string("s-4"), "purpose": .string("checkpoint"),
+                                    "through": .string(b), "kept": .array([])])
+    expect(store.unnotedMessages.isEmpty)
+}
+
+func olderCheckpointWithoutThroughCoversWhatCameBefore() throws {
+    let store = try tempStore()
+    _ = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("Before")])
+    _ = try store.appendTranscript(["role": .string("client"), "session": .string("s-1"), "purpose": .string("checkpoint"), "kept": .array([])])
+    let after = try store.appendTranscript(["role": .string("person"), "session": .string("s-2"), "text": .string("After")]).str("id")!
+    expect(store.unnotedMessages.compactMap { $0.str("id") } == [after])
+}
+
+func onlyALongQuietCountsAsComingBack() throws {
+    let store = try tempStore()
+    expect(!store.isReturn(after: 6 * 3600))                       // nothing said yet
+    _ = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("Hi")])
+    expect(!store.isReturn(after: 6 * 3600))                       // a relaunch a moment later
+    expect(store.isReturn(after: 6 * 3600, now: Date().addingTimeInterval(7 * 3600)))
+    // A briefing counts as the conversation, so reopening soon after one doesn't brief again.
+    _ = try store.appendTranscript(["role": .string("sophia"), "session": .string("s-2"), "purpose": .string("briefing"), "text": .string("Still open…")])
+    expect(!store.isReturn(after: 6 * 3600, now: Date().addingTimeInterval(60)))
+    // App notes don't count.
+    _ = try store.appendTranscript(["role": .string("client"), "session": .string("s-3"), "purpose": .string("stopped")])
+    expect(store.isReturn(after: 6 * 3600, now: Date().addingTimeInterval(7 * 3600)))
+}
+
+func longBriefingIsNotKept() throws {
+    let store = try tempStore()
+    let id = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("Hello")]).str("id")!
+    let long = Array(repeating: "word", count: RecordChecks.briefingWordLimit + 1).joined(separator: " ")
+    let out = RecordChecks(store: store).check(
+        [j(#"{"kind":"briefing","text":"\#(long)","refs":["\#(id)"]}"#),
+         j(#"{"kind":"briefing","text":"Still open: the cross-entropy step. Want to try it, or move on?","refs":["\#(id)"]}"#)],
+        allowedKinds: RecordChecks.briefingKinds, session: "s-2")
+    expect(out.kept.count == 1)
+    expect(out.notes.contains { $0.contains("words") })
+}
+
+// MARK: Chapters
+func sectionNumbersAreReadFromTitles() throws {
+    expect(NotebookStore.splitNumber("0.1 Surprise, Entropy") == ("0.1", "Surprise, Entropy"))
+    expect(NotebookStore.splitNumber("Chapter 0: Foundations") == ("0", "Foundations"))
+    expect(NotebookStore.splitNumber("2. Spectral methods") == ("2", "Spectral methods"))
+    expect(NotebookStore.splitNumber("Foundations") == (nil, "Foundations"))
+    expect(NotebookStore.splitNumber("1990s computing") == (nil, "1990s computing"))
+}
+
+func pagesMoveIntoNumberedChaptersInOrder() throws {
+    let store = try tempStore()
+    func page(_ t: String) throws -> String { try store.writePage(title: t, content: "Body", revising: nil, session: "s-1", toolUseID: "tu").str("file")! }
+    let road = try page("Roadmap")
+    let a = try page("0.0 Probability"), b = try page("0.1 Entropy"), c = try page("1.0 Next tokens")
+    _ = try store.fileInChapter([c], chapter: "Chapter 1: Language models")
+    let ch = try store.fileInChapter([a, b], chapter: "Chapter 0: Foundations")
+    expect(ch.heading == "Chapter 0: Foundations" && ch.pages.map(\.file) == [a, b])
+    expect(store.chapters.map(\.title) == ["Foundations", "Language models"])   // number order, not creation order
+    expect(store.unfiledPages.map(\.file) == [road])
+    expect(store.pageFiles == [a, b, c, road])
+    // Matching by number keeps one chapter; a chapter left empty disappears.
+    _ = try store.fileInChapter([c], chapter: "0 Foundations")
+    expect(store.chapters.count == 1 && store.chapters[0].pages.map(\.file) == [a, b, c])
+    expectThrows { try store.fileInChapter(["missing.md"], chapter: "Chapter 2: X") }
+}
+
+// MARK: Notes during the conversation
+func sophiaNotesDuringTheConversationWithinLimits() throws {
+    let store = try tempStore()
+    let t = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"),
+                                        "text": .string("This is something I would have known cold 15 years ago.")]).str("id")!
+    // The store finds the message the quote comes from.
+    let (bg, _) = try store.writeNote(["kind": .string("background"), "text": .string("Knew cross-entropy well once; rusty now.")],
+                                      quote: "would have known cold 15 years ago", revising: nil, session: "s-1")
+    expect(bg?["quote"]?["entry"]?.string == t && bg?.str("by") == "sophia")
+    expect(store.transcript.last?.str("tool") == "note")
+
+    // A note with nothing behind it, or of a kind Sophia can't write live, isn't saved.
+    expect(try store.writeNote(["kind": .string("background"), "text": .string("Strong at maths.")], quote: "words they never said", revising: nil, session: "s-1").saved == nil)
+    expect(try store.writeNote(["kind": .string("read"), "text": .string("Has it."), "refs": .array([.string(t)])], quote: nil, revising: nil, session: "s-1").saved == nil)
+
+    // Closing a follow-up replaces it; only the latest version shows.
+    let (fu, _) = try store.writeNote(["kind": .string("follow_up"), "text": .string("Check whether cross-entropy has landed."), "refs": .array([.string(t)])], quote: nil, revising: nil, session: "s-1")
+    let fid = fu!.str("id")!
+    let (closed, _) = try store.writeNote(["text": .string("Checked: explained it back correctly."), "refs": .array([.string(t)])], quote: nil, revising: fid, session: "s-1")
+    expect(closed?.str("kind") == "follow_up" && closed?.str("replaces") == fid)
+    expect(!store.shownNotes.contains { $0.str("id") == fid } && store.shownNotes.contains { $0.str("id") == closed?.str("id") })
+
+    // A note the person corrected stays as they have it.
+    _ = try store.appendLearning(["kind": .string("correction"), "replaces": bg!["id"]!, "text": .string("Not rusty, just never learned it.")], by: "person", session: "s-1")
+    expect(try store.writeNote(["text": .string("Rusty."), "refs": .array([.string(t)])], quote: nil, revising: bg!.str("id"), session: "s-1").saved == nil)
+    expect(store.shownNotes.contains { $0.str("id") == bg!.str("id") })   // still shown, with the correction
+
+    // A session's new notes are capped.
+    for i in 0..<NotebookStore.liveNotesPerSession {
+        _ = try store.writeNote(["kind": .string("question"), "text": .string("Q\(i)"), "refs": .array([.string(t)])], quote: nil, revising: nil, session: "s-1")
+    }
+    let over = try store.writeNote(["kind": .string("question"), "text": .string("One more"), "refs": .array([.string(t)])], quote: nil, revising: nil, session: "s-1")
+    expect(over.saved == nil && over.problems.contains { $0.contains("Revise") })
+}
+
+// MARK: Memory, recall, About you, links
+func memoryIsRewrittenWholeAndKeepsItsEvidence() throws {
+    let store = try tempStore()
+    let t = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("I'd have known cross-entropy cold once")]).str("id")!
+    var r = try store.setMemory([.init(id: nil, text: "Rusty on cross-entropy.", refs: [t]),
+                                 .init(id: nil, text: "Check KL next.", refs: [t]),
+                                 .init(id: nil, text: "Floats free.", refs: ["t-9999"])], session: "s-1")
+    expect(r.memory.count == 2 && r.problems.count == 1)          // a line resting on nothing isn't kept
+    let rusty = r.memory[0].str("id")!, kl = r.memory[1].str("id")!
+    // Keep one, reword one (it keeps its refs), add one; nothing is dropped yet.
+    r = try store.setMemory([.init(id: rusty, text: "Rusty on cross-entropy.", refs: []),
+                             .init(id: kl, text: "Check the KL link next.", refs: []),
+                             .init(id: nil, text: "Prefers reading chapters for fundamentals.", refs: [t])], session: "s-1")
+    expect(r.memory.count == 3 && r.memory.contains { $0.str("id") == rusty })
+    expect(r.memory.first { $0.str("text") == "Check the KL link next." }?["refs"] == .array([.string(t)]))
+    // Leaving a line out forgets it; the person's corrected line stays.
+    _ = try store.appendLearning(["kind": .string("correction"), "replaces": .string(rusty), "text": .string("Never learned it.")], by: "person", session: "s-1")
+    r = try store.setMemory([], session: "s-1")
+    expect(r.memory.map { $0.str("id") } == [rusty])
+    // At most memoryLimit lines.
+    let many = (0...NotebookStore.memoryLimit).map { NotebookStore.MemoryLine(id: nil, text: "Line \($0)", refs: [t]) }
+    r = try store.setMemory(many, session: "s-1")
+    expect(r.memory.count == 1 && r.problems.contains { $0.contains("at most") })
+}
+
+func recallFindsNotesByIdPageAndWords() throws {
+    let store = try tempStore()
+    let file = try store.writePage(title: "0.1 Entropy", content: "Body", revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    let t = try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("Cross entropy still confuses me")]).str("id")!
+    let a = try store.writeNote(["kind": .string("follow_up"), "text": .string("Check cross-entropy has landed."), "refs": .array([.string(t), .string("p:" + file)])], quote: nil, revising: nil, session: "s-1").saved!
+    _ = try store.writeNote(["kind": .string("question"), "text": .string("Why base 2?"), "refs": .array([.string(t)])], quote: nil, revising: nil, session: "s-1")
+    expect(store.recall(ids: [a.str("id")!]).notes.count == 1)
+    expect(store.recall(page: file).notes.map { $0.str("id") } == [a.str("id")])
+    let byWords = store.recall(words: "cross ENTROPY")
+    expect(byWords.notes.count == 1 && byWords.messages.map { $0.str("id") } == [t])
+    expect(store.recall(words: "eigenvalue").notes.isEmpty)
+}
+
+func libraryTemp() throws -> (LibraryStore, NotebookStore, NotebookStore) {
+    let root = FileManager.default.temporaryDirectory.appendingPathComponent("sophia-lib-\(UUID().uuidString)")
+    let a = try NotebookStore(url: root.appendingPathComponent("Graph Clustering"))
+    let b = try NotebookStore(url: root.appendingPathComponent("LLMs"))
+    return (LibraryStore(root: root), a, b)
+}
+
+func aboutYouIsProvisionalAndStaysHomeUntilConfirmed() throws {
+    let (lib, a, b) = try libraryTemp()
+    _ = try a.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("I have a PhD in computer science but stopped following ML.")])
+    expect(try lib.proposeAbout(text: "Has a PhD in CS.", quote: "I have a doctorate", revising: nil, from: a).saved == nil)   // not their words
+    let line = try lib.proposeAbout(text: "PhD in computer science; away from ML research for years.", quote: "PhD in computer science", revising: nil, from: a).saved!
+    expect(lib.aboutLines(visibleIn: a.name).count == 1 && lib.aboutLines(visibleIn: b.name).isEmpty)
+    try lib.setAbout(text: line.str("text")!, replacing: line.str("id"), notebook: nil)   // the person confirms
+    expect(lib.aboutLines(visibleIn: b.name).count == 1 && !LibraryStore.isProvisional(lib.aboutLines[0]))
+    expect(try lib.proposeAbout(text: "Changed.", quote: "PhD in computer science", revising: lib.aboutLines[0].str("id"), from: a).saved == nil)
+    try lib.deleteAbout(lib.aboutLines[0].str("id")!)
+    expect(lib.aboutLines.isEmpty)
+}
+
+func linksAreConfirmedBeforeAnythingIsRead() throws {
+    let (lib, a, b) = try libraryTemp()
+    let pa = try a.writePage(title: "Why the Fiedler vector splits a graph", content: "Rayleigh", revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    let pb = try b.writePage(title: "0.2 Eigenvectors", content: "Rayleigh too", revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    expect(lib.otherNotebooks(than: b.name).map(\.name) == [a.name])          // titles only
+    expect(try lib.proposeLink(from: b, page: pb, toNotebook: a.name, toPage: "missing.md", reason: "x").saved == nil)
+    let l = try lib.proposeLink(from: b, page: pb, toNotebook: a.name, toPage: pa, reason: "Both rest on the Rayleigh quotient.").saved!
+    expect(!lib.mayRead(pa, in: a.name, from: b.name))                         // provisional: nothing crosses
+    try lib.confirmLink(l.str("id")!)
+    expect(lib.mayRead(pa, in: a.name, from: b.name) && lib.mayRead(pb, in: b.name, from: a.name))
+    expect(lib.links(touching: a.name).count == 1)
+    // A notebook kept separate drops out of view, links, and reading.
+    try a.setSeparate(true)
+    expect(lib.otherNotebooks(than: b.name).isEmpty && !lib.mayRead(pa, in: a.name, from: b.name))
+    expect(try lib.proposeLink(from: a, page: pa, toNotebook: b.name, toPage: pb, reason: "x").saved == nil)
+}
+
+func checkpointRepliesCarryNotesAndMemory() throws {
+    let both = RecordChecks.parseCheckpoint(#"{"notes":[{"kind":"question","text":"q"}],"memory":[{"text":"m","refs":["t-0001"]}]}"#)
+    expect(both.notes.count == 1 && both.memory?.count == 1)
+    let old = RecordChecks.parseCheckpoint(#"[{"kind":"question","text":"q"}]"#)
+    expect(old.notes.count == 1 && old.memory == nil && old.parsed)
+    expect(RecordChecks.parseCheckpoint(#"{"notes":[],"memory":[]}"#).memory == nil)   // an empty memory never wipes it
+}
+
+func deepLinksNameASectionThatExists() throws {
+    let (lib, a, b) = try libraryTemp()
+    let body = "Intro.\n\n## 1. Surprise\n\nText one.\n\n```\n## not a heading\n```\n\n### Why the log\n\nDetail.\n\n## 2. Entropy\n\nText two."
+    let pa = try a.writePage(title: "0.1 Entropy", content: body, revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    let pb = try b.writePage(title: "Losses", content: "Cross-entropy loss.", revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    expect(a.sections(of: pa).map(\.title) == ["1. Surprise", "Why the log", "2. Entropy"])
+    let surprise = a.section("1 surprise", of: pa)!                      // matched loosely
+    let text = a.sectionText(surprise, of: pa) ?? ""
+    expect(text.contains("Text one.") && text.contains("Detail.") && !text.contains("Text two."))
+    expect(lib.otherNotebooks(than: b.name).first?.pages.contains("§ Why the log") == true)
+    expect(try lib.proposeLink(from: b, page: pb, toNotebook: a.name, toPage: pa, toSection: "3. Nothing", reason: "x").saved == nil)
+    let l = try lib.proposeLink(from: b, page: pb, toNotebook: a.name, toPage: pa, toSection: "2 entropy", reason: "Loss is cross-entropy.").saved!
+    expect(l["to"]?["section"]?.string == "2. Entropy")               // stored as written in the page
+}
+
+func aReplyWrittenTwiceIsRecognized() throws {
+    let first = "That's not true in general. It holds for symmetric matrices, and more generally for normal matrices. That's the spectral theorem. It fails for arbitrary square matrices. Counterexample: the matrix with rows one one and zero two has eigenvectors one zero and one one, whose dot product is one, so they are not orthogonal. Rescaling an eigenvector doesn't change its direction."
+    let again = "Your notes are wrong on this one. Only symmetric matrices, or more generally normal ones, are guaranteed orthogonal eigenvectors. That's the spectral theorem. For other square matrices the eigenvectors may not be orthogonal: the matrix with rows one one and zero two has eigenvectors one zero and one one, whose dot product is one. Rescaling doesn't change their direction."
+    let different = "Next, the singular value decomposition writes every matrix as a rotation, a diagonal scaling, and another rotation. Unlike eigenvectors, input and output directions differ, which is why it always exists and why least squares, low rank approximation, and principal components analysis all depend on it in practice."
+    expect(Prompts.isRestatement(again, of: [first]))
+    expect(!Prompts.isRestatement(different, of: [first]))
+    expect(!Prompts.isRestatement("I added a page with this.", of: [first]))
+}
+
+func extractsJSONFromAFencedReply() throws {
+    let v = RecordChecks.extractJSON("Here you go:\n```json\n[{\"kind\":\"question\",\"text\":\"x\"}]\n```")
+    expect(v?.array?.count == 1)
+}
+
+// MARK: PageTests
+func sophiaWritesAPageDirectlyAndUndoRemovesIt() throws {
+    let store = try tempStore()
+    let e = try store.writePage(title: "Why the Fiedler vector splits a graph", content: "xᵀLx", revising: nil, session: "s-1", toolUseID: "tu")
+    let file = e.str("file")!
+    expect(store.readPage(file)?.body.contains("xᵀLx") == true)
+    expect(store.readPage(file)?.title == "Why the Fiedler vector splits a graph")
+    expect(try NotebookStore(url: store.url).pageFiles == [file])
+    try store.undoPageWrite(e.str("id")!, session: "s-1")
+    let reopened = try NotebookStore(url: store.url)
+    expect(reopened.pageFiles.isEmpty)
+    expect(reopened.isUndone(e.str("id")!))
+}
+
+func revisionKeepsThePreviousVersionAndUndoRestoresIt() throws {
+    let store = try tempStore()
+    let file = try store.writePage(title: "T", content: "First", revising: nil, session: "s-1", toolUseID: "1").str("file")!
+    let r = try store.writePage(title: "T, revised", content: "Second", revising: file, session: "s-1", toolUseID: "2")
+    expect(r.str("file") == file)
+    expect(store.pageFiles == [file])
+    expect(store.readPage(file)?.body.contains("Second") == true)
+    expect(store.readPreviousVersion(file)?.body.contains("First") == true)
+    try store.undoPageWrite(r.str("id")!, session: "s-1")
+    expect(store.readPage(file)?.body.contains("First") == true)
+    expect(store.readPage(file)?.title == "T")
+}
+
+func twoWritersDoNotLoseEachOthersWork() throws {
+    let app = try tempStore()
+    let tools = try NotebookStore(url: app.url)   // the tool server's copy, opened earlier
+    try app.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("Keep this")])
+    let w = try tools.writePage(title: "P", content: "B", revising: nil, session: "s-1", toolUseID: "tu")
+    try app.appendTranscript(["role": .string("sophia"), "session": .string("s-1"), "text": .string("Done")])
+    let ids = try NotebookStore(url: app.url).transcript.compactMap { $0.str("id") }
+    expect(ids == ["t-0001", "t-0002", "t-0003"])
+    expect(app.pageFiles == [w.str("file")!])
+}
+
+func undecidedDraftsFromOlderNotebooksBecomePages() throws {
+    let store = try tempStore()
+    for (pid, title) in [("pr-1", "Pending"), ("pr-2", "Discarded")] {
+        try store.appendTranscript(["role": .string("tool"), "session": .string("s-1"), "proposal": .string(pid), "target": .string("page"),
+                                    "tool_use": .string("tu"), "payload": .object(["title": .string(title), "content": .string("Body")])])
+    }
+    try store.appendTranscript(["role": .string("client"), "session": .string("s-1"), "proposal": .string("pr-2"), "decision": .string("reject")])
+    store.fileUndecidedDrafts(session: "s-2")
+    store.fileUndecidedDrafts(session: "s-3")
+    expect(store.pages.map(\.title) == ["Pending"])
+}
+
+// MARK: GoalTests
+func sophiasGoalIsProvisionalUntilConfirmedAndCriteriaOnlyGrow() throws {
+    let store = try tempStore()
+    try store.appendTranscript(["role": .string("person"), "session": .string("s-1"), "text": .string("I want to be able to explain spectral clustering to my team.")])
+    let g = try store.writeGoal(text: "Explain spectral clustering to your team", criteria: ["Explain why the Fiedler vector splits a graph"],
+                                revising: nil, quote: "explain spectral clustering to my team", session: "s-1")
+    expect(store.isProvisional(store.goals[0]))
+    expect(g["quote"] != nil)
+    expect(g.str("status") == "working")
+    let r = try store.writeGoal(text: "Explain spectral clustering to your team, with an example", criteria: ["Work an example by hand"],
+                                revising: g.str("id"), quote: "words they never said", session: "s-1")
+    expect(r["quote"] == nil)
+    expect(store.goals.count == 1)
+    expect(store.goals[0]["criteria"]?.array?.count == 2)
+    expect(store.rootID(of: r.str("id")!) == g.str("id"))
+    var confirmed: JSONObject = ["kind": .string("goal"), "replaces": r["id"]!]
+    for k in ["text", "status", "criteria"] { confirmed[k] = r[k] }
+    try store.appendLearning(confirmed, by: "person", session: "s-1")
+    expect(!store.isProvisional(store.goals[0]))
+}
+
+func orphanPageIsListedAfterACrash() throws {
+    let store = try tempStore()
+    try Data("---\ntitle: \"Orphan\"\n---\nBody\n".utf8).write(to: store.pagesURL.appendingPathComponent("orphan.md"))
+    expect(try NotebookStore(url: store.url).pageFiles == ["orphan.md"])
+}
+
+// MARK: LearningTests
+func deletingARecordRemovesItsCorrectionsAndUndoRestores() throws {
+    let store = try tempStore()
+    let a = try store.appendLearning(["kind": .string("attempt"), "text": .string("Read")], by: "sophia", session: "s-1")
+    _ = try store.appendLearning(["kind": .string("correction"), "text": .string("Mine"), "replaces": a["id"]!], by: "person", session: "s-2")
+    let removed = try store.deleteLearning(a.str("id")!)
+    expect(removed.count == 2)
+    expect(try NotebookStore(url: store.url).learning.isEmpty)
+    try store.restoreLearning(removed)
+    expect(store.learning.count == 2)
+}
+
+func goalRewordKeepsItsFirstID() throws {
+    let store = try tempStore()
+    let g = try store.appendLearning(["kind": .string("goal"), "text": .string("Refresh"), "status": .string("working")], by: "person", session: "s-1")
+    let g2 = try store.appendLearning(["kind": .string("goal"), "text": .string("Get fluent"), "status": .string("working"), "replaces": g["id"]!], by: "person", session: "s-2")
+    expect(store.goals.count == 1)
+    expect(store.rootID(of: g2.str("id")!) == g.str("id"))
+}
+
+
+// MARK: The person's edits (EDITING.md)
+let editBody = "Opening line with $x$.\n\n## 1. Signs\n\nThe sign is $-1$.\t\n\n```\n## not a heading\n```\n\n### Detail\n\n* odd marker\n+ another   \n\n## 2. Next\n\nλ₂ ≈ 0.4\n\n> “Positive on one side.” <!-- quote: t-0001 -->\n"
+
+func editStore(_ body: String = editBody, raw: String? = nil) throws -> (NotebookStore, String) {
+    let store = try tempStore()
+    let file = try store.writePage(title: "Signs", content: "x", revising: nil, session: "s-1", toolUseID: "tu").str("file")!
+    try Data((raw ?? "---\ntitle: \"Signs\"\nsources: []   \n---\n" + body).utf8).write(to: store.pagesURL.appendingPathComponent(file))
+    return (store, file)
+}
+
+func range(_ store: NotebookStore, _ file: String, _ key: String) -> NotebookStore.EditRange { store.editRanges(of: file).first { $0.key == key }! }
+
+func splicingASectionLeavesEveryOtherByteIdentical() throws {
+    let crlf = editBody.replacingOccurrences(of: "\n", with: "\r\n")
+    for raw in ["---\ntitle: \"Signs\"\nsources: []   \n---\n" + editBody, "---\ntitle: \"Signs\"\n---\n" + crlf,
+                "---\ntitle: \"Signs\"\n---\n\n# Signs\n\n" + editBody] {
+        let (store, file) = try editStore(raw: raw)
+        let url = store.pagesURL.appendingPathComponent(file)
+        let before = try Data(contentsOf: url)
+        expect(store.editRanges(of: file).map(\.key) == ["(opening)", "§0", "§1", "§2", "(page)"])
+        let s = range(store, file, "§0")
+        expect(s.text.contains("## not a heading") && s.text.contains("### Detail") && !s.text.contains("2. Next"))
+        let edited = s.text.replacingOccurrences(of: "$-1$", with: "$+1$")
+        guard case .saved = try store.editPage(file: file, section: "§0", baseHash: s.hash, text: edited, session: "s-1") else { expect(false); continue }
+        let expected = String(decoding: before, as: UTF8.self).replacingOccurrences(of: "$-1$", with: "$+1$")
+        expect(try Data(contentsOf: url) == Data(expected.utf8))
+        expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(String(file.dropLast(3)) + ".previous.md")) == before)
+        // The whole page, opened and committed untouched, writes nothing; a repeated title stays out of it.
+        let page = range(store, file, "(page)")
+        expect(!page.text.contains("# Signs\n") && !page.text.hasPrefix("# Signs"))
+        let count = store.transcript.count
+        guard case .unchanged = try store.editPage(file: file, section: "(page)", baseHash: page.hash, text: page.text, session: "s-1") else { expect(false); continue }
+        expect(try store.transcript.count == count && Data(contentsOf: url) == Data(expected.utf8))
+    }
+}
+
+func aCommitWithNoChangeWritesNothing() throws {
+    let (store, file) = try editStore()
+    let s = range(store, file, "§1")
+    let count = store.transcript.count
+    guard case .unchanged = try store.editPage(file: file, section: "§1", baseHash: s.hash, text: s.text, session: "s-1") else { expect(false); return }
+    expect(store.transcript.count == count)
+    expect(!store.hasPreviousVersion(file))
+    expect(store.protectedLines(of: file).isEmpty)
+}
+
+func aCommitAgainstAChangedSectionIsRefused() throws {
+    let (store, file) = try editStore()
+    let s = range(store, file, "§2")
+    let body = store.readPage(file)!.body
+    // Sophia's revision lands before the editor's marker (or the person undid something meanwhile).
+    try store.writePage(title: "Signs", content: body.replacingOccurrences(of: "λ₂ ≈ 0.4\n", with: "λ₂ is about 0.4\n"), revising: file, session: "s-1", toolUseID: "2")
+    let onDisk = try Data(contentsOf: store.pagesURL.appendingPathComponent(file))
+    guard case .conflict(let current) = try store.editPage(file: file, section: "§2", baseHash: s.hash, text: s.text + "\nMine.", session: "s-1") else { expect(false); return }
+    expect(current?.text.contains("about 0.4") == true)
+    expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(file)) == onDisk)
+    // Keep mine: commit against the new base.
+    guard case .saved = try store.editPage(file: file, section: "§2", baseHash: current!.hash, text: s.text + "\nMine.", session: "s-1") else { expect(false); return }
+    expect(store.readPage(file)!.body.contains("Mine."))
+    // Sections inserted above move the range; it is found by its text.
+    let s0 = range(store, file, "§0")
+    let b2 = store.readPage(file)!.body
+    try store.writePage(title: "Signs", content: b2.replacingOccurrences(of: "## 1. Signs", with: "## 0. New\n\nNew.\n\n## 1. Signs").dropLast() + "", revising: file, session: "s-1", toolUseID: "3")
+    guard case .saved = try store.editPage(file: file, section: "§0", baseHash: s0.hash, text: s0.text.replacingOccurrences(of: "$-1$", with: "$1$"), session: "s-1") else { expect(false); return }
+    expect(store.readPage(file)!.body.contains("## 0. New") && store.readPage(file)!.body.contains("$1$"))
+}
+
+func protectedLinesAndQuotesRefuseSophiasRevision() throws {
+    let (store, file) = try editStore()
+    let s = range(store, file, "§2")
+    guard case .saved(let edit) = try store.editPage(file: file, section: "§2", baseHash: s.hash, text: s.text.replacingOccurrences(of: "0.4", with: "0.44"), session: "s-1") else { expect(false); return }
+    expect(edit["hunks"]?.array?.first?["before"]?.string == "λ₂ ≈ 0.4" && edit["hunks"]?.array?.first?["after"]?.string == "λ₂ ≈ 0.44")
+    expect(store.unnotedMessages.isEmpty && !store.hasEarlierConversation)        // an edit isn't a message
+    let body = store.readPage(file)!.body.dropLast()
+    let reworded = try store.writePage(title: "Signs", content: body.replacingOccurrences(of: "λ₂ ≈ 0.44", with: "λ₂ ≈ 0.45"), revising: file, session: "s-1", toolUseID: "2", why: "Recomputed.")
+    expect(reworded["refused"] == .bool(true) && reworded.str("section") == "2. Next" && reworded.str("edit") == edit.str("id"))
+    expect(reworded.str("why") == "Recomputed." && reworded.str("current")?.contains("0.44") == true)
+    expect(store.readPage(file)!.body.contains("0.44") && store.pageWrites.count == 1)
+    let unquoted = try store.writePage(title: "Signs", content: body.replacingOccurrences(of: "“Positive on one side.”", with: "“Positive.”"), revising: file, session: "s-1", toolUseID: "3")
+    expect(unquoted["refused"] == .bool(true) && unquoted.str("reason") == "quote")
+    let intact = try store.writePage(title: "Signs", content: body.replacingOccurrences(of: "Opening line", with: "First line"), revising: file, session: "s-1", toolUseID: "4")
+    expect(intact["refused"] == nil && store.readPage(file)!.body.contains("First line"))
+    // The person deletes their own line: it is no longer protected.
+    let s2 = range(store, file, "§2")
+    _ = try store.editPage(file: file, section: "§2", baseHash: s2.hash, text: s2.text.replacingOccurrences(of: "λ₂ ≈ 0.44\n", with: ""), session: "s-1")
+    expect(store.protectedLines(of: file).isEmpty)
+}
+
+func anOpenSectionIsRefusedAndOthersAreNot() throws {
+    let (store, file) = try editStore()
+    _ = try store.beginEdit(file: file, key: "§2", session: "s-1")
+    let body = store.readPage(file)!.body.dropLast()
+    let tools = try NotebookStore(url: store.url)       // the tool server's process
+    let open = try tools.writePage(title: "Signs", content: body.replacingOccurrences(of: "0.4", with: "0.5"), revising: file, session: "s-1", toolUseID: "2")
+    expect(open["refused"] == .bool(true) && open.str("reason") == "open")
+    let other = try tools.writePage(title: "Signs", content: body.replacingOccurrences(of: "$-1$", with: "$1$"), revising: file, session: "s-1", toolUseID: "3")
+    expect(other["refused"] == nil)
+    store.endEdit()
+    expect(store.editMarker == nil)
+    expect(try tools.writePage(title: "Signs", content: body.replacingOccurrences(of: "0.4", with: "0.5"), revising: file, session: "s-1", toolUseID: "4")["refused"] == nil)
+}
+
+func undoingAPersonEditRestoresThePreviousVersion() throws {
+    let (store, file) = try editStore()
+    let before = store.readPage(file)!.body
+    let s = range(store, file, "(opening)")
+    guard case .saved(let edit) = try store.editPage(file: file, section: "(opening)", baseHash: s.hash, text: "Fixed typo.\n", session: "s-1") else { expect(false); return }
+    expect(store.isLatestWrite(edit.str("id")!))
+    try store.undoPageWrite(edit.str("id")!, session: "s-1")
+    expect(store.readPage(file)!.body == before)
+    expect(store.transcript.last?.str("purpose") == "undo_page" && store.transcript.last?.str("entry") == edit.str("id"))
+    expect(store.protectedLines(of: file).isEmpty)
+    expectThrows { try store.undoPageWrite(edit.str("id")!, session: "s-1") }
+}
+
+func aReleaseLiftsOnlyThatEdit() throws {
+    let (store, file) = try editStore()
+    let a = range(store, file, "§0")
+    guard case .saved(let e1) = try store.editPage(file: file, section: "§0", baseHash: a.hash, text: a.text.replacingOccurrences(of: "$-1$", with: "$+1$"), session: "s-1") else { expect(false); return }
+    let b = range(store, file, "§2")
+    guard case .saved(let e2) = try store.editPage(file: file, section: "§2", baseHash: b.hash, text: b.text.replacingOccurrences(of: "0.4", with: "0.44"), session: "s-1") else { expect(false); return }
+    let since = store.transcript.count
+    let body = store.readPage(file)!.body.dropLast()
+    let both = body.replacingOccurrences(of: "0.44", with: "0.45").replacingOccurrences(of: "$+1$", with: "$1$")
+    expect(try store.writePage(title: "Signs", content: both, revising: file, session: "s-1", toolUseID: "2")["refused"] == .bool(true))
+    let released = try store.releaseEdits([e2.str("id")!], session: "s-1")
+    expect(try store.writePage(title: "Signs", content: both, revising: file, session: "s-1", toolUseID: "3")["refused"] == .bool(true))   // e1 still protected
+    let one = body.replacingOccurrences(of: "0.44", with: "0.45")
+    try store.undoRelease(released[0].str("id")!, session: "s-1")
+    expect(try store.writePage(title: "Signs", content: one, revising: file, session: "s-1", toolUseID: "4")["refused"] == .bool(true))
+    try store.releaseEdits([e2.str("id")!], session: "s-1")
+    expect(try store.writePage(title: "Signs", content: one, revising: file, session: "s-1", toolUseID: "5")["refused"] == nil)
+    expect(store.protectedLines(of: file).map { $0.edit.str("id") } == [e1.str("id")])
+    let told = Prompts.bookChanges(store, since: since)
+    expect(told.contains("Let you change their edit") && told.contains("Took back") && !told.contains("Edited"))
+    expect(Prompts.bookChanges(store, since: 0).contains("was: λ₂ ≈ 0.4\n  now: λ₂ ≈ 0.44"))
+}
+
+func notationWarningsNameTheirPageAndSection() throws {
+    let body = "# Tunes\n\nOpening.\n\n## Reels\n\n### The first\n\n```abc\nK:C\nCD@E|\n```\n\n## Airs\n\nText."
+    let ranges = NotebookStore.editRanges(in: body, hidden: 2)
+    expect(NotebookStore.sectionTitle(containing: 2, in: ranges) == nil)
+    expect(NotebookStore.sectionTitle(containing: 8, in: ranges) == "The first")
+    expect(NotebookStore.sectionTitle(containing: 15, in: ranges) == "Airs")
+    expect(Prompts.musicWarnings([]) == "")
+    let warning = "Line 2 of the tune, column 3: Unknown character ignored: CD@E|"
+    let told = Prompts.musicWarnings([
+        MusicWarnings(file: "tunes.md", page: "Tunes", section: "The first", tune: "Reel", warnings: [warning]),
+        MusicWarnings(file: "tunes.md", page: "Tunes", section: nil, tune: "", warnings: (1...7).map { "w\($0)" })
+    ])
+    expect(told.hasPrefix("[Sophia app]") && told.hasSuffix("The person's message follows.\n\n"))
+    expect(told.contains("- “Tunes” (tunes.md), section “The first”, tune “Reel”: \(warning)\n"))
+    expect(told.contains("- “Tunes” (tunes.md): w1; w2; w3; w4; w5 (and 2 more)\n"))
+}
+
+let all: [(String, () throws -> Void)] = [
+    ("keepsVerifiedQuoteAndStampsNothingFromSophia", keepsVerifiedQuoteAndStampsNothingFromSophia),
+    ("misquoteBecomesParaphrase", misquoteBecomesParaphrase),
+    ("quoteFromAnEarlierSessionIsRemoved", quoteFromAnEarlierSessionIsRemoved),
+    ("rejectsDisallowedKindsAndEvidenceFreeRecords", rejectsDisallowedKindsAndEvidenceFreeRecords),
+    ("readMustRestOnAnAttemptNotAPage", readMustRestOnAnAttemptNotAPage),
+    ("briefingCannotQuoteButCanCite", briefingCannotQuoteButCanCite),
+    ("sophiaWritesAPageDirectlyAndUndoRemovesIt", sophiaWritesAPageDirectlyAndUndoRemovesIt),
+    ("revisionKeepsThePreviousVersionAndUndoRestoresIt", revisionKeepsThePreviousVersionAndUndoRestoresIt),
+    ("twoWritersDoNotLoseEachOthersWork", twoWritersDoNotLoseEachOthersWork),
+    ("undecidedDraftsFromOlderNotebooksBecomePages", undecidedDraftsFromOlderNotebooksBecomePages),
+    ("sophiasGoalIsProvisionalUntilConfirmedAndCriteriaOnlyGrow", sophiasGoalIsProvisionalUntilConfirmedAndCriteriaOnlyGrow),
+    ("orphanPageIsListedAfterACrash", orphanPageIsListedAfterACrash),
+    ("deletingARecordRemovesItsCorrectionsAndUndoRestores", deletingARecordRemovesItsCorrectionsAndUndoRestores),
+    ("goalRewordKeepsItsFirstID", goalRewordKeepsItsFirstID),
+    ("catchUpCoversEverythingSinceTheLastNotesAcrossSessions", catchUpCoversEverythingSinceTheLastNotesAcrossSessions),
+    ("olderCheckpointWithoutThroughCoversWhatCameBefore", olderCheckpointWithoutThroughCoversWhatCameBefore),
+    ("onlyALongQuietCountsAsComingBack", onlyALongQuietCountsAsComingBack),
+    ("longBriefingIsNotKept", longBriefingIsNotKept),
+    ("sectionNumbersAreReadFromTitles", sectionNumbersAreReadFromTitles),
+    ("pagesMoveIntoNumberedChaptersInOrder", pagesMoveIntoNumberedChaptersInOrder),
+    ("sophiaNotesDuringTheConversationWithinLimits", sophiaNotesDuringTheConversationWithinLimits),
+    ("memoryIsRewrittenWholeAndKeepsItsEvidence", memoryIsRewrittenWholeAndKeepsItsEvidence),
+    ("recallFindsNotesByIdPageAndWords", recallFindsNotesByIdPageAndWords),
+    ("aboutYouIsProvisionalAndStaysHomeUntilConfirmed", aboutYouIsProvisionalAndStaysHomeUntilConfirmed),
+    ("linksAreConfirmedBeforeAnythingIsRead", linksAreConfirmedBeforeAnythingIsRead),
+    ("checkpointRepliesCarryNotesAndMemory", checkpointRepliesCarryNotesAndMemory),
+    ("deepLinksNameASectionThatExists", deepLinksNameASectionThatExists),
+    ("aReplyWrittenTwiceIsRecognized", aReplyWrittenTwiceIsRecognized),
+    ("extractsJSONFromAFencedReply", extractsJSONFromAFencedReply),
+    ("splicingASectionLeavesEveryOtherByteIdentical", splicingASectionLeavesEveryOtherByteIdentical),
+    ("aCommitWithNoChangeWritesNothing", aCommitWithNoChangeWritesNothing),
+    ("aCommitAgainstAChangedSectionIsRefused", aCommitAgainstAChangedSectionIsRefused),
+    ("protectedLinesAndQuotesRefuseSophiasRevision", protectedLinesAndQuotesRefuseSophiasRevision),
+    ("anOpenSectionIsRefusedAndOthersAreNot", anOpenSectionIsRefusedAndOthersAreNot),
+    ("undoingAPersonEditRestoresThePreviousVersion", undoingAPersonEditRestoresThePreviousVersion),
+    ("aReleaseLiftsOnlyThatEdit", aReleaseLiftsOnlyThatEdit),
+    ("notationWarningsNameTheirPageAndSection", notationWarningsNameTheirPageAndSection)
+]
+for (name, test) in all {
+    current = name
+    do { try test(); print("ok   \(name)") } catch { failures += 1; print("FAIL \(name): \(error)") }
+}
+print(failures == 0 ? "All \(all.count) checks passed." : "\(failures) failure(s).")
+exit(failures == 0 ? 0 : 1)

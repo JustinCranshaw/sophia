@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sophia UI mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+/* Collapse a grid column when its pane is hidden by state. */
+.cols:has(> .chat[hidden]){grid-template-columns:224px minmax(0,1fr)}
+  .page h2 { position: relative; }
+  .edit-affordance { position: absolute; left: -26px; top: 2px; font: 14px -apple-system, sans-serif; color: #999; opacity: 0; cursor: pointer; }
+  .page h2:hover .edit-affordance { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="mockbar">
+  <b>Sophia · UI mock</b>
+  <nav class="nav" aria-label="Mock screens">
+    <a href="#overview">Overview</a>
+    <a href="#knowledge">How knowledge is kept</a>
+    <a href="#library">1 Library</a>
+    <a href="#research">2 A question</a>
+    <a href="#first">3 First page</a>
+    <a href="#page">4 Reading a page</a>
+    <a href="#guided">5 Reading together</a>
+    <a href="#revise">6 Revising</a>
+    <a href="#return">7 Coming back</a>
+    <a href="#experiment">8 Experiment</a>
+    <a href="#contents">9 Chapters emerge</a>
+    <a href="#goals">10 Goals</a>
+    <a href="#notes">11 Notes</a>
+    <a href="#problems">12 When things fail</a>
+  </nav>
+</div>
+
+<!-- =================================================================== OVERVIEW -->
+<section class="screen frame" id="overview">
+<div class="over">
+  <div>
+    <h1>Sophia: the experience</h1>
+  </div>
+  <p class="lead">Each notebook is an emergent textbook. You guide every step, and the book grows to your needs one accepted page at a time. Beside it runs a conversation with Sophia that does two jobs: it makes the book, and it walks you back through it.</p>
+
+  <div class="three four">
+    <div class="card">
+      <h3>The book</h3>
+      <div>Chapters and pages. Sophia writes and revises them; you can edit any section yourself, and your lines stay yours until you let her change them. Every page keeps its sources, your own words where they were used, and one previous version.</div>
+      <div class="file">notebook.json · pages/*.md · pages/*.previous.md</div>
+    </div>
+    <div class="card">
+      <h3>The conversation</h3>
+      <div>One running thread per notebook, in dated sessions.</div>
+      <ul>
+        <li><b>Making the book:</b> explaining, challenging, researching, drafting pages and revisions.</li>
+        <li><b>Guiding through the book:</b> reading a page with you, stopping to ask, answering questions about a passage.</li>
+      </ul>
+      <div class="file">transcript.jsonl</div>
+    </div>
+    <div class="card">
+      <h3>Goals</h3>
+      <div>What you want from the notebook, in your words, and what "there" looks like. Progress is shown as evidence from your attempts and pages, not as a score. Sophia can propose a goal; only you accept one or mark it met.</div>
+      <div class="file">learning.jsonl · goal entries you've confirmed</div>
+    </div>
+    <div class="card">
+      <h3>Sophia's notes</h3>
+      <div>Your attempts in your words, Sophia's tentative read of them, open questions, and the next step. Sophia uses them to brief you when you return. You can see and delete every one, and they never reach a page unless you accept that page.</div>
+      <div class="file">learning.jsonl</div>
+    </div>
+  </div>
+
+  <h2 class="sec">The journey · <a href="#knowledge" style="text-transform:none;letter-spacing:0;font-weight:500">how knowledge is kept →</a></h2>
+  <div class="journey">
+    <a class="jstep" href="#library"><span class="n">1 · Library</span><b>Start or continue</b><span>Notebooks are described by their open questions, not their chat history. Includes first run.</span></a>
+    <a class="jstep" href="#research"><span class="n">2 · Oct 12</span><b>A question with no book</b><span>Research with live tool activity, a permission request, a denial, and Stop. No page needed.</span></a>
+    <a class="jstep" href="#first"><span class="n">3 · Oct 14</span><b>The first page</b><span>A learning conversation produces a draft in the book. Push back, accept, set aside, or discard it.</span></a>
+    <a class="jstep" href="#page"><span class="n">4 · Oct 16</span><b>Reading a page</b><span>The book on its own. Select text to ask about it. Compare with the previous version.</span></a>
+    <a class="jstep" href="#guided"><span class="n">5 · Oct 16</span><b>Reading together</b><span>Sophia walks you through a page, stopping to ask. Your answers stay out of the page.</span></a>
+    <a class="jstep" href="#revise"><span class="n">6 · Oct 16</span><b>Revising</b><span>A revision appears as tracked changes. Negotiate it down, then accept.</span></a>
+    <a class="jstep" href="#return"><span class="n">7 · Oct 23</span><b>Coming back</b><span>A briefing grounded in saved records. Correct it. Continue, or pick a direction.</span></a>
+    <a class="jstep" href="#experiment"><span class="n">8 · Oct 23</span><b>An experiment</b><span>Sophia proposes code; it runs only in a restricted viewer, and only when you say so.</span></a>
+    <a class="jstep" href="#contents"><span class="n">9 · Nov 4</span><b>Chapters emerge</b><span>With four pages, Sophia proposes grouping two into a chapter. You decide.</span></a>
+    <a class="jstep" href="#goals"><span class="n">10 · Oct 23</span><b>Goals</b><span>Criteria with your attempts, Sophia's dated read, and your take. Sophia suggests a goal; only you add it.</span></a>
+    <a class="jstep" href="#notes"><span class="n">11 · Anytime</span><b>Sophia's notes</b><span>Your words, Sophia's read, your corrections. Correct, show the raw record, or delete.</span></a>
+    <a class="jstep" href="#problems"><span class="n">12 · Anytime</span><b>When things fail</b><span>Engine down, subscription unavailable, a save that fails, a source that can't be read.</span></a>
+  </div>
+
+  <h2 class="sec">Decisions</h2>
+  <div class="decs">
+    <div class="card">
+      <h3>Settled</h3>
+      <ul>
+        <li>The book and the conversation are separate surfaces. Once a notebook has a page, the book takes the middle of the window (PLAN.md §5).</li>
+        <li>Emergent textbook: Sophia may suggest directions, but drafts nothing until you choose.</li>
+        <li>Drafts and revisions appear in the book where they'd go. You accept the exact text; only Accept saves.</li>
+        <li>One conversation per notebook, in dated sessions.</li>
+        <li>Attempts are recorded quietly as notes you can review and delete, and are never put on a page without Accept.</li>
+        <li>Reading together is its own activity.</li>
+        <li>Each notebook has Goals in your words. Progress is evidence from attempts and pages, never a score, and only you add, reword, or close a goal.</li>
+        <li>One record shape for everything learned, with the author stamped by the app and links to evidence that must exist (<a href="#knowledge">how knowledge is kept</a>).</li>
+        <li>Sophia writes notes at the end of a session, not live; your words are kept only if they match the conversation exactly.</li>
+      </ul>
+    </div>
+    <div class="card open">
+      <h3>Proposed here, not yet decided</h3>
+      <ul>
+        <li><b>When a notebook forms.</b> Here, your first question creates one (How LLMs Work has no pages). The alternative is to keep a conversation unfiled until its first accepted page.</li>
+        <li><b>How often Sophia drafts.</b> Here, at a natural pause, with at most one draft waiting. Test this in the CLI experiment.</li>
+        <li><b>How long Undo lasts.</b> Here, until your next message. After that, use the previous version or ask for a revision.</li>
+        <li><b>Goal proposals.</b> Deferred: in this version Sophia suggests a goal in conversation and you add it.</li>
+        <li><b>Chapter proposals.</b> Here, Sophia may propose grouping pages into a chapter; it changes only the contents (screen 9).</li>
+        <li><b>Experiments.</b> Shown here for completeness; PLAN.md adds the restricted viewer only once an inquiry needs one.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== KNOWLEDGE -->
+<section class="screen frame" id="knowledge" hidden>
+<div class="over">
+  <div>
+    <h1>How knowledge is kept</h1>
+  </div>
+  <p class="lead">Everything in a notebook is shared between you and Sophia. You both read the same records, and every record says three things: who wrote it, what it rests on, and who may change it. What a record is about can be anything. Who said it and who decides never vary. That's how the model stays specified but flexible. <a href="../DATA-MODEL.md" style="font-family:var(--sans);font-size:14px">DATA-MODEL.md</a></p>
+
+  <h2 class="sec">Plain-text files in each notebook</h2>
+  <div class="files">
+    <div><code>notebook.json</code><span>Chapters and page order. Changes only when you accept.</span></div>
+    <div><code>pages/*.md</code><span>Accepted pages, as Markdown with their sources. One previous version each.</span></div>
+    <div><code>transcript.jsonl</code><span>The conversation, every proposal, and every decision you made on one.</span></div>
+    <div><code>learning.jsonl</code><span>Goals, Sophia's notes, your takes and corrections, return briefings.</span></div>
+  </div>
+
+  <h2 class="sec">One shape for everything learned</h2>
+  <div class="card" style="gap:12px">
+    <div>Every line in <code>learning.jsonl</code> has the same envelope. The app fills in the parts marked <b>app</b>, so neither you nor Sophia can fake them.</div>
+    <table class="env">
+      <tr><th>Field</th><th>What it says</th><th>Filled in by</th></tr>
+      <tr><td><code>by</code></td><td>Who wrote the text: <b>you</b> or <b>Sophia</b></td><td>app</td></tr>
+      <tr><td><code>id</code> · <code>at</code> · <code>session</code></td><td>Which record, when, and from which session</td><td>app</td></tr>
+      <tr><td><code>kind</code></td><td>What it's about: goal, attempt, read, take, correction, question, next step, briefing… New kinds need no new format.</td><td>writer</td></tr>
+      <tr><td><code>text</code></td><td>The content, in plain language</td><td>writer</td></tr>
+      <tr><td><code>quote</code></td><td>Your exact words, with the conversation entry they came from</td><td>writer · checked word for word by the app</td></tr>
+      <tr><td><code>refs</code></td><td>What it rests on: conversation entries, other records, pages, goal criteria</td><td>writer · each link must exist</td></tr>
+      <tr><td><code>replaces</code></td><td>The record it corrects or updates; this chain is the history</td><td>writer</td></tr>
+    </table>
+  </div>
+
+  <h2 class="sec">The same object, as you see it and as it's stored</h2>
+  <div class="bo">
+    <div class="bo-row">
+      <div class="bo-see">
+        <div class="lbl m">You see · a note</div>
+        <div class="note2" style="margin:0">
+          <div class="k">Attempt · Oct 14 · two joined triangles</div>
+          <div class="yours">"Positive on one triangle, negative on the other, about the same magnitude on all six."</div>
+          <div class="sread"><span class="who-s">Sophia's read</span> Signs right; sizes corrected. <span class="based">based on Oct 14</span></div>
+        </div>
+      </div>
+      <div class="bo-store"><div class="lbl m">Stored · learning.jsonl</div><pre>{"id":"n-31","by":"sophia","kind":"attempt",
+ "quote":{"entry":"t-0412","text":"Positive on one
+   triangle, negative on the other, …"},
+ "text":"Signs right; sizes corrected.",
+ "refs":["t-0412","t-0413","g-1#2"],
+ "session":"s-1","at":"2026-10-14T10:58Z"}</pre></div>
+      <div class="bo-who"><div class="lbl m">Who can change it</div><ul><li>Sophia writes it at the end of the session.</li><li>The app keeps the quote only if those exact words are in your message.</li><li>You correct the read (a new record by you) or delete the note.</li></ul></div>
+    </div>
+    <div class="bo-row">
+      <div class="bo-see">
+        <div class="lbl m">You see · a goal criterion</div>
+        <div class="crit-mini">
+          <div class="what">Predict the vector on a new graph before computing it</div>
+          <div class="ev"><b>Your attempts:</b> Oct 14 · Oct 16</div>
+          <div class="read-s"><span class="who-s">Sophia</span> Partly. <span class="based">based on Oct 14</span> <span class="stale">Newer attempt since</span></div>
+          <div class="read-p"><span class="who-p">Your take</span> "I think I've got the predictions now. The pendant one clicked once I saw the sum had to stay zero."</div>
+        </div>
+      </div>
+      <div class="bo-store"><div class="lbl m">Stored · three records, no score</div><pre>{"id":"g-1b","by":"person","kind":"goal",
+ "status":"working","criteria":[…], …}
+{"id":"n-35","by":"sophia","kind":"read",
+ "text":"Partly: signs right, sizes off.",
+ "refs":["n-31","g-1#2"], …}
+{"id":"n-45","by":"person","kind":"take",
+ "text":"I think I've got the predictions now. The pendant one clicked once I saw the sum had to stay zero.",
+ "refs":["g-1#2"], …}</pre></div>
+      <div class="bo-who"><div class="lbl m">Who can change it</div><ul><li>Only you write goals, criteria, status, and takes. A message becomes a take only when you save it as one.</li><li>Sophia's read must point to your attempts; a read that points only to a page isn't kept.</li><li>"Newer attempt since" is worked out by the app, not stored.</li></ul></div>
+    </div>
+    <div class="bo-row">
+      <div class="bo-see">
+        <div class="lbl m">You see · a draft in the book</div>
+        <div class="banner draft" style="margin:0;width:100%"><span class="grow"><b>Draft page.</b> It isn't in your book until you accept it.</span></div>
+      </div>
+      <div class="bo-store"><div class="lbl m">Stored · transcript.jsonl</div><pre>{"id":"t-0431","role":"tool","proposal":"pr-7",
+ "target":"page","payload":{…},"payload_hash":"9c1e…"}
+{"id":"t-0433","role":"client","decision":"accept",
+ "proposal":"pr-7"}</pre></div>
+      <div class="bo-who"><div class="lbl m">Who can change it</div><ul><li>Sophia proposes; only your Accept saves, and it saves exactly the stored text.</li><li>A revision written against an older page is refused.</li><li>Undo is recorded too, so the draft comes back after a restart.</li></ul></div>
+    </div>
+  </div>
+
+  <h2 class="sec">What Sophia can and can't write</h2>
+  <div class="decs">
+    <div class="card">
+      <h3>Sophia can</h3>
+      <ul>
+        <li>Propose pages and revisions (they wait for you).</li>
+        <li>At the end of a session: note your attempts, read them, raise questions, suggest one next step.</li>
+        <li>When you return: write a briefing that links every claim to its evidence.</li>
+        <li>Suggest a goal in conversation, for you to add if you want it.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>The app won't let Sophia</h3>
+      <ul>
+        <li>Write anything as you, or change your words.</li>
+        <li>Save a page, accept a proposal, or set a goal's status.</li>
+        <li>Keep a note that rests on nothing, or cites something that doesn't exist.</li>
+        <li>Keep a quote that isn't word for word in what you said that session.</li>
+        <li>Record a level, profile, or score of you. A judgment with no evidence behind it can't be stored.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="cardlet">In the command-line experiment there are no screens yet. You add a goal with <code>/goal &lt;text&gt;</code>, correct one of Sophia's records with <code>/correct &lt;record-id&gt; &lt;text&gt;</code>, and print the learning log with each record's id.</div>
+
+  <h2 class="sec">How each of you reads it back</h2>
+  <div class="decs">
+    <div class="card"><h3>You</h3><div>The book for pages; "Not in the book yet" for pending drafts; Goals for criteria, evidence, Sophia's reads and your takes; Notes for attempts and corrections; one next step everywhere. "Show record" on any card shows the raw line.</div></div>
+    <div class="card"><h3>Sophia</h3><div>At the start of each session: your goals, recent notes and corrections, pending proposals, the pages it needs, and its last briefing and next step. Its new briefing must link to those records, so you can follow and correct every claim.</div></div>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 1 LIBRARY -->
+<section class="screen frame" id="library" data-view="populated" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> each notebook is described by what's open in it and what its book holds. First run explains the loop in three lines and asks one question.</div>
+  <div class="states" data-key="view"><span>State</span><button data-val="populated">Returning</button><button data-val="first">First run</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div><div class="tb-title"><span class="t">Sophia</span></div></div>
+  <div class="cols one">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+    <main class="pane">
+      <div class="libmain">
+        <section style="display:flex;flex-direction:column;gap:14px">
+          <h1>What do you want to understand?</h1>
+          <p class="lede">Start with a question, an idea to test, or something to look into. A book forms only as you keep things.</p>
+          <div class="start"><label class="sr" for="startq">Start an inquiry</label><textarea id="startq" rows="3" placeholder="e.g. Is modularity maximisation still a good default for community detection?"></textarea><button class="send" aria-label="Start"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+        </section>
+
+        <section class="steps" data-when="view:first" aria-label="How it works">
+          <div><b>Think it through</b>Ask, argue, or research with Sophia. It explains, questions you back, and reads sources.</div>
+          <div><b>Keep what's useful</b>Sophia drafts pages for your book. You accept, change, or skip each one. Nothing is saved without you.</div>
+          <div><b>Come back</b>Sophia picks up from what was actually saved: the open question, your last attempt, a next step.</div>
+        </section>
+
+        <section data-when="view:populated">
+          <div class="h" style="padding:0 0 4px">Continue</div>
+          <a class="nbrow" href="#return"><span class="nm">Graph Clustering</span><span class="d">Goal: get fluent again with why spectral partitioning works · 1 of 3 done, 1 partly</span><span class="d">Open question: when does thresholding the Fiedler vector at zero give a poor cut?</span><span class="r"><span>1 chapter · 1 page</span><span>1 draft waiting</span><span>Oct 16</span></span></a>
+          <a class="nbrow" href="#research"><span class="nm">How LLMs Work</span><span class="d">Last talked about: multi-query vs grouped-query attention</span><span class="r"><span>No pages</span><span>Oct 12</span></span></a>
+        </section>
+        <section data-when="view:populated">
+          <div class="h" style="padding:0 0 8px">Recently kept</div>
+          <a class="it" href="#page" style="padding-left:0"><svg class="ic" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M3.5 1.5h6l3 3v10h-9z"/></svg><span style="font-family:var(--serif);font-size:16px">Why the Fiedler vector splits a graph</span><span class="count">Graph Clustering · revised Oct 16</span></a>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 2 RESEARCH -->
+<section class="screen frame" id="research" data-phase="answered" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> with no pages, the book is a thin rail and the conversation fills the window. Tool activity is visible while it happens. Sophia asks before fetching from a new site, says what the denial cost, and doesn't propose a page for a quick factual answer.</div>
+  <div class="states" data-key="phase"><span>State</span><button data-val="searching">Searching</button><button data-val="asking">Asking to fetch</button><button data-val="answered">Answered</button><button data-val="stopped">You stopped it</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">How LLMs Work</span><span class="s">No pages yet</span></div>
+  </div>
+  <div class="cols nobook">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+    <div class="rail" aria-label="Book (empty)"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 3h5v10H2zM9 3h5v10H9z"/></svg><span>Book · empty</span></div>
+    <main class="pane chat solo" aria-label="Conversation">
+      <div class="thread">
+        <div class="day">Sunday, Oct 12</div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">What's the actual difference between multi-query and grouped-query attention, and who introduced each?</div></div>
+
+        <div class="msg sophia"><div class="who">Sophia</div>
+          <div class="tools" data-when="phase:searching"><div class="live">
+            <div>✓ Searched: "grouped-query attention multi-query attention"</div>
+            <div>✓ Read arxiv.org/abs/1911.02150</div>
+            <div><span class="spin" aria-hidden="true"></span>Reading arxiv.org/abs/2305.13245…</div>
+          </div></div>
+          <div class="tools" data-when="phase:asking"><div class="live">
+            <div>✓ Searched: "grouped-query attention multi-query attention"</div>
+            <div>✓ Read arxiv.org/abs/1911.02150</div>
+            <div>✓ Read arxiv.org/abs/2305.13245</div>
+            <div><span class="spin" aria-hidden="true"></span>Waiting for you…</div>
+          </div></div>
+          <details class="tools" data-when="phase:answered"><summary>Searched once · read 2 sources · <span class="denied">⊘ 1 fetch you denied</span></summary><ul>
+            <li>Searched: "grouped-query attention multi-query attention"</li>
+            <li>Read arxiv.org/abs/1911.02150</li>
+            <li>Read arxiv.org/abs/2305.13245</li>
+            <li><span class="denied">⊘ Denied by you:</span> blog.example.net/attention/gqa-explained</li>
+          </ul></details>
+          <details class="tools" data-when="phase:stopped"><summary>Searched once · read 1 source · <span class="denied">■ stopped by you</span></summary><ul>
+            <li>Searched: "grouped-query attention multi-query attention"</li>
+            <li>Read arxiv.org/abs/1911.02150</li>
+            <li>Cancelled: reading arxiv.org/abs/2305.13245</li>
+          </ul></details>
+
+          <div class="ask" data-when="phase:asking" role="group" aria-label="Permission request">
+            <div class="q"><b>Sophia wants to read a page on a site you haven't allowed before.</b></div>
+            <code>https://blog.example.net/attention/gqa-explained</code>
+            <div class="q" style="font-size:13px;color:var(--ink2)">Why: "to compare its summary of the benchmark results with the paper's own tables."</div>
+            <div class="row"><button class="btn primary" data-set="phase:answered">Allow once</button><button class="btn" data-set="phase:answered">Deny</button><span class="hint">Allowing lets Sophia read this page. It doesn't add anything to your notebook.</span></div>
+          </div>
+
+          <div class="prose" data-when="phase:searching,stopped">
+            <p>Both shrink the key/value side of attention, which cuts the size of the KV cache and the memory bandwidth needed while decoding. They differ in how far they shrink it. Multi-query, introduced by Noam Shazeer in 2019, has all query heads share a single key/value head<span class="caret" data-when="phase:searching" aria-hidden="true"></span></p>
+          </div>
+          <div class="stopped" data-when="phase:stopped">You stopped this response. The read in progress was cancelled, and nothing was fetched after that. What's above is incomplete and hasn't been checked against the GQA paper.</div>
+
+          <div class="prose" data-when="phase:answered">
+            <p>Both shrink the key/value side of attention, which cuts the size of the KV cache and the memory bandwidth needed while decoding. They differ in how far they shrink it.</p>
+            <ul>
+              <li><b>Multi-head</b> (the baseline): <i>H</i> query heads, each with its own key and value head.</li>
+              <li><b>Multi-query</b>: all <i>H</i> query heads share one key/value head. Introduced by Noam Shazeer (2019).</li>
+              <li><b>Grouped-query</b>: query heads are split into <i>G</i> groups that each share one key/value head. <i>G</i> = <i>H</i> is multi-head and <i>G</i> = 1 is multi-query. Introduced by Ainslie et al. (2023), who also show how to convert an existing multi-head checkpoint with a small amount of extra training.</li>
+            </ul>
+            <p>Per layer, with the same head size, the KV cache scales with the number of key/value heads: <i>H</i> : <i>G</i> : 1.</p>
+            <p>On quality, the GQA paper reports results close to multi-head at speeds close to multi-query. I'm going on its abstract; I haven't checked the tables in detail, and you declined the blog that summarised them, so nothing here relies on it.</p>
+          </div>
+          <div class="cardlet" data-when="phase:answered">
+            <div class="lbl m" style="margin-bottom:4px">Sources</div>
+            <div>N. Shazeer, "Fast Transformer Decoding: One Write-Head is All You Need," arXiv:1911.02150, 2019. <span class="inspected">Abstract and method read.</span></div>
+            <div style="margin-top:4px">J. Ainslie et al., "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints," EMNLP 2023, arXiv:2305.13245. <span class="inspected">Abstract read;</span> <span class="unchecked">tables not checked.</span></div>
+          </div>
+        </div>
+        <div class="msg you" data-when="phase:answered"><div class="who">You</div><div class="bubble">Great, that's all I needed.</div></div>
+      </div>
+      <div class="composer">
+        <div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Ask, answer, or push back…"></textarea>
+          <button class="send" aria-label="Send" data-when="phase:answered,stopped,asking"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button>
+          <button class="stop" data-when="phase:searching" data-set="phase:stopped"><svg aria-hidden="true" width="11" height="11" viewBox="0 0 12 12"><rect x="1" y="1" width="10" height="10" rx="2" fill="currentColor"/></svg>Stop</button>
+        </div>
+        <div class="sees" data-when="phase:searching">Sophia is responding. Stop ends the turn and any read in progress.</div>
+        <div class="sees" data-when="phase:answered,stopped,asking">Sophia can see this conversation. It can search and read the web; it can't touch your files.</div>
+      </div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 3 FIRST PAGE -->
+<section class="screen frame" id="first" data-state="pending" data-rev="1" data-chap="spectral" hidden>
+<div class="brief">
+  <div class="what"><b>Try it:</b> use the buttons under the draft, change its chapter, or push back. The draft sits in the book where it would go, so you accept the exact text. The conversation only points to it. <b>Look at:</b> Sophia's figures, the "Noted" captions on your attempts, and Sophia disagreeing with you.</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="states" data-key="state"><span>Draft</span><button data-val="pending">Waiting for you</button><button data-val="undone">Undone after Accept</button><button data-val="accepted">Accepted</button><button data-val="deferred">Not now</button><button data-val="rejected">Discarded</button></div>
+    <div class="states" data-key="rev"><span>Text</span><button data-val="1">As first drafted</button><button data-val="2">After you pushed back</button></div>
+  </div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s" data-when="state:pending,undone">Draft: Why the Fiedler vector splits a graph</span><span class="s" data-when="state:accepted">Why the Fiedler vector splits a graph</span><span class="s" data-when="state:deferred,rejected">No pages yet</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb">Graph Clustering<span data-when="chap:spectral"> › Spectral methods</span></span></div>
+
+      <div class="banner draft" data-when="state:pending;rev:1"><span class="grow"><b>Draft page.</b> Sophia proposed this from today's conversation. It isn't in your book until you accept it.</span></div>
+      <div class="banner draft" data-when="state:pending;rev:2"><span class="grow"><b>Draft page · revision 2.</b> Changes from revision 1 are marked. It isn't in your book until you accept it.</span></div>
+      <div class="banner gone" data-when="state:undone"><span class="grow"><b>Undone.</b> The page was taken out of your book and is a draft again, under Not in the book yet.</span></div>
+      <div class="banner saved" data-when="state:accepted"><span class="grow"><b>✓ Saved to your book</b> · Oct 14 · Graph Clustering<span data-when="chap:spectral"> › Spectral methods</span></span><button class="linkbtn" data-set="state:undone">Undo</button><span class="hint">until your next message</span></div>
+      <div class="banner gone" data-when="state:deferred"><span class="grow"><b>Set aside.</b> It's under Not in the book yet in the sidebar. Sophia will mention it when you come back and won't add it without you.</span><button class="linkbtn" data-set="state:pending">Undo</button></div>
+      <div class="banner gone" data-when="state:rejected"><span class="grow"><b>Discarded.</b> Nothing was saved. The conversation still has everything you discussed.</span><button class="linkbtn" data-set="state:pending">Undo</button></div>
+
+      <article class="page" id="f-art" data-when="state:pending,undone,accepted">
+        <h1>Why the Fiedler vector splits a graph</h1>
+        <div class="meta" data-when="state:accepted"><span>Accepted Oct 14</span></div>
+        <h2><span class="edit-affordance" title="Edit this section" aria-label="Edit this section">✎</span>The quadratic form</h2>
+        <p data-when="rev:1">For a graph with adjacency matrix <i>A</i> and degree matrix <i>D</i>, the Laplacian is <i>L</i> = <i>D</i> − <i>A</i>. For any assignment of values <i>x</i> to the vertices:</p>
+        <p data-when="rev:2;state:pending,undone"><del>For a graph with adjacency matrix <i>A</i> and degree matrix <i>D</i>, the Laplacian is <i>L</i> = <i>D</i> − <i>A</i>. For any assignment of values <i>x</i> to the vertices:</del> <ins>For any assignment of values <i>x</i> to the vertices:</ins></p>
+        <p data-when="rev:2;state:accepted">For any assignment of values <i>x</i> to the vertices:</p>
+        <div class="eq"><i>x</i><sup>⊤</sup><i>Lx</i> = Σ<sub>(<i>i</i>,<i>j</i>)∈<i>E</i></sub> (<i>x<sub>i</sub></i> − <i>x<sub>j</sub></i>)<sup>2</sup></div>
+        <p>It's small when neighbours get similar values. The constant vector scores zero and carries no information, so we look for the smoothest assignment that isn't constant: minimise <i>x</i><sup>⊤</sup><i>Lx</i> with <i>x</i> ⊥ <b>1</b> and ‖<i>x</i>‖ = 1. The minimiser is the second eigenvector of <i>L</i>, the Fiedler vector.</p>
+        <h2>Relaxing the cut</h2>
+        <p>If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides. Dropping the ±1 constraint gives the Fiedler vector as the best real-valued relaxation of this balanced cut (RatioCut), not of the minimum cut. Its signs give a partition.</p>
+        <h2>Worked example: two joined triangles</h2>
+        <figure>
+          <svg width="380" height="150" viewBox="-40 0 380 150" role="img" aria-label="Two triangles joined by one edge, with Fiedler vector values">
+            <g stroke="#9AA3B5" stroke-width="1.5"><line x1="40" y1="30" x2="40" y2="110"/><line x1="40" y1="30" x2="110" y2="70"/><line x1="40" y1="110" x2="110" y2="70"/><line x1="190" y1="70" x2="260" y2="30"/><line x1="190" y1="70" x2="260" y2="110"/><line x1="260" y1="30" x2="260" y2="110"/><line x1="110" y1="70" x2="190" y2="70" stroke="#2F4FB3" stroke-width="2.5"/></g>
+            <g stroke="#1C1D21" stroke-width="1"><circle cx="40" cy="30" r="13" fill="#2F4FB3"/><circle cx="40" cy="110" r="13" fill="#2F4FB3"/><circle cx="110" cy="70" r="10" fill="#8FA2DD"/><circle cx="190" cy="70" r="10" fill="#F6C99A"/><circle cx="260" cy="30" r="13" fill="#E08A3C"/><circle cx="260" cy="110" r="13" fill="#E08A3C"/></g>
+            <g font-family="-apple-system,system-ui,sans-serif" font-size="11" fill="#3C4048"><text x="18" y="34" text-anchor="end">+0.46</text><text x="18" y="114" text-anchor="end">+0.46</text><text x="110" y="98" text-anchor="middle">+0.26</text><text x="190" y="98" text-anchor="middle">−0.26</text><text x="282" y="34">−0.46</text><text x="282" y="114">−0.46</text></g>
+          </svg>
+          <span>Fiedler vector of two triangles joined by one edge (blue). λ<sub>2</sub> ≈ 0.44.</span>
+        </figure>
+        <p>Vertices 1–3 and 4–6 form triangles, and one edge joins 3 and 4. The Fiedler vector is positive on one triangle and negative on the other. The bridge endpoints sit nearer zero than the outer vertices: shrinking them lowers the cost of the one cut edge more than it raises the cost inside the triangles.</p>
+        <div class="words">
+          <div class="lbl">In your words · Oct 14</div>
+          <div><b>Prediction:</b> "Positive on one triangle, negative on the other, about the same magnitude on all six."</div>
+          <div><b>Explanation:</b> "The bridge is the only edge across the cut. Shrinking both endpoints toward zero lowers (<i>x</i><sub>3</sub> − <i>x</i><sub>4</sub>)<sup>2</sup> by more than it costs inside the triangles."</div>
+        </div>
+        <h2>Open question</h2>
+        <p>When does thresholding at zero give a poor cut, and what do sweep cuts fix?</p>
+        <div class="src">
+          <div class="lbl m">Source</div>
+          <div>U. von Luxburg, "A Tutorial on Spectral Clustering," <i>Statistics and Computing</i> 17 (2007).</div>
+          <div class="box"><div><b>Location:</b> §5.1, "Approximating RatioCut for k = 2"</div><div><b>Sophia's summary of the passage:</b> the cut indicator is relaxed to real values, and the solution is the second eigenvector of <i>L</i>.</div><div class="inspected">✓ Read by Sophia, Oct 14</div></div>
+        </div>
+      </article>
+
+      <div class="actionbar" data-when="state:pending,undone">
+        <button class="btn primary" data-set="state:accepted">Accept page</button>
+        <button class="btn" data-set="state:deferred">Not now</button>
+        <button class="btn" data-set="state:rejected">Discard</button>
+        <label class="field">Chapter
+          <select data-bind="chap"><option value="spectral">Spectral methods (new)</option><option value="none">No chapter</option></select>
+        </label>
+        <span class="hint" style="flex-basis:100%">Or reply in the conversation to change it. Nothing is saved until you accept.</span>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Graph Clustering</span></div>
+      <div class="thread">
+        <div class="day">Tuesday, Oct 14</div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">Why does the second eigenvector of the graph Laplacian split a graph into two clusters? I used to know this cold.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+          <p>Start from what <i>L</i> = <i>D</i> − <i>A</i> measures. For any assignment <i>x</i> of numbers to vertices, <i>x</i><sup>⊤</sup><i>Lx</i> = Σ (<i>x<sub>i</sub></i> − <i>x<sub>j</sub></i>)<sup>2</sup> over the edges. It's small when neighbours agree.</p>
+          <p>The constant vector scores zero and tells you nothing, so ask for the smoothest assignment that <em>isn't</em> constant: minimise it with <i>x</i> ⊥ <b>1</b>. That's the Fiedler vector.</p>
+          <p>Why does that relate to cutting? If <i>x</i> could only be ±1, each cut edge would add 4 and every other edge 0. The Fiedler vector is the real-valued relaxation of that, and its signs give a partition.</p>
+        </div>
+          <figure>
+            <svg width="260" height="120" viewBox="20 10 260 120" role="img" aria-label="Two triangles, vertices 1 2 3 and 4 5 6, joined by an edge between 3 and 4">
+              <g stroke="#8A8F99" stroke-width="1.6"><line x1="40" y1="30" x2="40" y2="110"/><line x1="40" y1="30" x2="110" y2="70"/><line x1="40" y1="110" x2="110" y2="70"/><line x1="110" y1="70" x2="190" y2="70"/><line x1="190" y1="70" x2="260" y2="30"/><line x1="190" y1="70" x2="260" y2="110"/><line x1="260" y1="30" x2="260" y2="110"/></g>
+              <g fill="#fff" stroke="#1C1D21" stroke-width="1.3"><circle cx="40" cy="30" r="12"/><circle cx="40" cy="110" r="12"/><circle cx="110" cy="70" r="12"/><circle cx="190" cy="70" r="12"/><circle cx="260" cy="30" r="12"/><circle cx="260" cy="110" r="12"/></g>
+              <g font-family="-apple-system,system-ui,sans-serif" font-size="11" text-anchor="middle" fill="#1C1D21"><text x="40" y="34">1</text><text x="40" y="114">2</text><text x="110" y="74">3</text><text x="190" y="74">4</text><text x="260" y="34">5</text><text x="260" y="114">6</text></g>
+            </svg>
+          </figure>
+          <div class="prose"><p>A quick prediction, if you'd like one: for these two triangles joined by one edge, roughly what does the Fiedler vector look like? <span style="font-family:var(--sans);font-size:12.5px;color:var(--muted)">(Or just say "tell me".)</span></p></div>
+        </div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">Positive on one triangle, negative on the other, about the same magnitude on all six.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+          <p>The signs are right. The magnitudes aren't quite: vertices 3 and 4 sit closer to zero. Normalised, the outer vertices are about ±0.46 and the bridge endpoints about ±0.26, with λ<sub>2</sub> ≈ 0.44.</p>
+          <p>Why would 3 and 4 be pulled toward zero? Think about which term of the sum they're paying for.</p>
+        </div></div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">The bridge is the only edge across the cut. Shrinking both endpoints toward zero lowers (x₃ − x₄)² by more than it costs inside the triangles.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Exactly. A hard ±1 split pays the full cost of the cut edge; the real-valued vector softens it near the boundary.</p></div></div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">So thresholding the Fiedler vector at zero always gives you the minimum cut.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+          <p>I don't think so, for two reasons. The relaxation targets RatioCut, which divides by the size of each side. A plain minimum cut ignores balance and would often just slice off one vertex.</p>
+          <p>And even for RatioCut, rounding the real values at zero can land on a worse cut than another threshold would. Sweep cuts try every threshold. Shall we leave that as the open question?</p>
+        </div></div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">Yes. And I'd like to keep what we have.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>I've drafted a page in the book. It quotes your prediction and explanation word for word and cites von Luxburg §5.1, which I read.</p></div>
+          <a class="pointer" href="#first" data-scroll="#f-art" data-when="rev:1;state:pending,undone"><b>Draft page · in the book</b>Why the Fiedler vector splits a graph<span class="go">Show in book →</span></a>
+          <div class="pointer saved" data-when="rev:1;state:accepted"><b>✓ Saved</b>Why the Fiedler vector splits a graph</div>
+          <div class="pointer gone" data-when="rev:1;state:deferred"><b>Set aside</b>Why the Fiedler vector splits a graph · not in the book yet</div>
+          <div class="pointer gone" data-when="rev:1;state:rejected"><b>Discarded</b>Why the Fiedler vector splits a graph</div>
+          <details class="old" data-when="rev:2"><summary>Revision 1 · replaced by revision 2</summary><div>Opened with the formal definition of the Laplacian before the quadratic form.</div></details>
+        </div>
+        <div class="msg you" data-when="rev:2"><div class="who">You</div><div class="bubble">Drop the definition at the top. I know what a Laplacian is. Keep the rest.</div></div>
+        <div class="msg sophia" data-when="rev:2"><div class="who">Sophia</div><div class="prose"><p>Done. Revision 2 is in the book with the change marked. Nothing else moved.</p></div>
+          <a class="pointer" href="#first" data-scroll="#f-art" data-when="state:pending,undone"><b>Draft page · revision 2 · in the book</b>Why the Fiedler vector splits a graph<span class="go">Show in book →</span></a>
+          <div class="pointer saved" data-when="state:accepted"><b>✓ Saved</b>Why the Fiedler vector splits a graph</div>
+          <div class="pointer gone" data-when="state:deferred"><b>Set aside</b>Why the Fiedler vector splits a graph · not in the book yet</div>
+          <div class="pointer gone" data-when="state:rejected"><b>Discarded</b>Why the Fiedler vector splits a graph</div>
+        </div>
+        <div class="checkline">Session ended · Sophia noted 2 attempts and 1 open question · <a href="#notes">Review</a></div>
+      </div>
+      <div class="composer">
+        <a class="chip" href="#first" data-scroll="#f-art" data-when="state:pending,undone">1 draft waiting for you in the book</a>
+        <div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Ask, answer, or push back on the draft…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+      </div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 4 READING A PAGE -->
+<section class="screen frame" id="page" data-mode="reading" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> the book on its own, with the conversation hidden. Selecting text offers "Ask Sophia about this," which opens the conversation with the passage quoted. The page itself never changes from a question. The previous version is kept and can be compared or restored.</div>
+  <div class="states" data-key="mode"><span>State</span><button data-val="reading">Reading</button><button data-val="selected">Text selected</button><button data-val="asked">Asked about it</button><button data-val="previous">Previous version</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Spectral methods › Why the Fiedler vector splits a graph</span></div>
+    <button class="tbtn" data-pressed="mode:asked" data-set="mode:asked"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb">Graph Clustering › Spectral methods</span>
+        <span class="seg" role="group" aria-label="Version"><button data-pressed="mode:reading,selected,asked" data-set="mode:reading">Current</button><button data-pressed="mode:previous" data-set="mode:previous">Compare with previous</button></span>
+      </div>
+
+      <article class="page" data-when="mode:reading,selected,asked">
+        <h1>Why the Fiedler vector splits a graph</h1>
+        <div class="meta"><span>Accepted Oct 14 · revised Oct 16</span><button class="linkbtn" style="font-size:12.5px" data-set="mode:previous">Previous version</button></div>
+        <h2><span class="edit-affordance" title="Edit this section" aria-label="Edit this section">✎</span>The quadratic form</h2>
+        <p>For any assignment of values <i>x</i> to the vertices:</p>
+        <div class="eq"><i>x</i><sup>⊤</sup><i>Lx</i> = Σ<sub>(<i>i</i>,<i>j</i>)∈<i>E</i></sub> (<i>x<sub>i</sub></i> − <i>x<sub>j</sub></i>)<sup>2</sup></div>
+        <p>It's small when neighbours get similar values. The constant vector scores zero and carries no information, so we look for the smoothest assignment that isn't constant: minimise <i>x</i><sup>⊤</sup><i>Lx</i> with <i>x</i> ⊥ <b>1</b> and ‖<i>x</i>‖ = 1. The minimiser is the second eigenvector of <i>L</i>, the Fiedler vector.</p>
+        <h2>Relaxing the cut</h2>
+        <p>If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides. Dropping the ±1 constraint gives the Fiedler vector as the best real-valued relaxation of this balanced cut (RatioCut), not of the minimum cut. Its signs give a partition. <span data-when="mode:reading">For ±1 vectors, orthogonality to <b>1</b> means exactly equal sides; for real-valued vectors it's only a soft push, since a few large values can offset many small ones.</span><span class="sel-text" data-when="mode:selected">For ±1 vectors, orthogonality to <b>1</b> means exactly equal sides; for real-valued vectors it's only a soft push, since a few large values can offset many small ones.</span><span class="hl" data-when="mode:asked">For ±1 vectors, orthogonality to <b>1</b> means exactly equal sides; for real-valued vectors it's only a soft push, since a few large values can offset many small ones.</span><a class="qmk" href="#page" data-when="mode:asked" data-set="mode:asked">asked</a></p>
+        <div class="popover" role="toolbar" aria-label="Selection" data-when="mode:selected" style="margin:-4px 0 0 180px"><button data-set="mode:asked">Ask Sophia about this</button><button>Copy</button></div>
+        <h2>Worked example: two joined triangles</h2>
+        <p>Vertices 1–3 and 4–6 form triangles, and one edge joins 3 and 4. The Fiedler vector is positive on one triangle (about +0.46 outside, +0.26 at the bridge) and negative on the other, with λ<sub>2</sub> ≈ 0.44.</p>
+        <div class="words">
+          <div class="lbl">In your words · Oct 14</div>
+          <div><b>Prediction:</b> "Positive on one triangle, negative on the other, about the same magnitude on all six."</div>
+          <div><b>Explanation:</b> "The bridge is the only edge across the cut. Shrinking both endpoints toward zero lowers (<i>x</i><sub>3</sub> − <i>x</i><sub>4</sub>)<sup>2</sup> by more than it costs inside the triangles."</div>
+        </div>
+        <h2>Open question</h2>
+        <p>When does thresholding at zero give a poor cut, and what do sweep cuts fix?</p>
+        <div class="src">
+          <div class="lbl m">Source</div>
+          <div>U. von Luxburg, "A Tutorial on Spectral Clustering," <i>Statistics and Computing</i> 17 (2007).</div>
+          <div class="box"><div><b>Location:</b> §5.1, "Approximating RatioCut for k = 2"</div><div><b>Sophia's summary of the passage:</b> the cut indicator is relaxed to real values, and the solution is the second eigenvector of <i>L</i>.</div><div class="inspected">✓ Read by Sophia, Oct 14</div></div>
+        </div>
+      </article>
+
+      <div data-when="mode:previous" style="display:flex;flex-direction:column;flex:1">
+        <div class="banner gone" style="margin-bottom:16px"><span class="grow">Comparing the version accepted on <b>Oct 14</b> with the current one from <b>Oct 16</b>. Only one previous version is kept.</span><button class="btn sm">Restore Oct 14 version</button></div>
+        <div class="diffcols">
+          <div><div class="colhead">Previous · accepted Oct 14</div>
+            <article class="page">
+              <h1>Why the Fiedler vector splits a graph</h1>
+              <h2>Relaxing the cut</h2>
+              <p>If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides. Dropping the ±1 constraint gives the Fiedler vector as the best real-valued relaxation of this balanced cut (RatioCut), not of the minimum cut. Its signs give a partition.</p>
+              <p style="font-family:var(--sans);font-size:12.5px;color:var(--muted)">Other sections are identical.</p>
+            </article>
+          </div>
+          <div><div class="colhead">Current · revised Oct 16 <span class="badge ok">1 sentence added</span></div>
+            <article class="page">
+              <h1>Why the Fiedler vector splits a graph</h1>
+              <h2>Relaxing the cut</h2>
+              <p>If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides. Dropping the ±1 constraint gives the Fiedler vector as the best real-valued relaxation of this balanced cut (RatioCut), not of the minimum cut. Its signs give a partition. <ins>For ±1 vectors, orthogonality to <b>1</b> means exactly equal sides; for real-valued vectors it's only a soft push, since a few large values can offset many small ones.</ins></p>
+              <p style="font-family:var(--sans);font-size:12.5px;color:var(--muted)">Revised from the Oct 16 reading session. <a href="#revise">See the conversation</a></p>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation" data-when="mode:asked">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">About a passage on this page</span></div>
+      <div class="thread">
+        <a class="earlier" href="#revise">Earlier today: revising this page</a>
+        <div class="msg you"><div class="who">You</div>
+          <div class="quote">"…for real-valued vectors it's only a soft push, since a few large values can offset many small ones."</div>
+          <div class="bubble">What does that look like concretely?</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+          <p>Take four vertices and <i>x</i> = (3, −1, −1, −1). It sums to zero, so <i>x</i> ⊥ <b>1</b>, yet the sign split is one vertex against three.</p>
+          <p>With ±1 values that can't happen: summing to zero forces two against two. Real values let one large entry balance several small ones, so orthogonality alone doesn't guarantee balanced sides.</p>
+          <p>Want to try it on the triangles? If one triangle were bigger, which way would you expect the zero crossing to move?</p>
+        </div></div>
+      </div>
+      <div class="composer"><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Answer, or ask about another passage…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 5 READING TOGETHER -->
+<section class="screen frame" id="guided" data-stop="1" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> the conversation guiding you through a saved page. Its stops are numbered in the book's margin and the current passage is highlighted. Your answers stay in the conversation and Sophia's notes; the page doesn't change. At the end, Sophia offers what might be worth keeping, and you choose.</div>
+  <div class="states" data-key="stop"><span>Progress</span><button data-val="1">Stop 1</button><button data-val="2">Stop 2</button><button data-val="done">Finished</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Reading together · Why the Fiedler vector splits a graph</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb">Graph Clustering › Spectral methods</span><span>Reading together · <span data-when="stop:1">stop 1 of 2</span><span data-when="stop:2">stop 2 of 2</span><span data-when="stop:done">finished</span></span></div>
+      <article class="page">
+        <h1>Why the Fiedler vector splits a graph</h1>
+        <div class="meta"><span>Accepted Oct 14</span></div>
+        <h2><span class="edit-affordance" title="Edit this section" aria-label="Edit this section">✎</span>The quadratic form</h2>
+        <p>For any assignment of values <i>x</i> to the vertices, <i>x</i><sup>⊤</sup><i>Lx</i> = Σ<sub>(<i>i</i>,<i>j</i>)∈<i>E</i></sub> (<i>x<sub>i</sub></i> − <i>x<sub>j</sub></i>)<sup>2</sup>. It's small when neighbours get similar values. The constant vector scores zero and carries no information, so we minimise <i>x</i><sup>⊤</sup><i>Lx</i> with <i>x</i> ⊥ <b>1</b> and ‖<i>x</i>‖ = 1. The minimiser is the Fiedler vector.</p>
+        <h2>Relaxing the cut</h2>
+        <p><a class="mk" href="#guided" data-scroll="#g1" data-when="stop:1">1</a><a class="mk done" href="#guided" data-scroll="#g1" data-when="stop:2,done">1</a><span data-when="stop:1" class="hl">If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides.</span><span data-when="stop:2,done">If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides.</span> Dropping the ±1 constraint gives the Fiedler vector as the best real-valued relaxation of this balanced cut (RatioCut), not of the minimum cut. Its signs give a partition.</p>
+        <h2>Worked example: two joined triangles</h2>
+        <p><a class="mk" href="#guided" data-scroll="#g2" data-when="stop:2">2</a><a class="mk done" href="#guided" data-scroll="#g2" data-when="stop:done">2</a><span data-when="stop:2" class="hl">Vertices 1–3 and 4–6 form triangles, and one edge joins 3 and 4. The Fiedler vector is positive on one triangle and negative on the other. The bridge endpoints sit nearer zero than the outer vertices.</span><span data-when="stop:1,done">Vertices 1–3 and 4–6 form triangles, and one edge joins 3 and 4. The Fiedler vector is positive on one triangle and negative on the other. The bridge endpoints sit nearer zero than the outer vertices.</span></p>
+        <div class="words">
+          <div class="lbl">In your words · Oct 14</div>
+          <div><b>Prediction:</b> "Positive on one triangle, negative on the other, about the same magnitude on all six."</div>
+          <div><b>Explanation:</b> "The bridge is the only edge across the cut. Shrinking both endpoints toward zero lowers (<i>x</i><sub>3</sub> − <i>x</i><sub>4</sub>)<sup>2</sup> by more than it costs inside the triangles."</div>
+        </div>
+        <h2>Open question</h2>
+        <p>When does thresholding at zero give a poor cut, and what do sweep cuts fix?</p>
+      </article>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Reading: Why the Fiedler vector…</span></div>
+      <div class="thread">
+        <a class="earlier" href="#first">Show Oct 14</a>
+        <div class="day">Thursday, Oct 16</div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">Can we read the page together? I want to check it holds up.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>Sure. I'll stop in two places and ask you something. Skip either one if you like.</p></div></div>
+        <div class="msg sophia" id="g1"><a class="anchor" href="#guided" data-scroll="#g1"><span class="mk" style="width:16px;height:16px;font-size:10px">1</span>Relaxing the cut</a><div class="prose"><p>Why does requiring <i>x</i> ⊥ <b>1</b> push toward balanced sides? Try it before reading on.</p></div></div>
+        <div class="msg you" data-when="stop:2,done"><div class="who">You</div><div class="bubble">If x is ±1 and sums to zero, both sides have the same number of vertices. So orthogonality to 1 is the balance constraint.</div></div>
+        <div class="msg sophia" data-when="stop:2,done"><div class="who">Sophia</div><div class="prose"><p>Exactly right for ±1. Once <i>x</i> is real-valued it's only a soft push: a few large values can offset many small ones. That's part of why rounding can go wrong, which is your open question.</p></div></div>
+        <div class="msg sophia" id="g2" data-when="stop:2,done"><a class="anchor" href="#guided" data-scroll="#g2"><span class="mk" style="width:16px;height:16px;font-size:10px">2</span>Worked example</a><div class="prose"><p>Suppose a seventh vertex hangs off vertex 1 by a single edge. What happens to the value at vertex 1, and at the new vertex?</p></div></div>
+        <div class="msg you" data-when="stop:done"><div class="who">You</div><div class="bubble">The new vertex only has one edge to pay for, so it should be the most extreme value. Vertex 1 gets pulled toward it.</div></div>
+        <div class="msg sophia" data-when="stop:done"><div class="who">Sophia</div><div class="prose">
+          <p>The first half is right: the new vertex gets the largest value, about +0.52. But vertex 1 moves the other way, from +0.46 down to about +0.34. The left side now has four vertices, and the vector still has to sum to zero, so most of its values shrink to make room. λ<sub>2</sub> drops from 0.44 to about 0.34. The split itself stays between the triangles.</p>
+          <p>That's both stops. Two things came up that might be worth keeping:</p>
+          <ul><li>a sentence on the page saying balance is only a soft push for real values;</li><li>a short separate page on choosing a threshold.</li></ul>
+          <p>Either, both, or neither?</p>
+        </div></div>
+        <div class="msg you" data-when="stop:done"><div class="who">You</div><div class="bubble">Yes, add something about the soft push. Leave the threshold page for now.</div></div>
+        <div class="msg sophia" data-when="stop:done"><div class="who">Sophia</div><div class="prose"><p>I've proposed a revision, and I drafted the threshold page and set it aside so it's there when you want it.</p></div>
+          <a class="pointer" href="#revise"><b>Revision · in the book</b>Why the Fiedler vector splits a graph<span class="go">Review the changes →</span></a>
+          <div class="pointer gone"><b>Set aside</b>Choosing a threshold · not in the book yet</div>
+        </div>
+        <div class="checkline" data-when="stop:done">Session ended · Sophia noted 2 attempts · <a href="#notes">Review</a>
+          <details class="notkept"><summary>1 note not kept</summary><div>"You have a strong intuition for spectral methods." It pointed to nothing you said or did, so it wasn't saved.</div></details></div>
+      </div>
+      <div class="composer"><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Answer, skip, or ask about any passage…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+        <div class="sees" data-when="stop:1,2"><button class="linkbtn" style="font-size:11.5px" data-set="stop:done">Stop reading together</button></div>
+      </div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 6 REVISING -->
+<section class="screen frame" id="revise" data-rev="1" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> a revision is a proposal too. It appears in the book as tracked changes against the saved page. Pushing back replaces it; the earlier revision collapses in the conversation. Accepting keeps the old version for comparison and undo.</div>
+  <div class="states" data-key="rev"><span>State</span><button data-val="1">Revision 1</button><button data-val="2">After you pushed back</button><button data-val="stale">Page changed</button><button data-val="accepted">Accepted</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Why the Fiedler vector splits a graph</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb">Graph Clustering › Spectral methods</span><span data-when="rev:1,2">Showing proposed changes</span></div>
+      <div class="banner draft" data-when="rev:1"><span class="grow"><b>Proposed revision 1.</b> Adds a section, "Balance is a soft constraint." Nothing else changes.</span></div>
+      <div class="banner bad" data-when="rev:stale"><span class="grow"><b>This revision can't be applied.</b> It was written against the Oct 14 version, and the page has changed since. Nothing was overwritten.</span><button class="btn sm">Ask Sophia to redo it</button></div>
+      <div class="banner draft" data-when="rev:2"><span class="grow"><b>Proposed revision 2.</b> Adds one sentence to "Relaxing the cut." Nothing else changes.</span></div>
+      <div class="banner saved" data-when="rev:accepted"><span class="grow"><b>✓ Revision saved</b> · Oct 16 · The Oct 14 version is kept as the previous version.</span><a class="linkbtn" href="#page">Compare</a><button class="linkbtn" data-set="rev:2">Undo</button></div>
+      <article class="page">
+        <h1>Why the Fiedler vector splits a graph</h1>
+        <div class="meta"><span>Accepted Oct 14</span><span data-when="rev:accepted">· revised Oct 16</span></div>
+        <h2>The quadratic form</h2>
+        <p>For any assignment of values <i>x</i> to the vertices, <i>x</i><sup>⊤</sup><i>Lx</i> = Σ<sub>(<i>i</i>,<i>j</i>)∈<i>E</i></sub> (<i>x<sub>i</sub></i> − <i>x<sub>j</sub></i>)<sup>2</sup>. It's small when neighbours get similar values. The constant vector scores zero and carries no information, so we minimise <i>x</i><sup>⊤</sup><i>Lx</i> with <i>x</i> ⊥ <b>1</b> and ‖<i>x</i>‖ = 1. The minimiser is the Fiedler vector.</p>
+        <h2>Relaxing the cut</h2>
+        <p>If <i>x</i> ∈ {±1}<sup><i>n</i></sup>, each cut edge contributes 4 and every other edge contributes 0, so <i>x</i><sup>⊤</sup><i>Lx</i> = 4 × edges cut. Requiring <i>x</i> ⊥ <b>1</b> pushes toward balanced sides. Dropping the ±1 constraint gives the Fiedler vector as the best real-valued relaxation of this balanced cut (RatioCut), not of the minimum cut. Its signs give a partition.<span data-when="rev:2,stale"> <ins>For ±1 vectors, orthogonality to <b>1</b> means exactly equal sides; for real-valued vectors it's only a soft push, since a few large values can offset many small ones.</ins></span><span data-when="rev:accepted"> For ±1 vectors, orthogonality to <b>1</b> means exactly equal sides; for real-valued vectors it's only a soft push, since a few large values can offset many small ones.</span></p>
+        <div data-when="rev:1" style="display:flex;flex-direction:column;gap:16px">
+          <h2><ins>Balance is a soft constraint</ins></h2>
+          <p><ins>For <i>x</i> ∈ {±1}<sup><i>n</i></sup>, Σ<i>x<sub>i</sub></i> = 0 holds exactly when the two sides have the same number of vertices, so orthogonality to <b>1</b> is the balance constraint.</ins></p>
+          <p><ins>For real-valued <i>x</i> it is weaker. Take four vertices and <i>x</i> = (3, −1, −1, −1): it sums to zero, yet its signs split one vertex against three. A few large values can offset many small ones, so the relaxed problem can favour lopsided sign patterns that the ±1 problem would rule out.</ins></p>
+          <p><ins>This is one reason the zero threshold can give a poor cut. See the open question below.</ins></p>
+        </div>
+        <h2>Worked example: two joined triangles</h2>
+        <p>Vertices 1–3 and 4–6 form triangles, and one edge joins 3 and 4. The Fiedler vector is positive on one triangle and negative on the other. The bridge endpoints sit nearer zero than the outer vertices.</p>
+        <p style="font-family:var(--sans);font-size:12.5px;color:var(--muted)">The rest of the page is unchanged.</p>
+      </article>
+      <div class="actionbar" data-when="rev:1,2,stale">
+        <button class="btn primary" data-set="rev:accepted" data-when="rev:1,2">Accept revision</button>
+        <button class="btn primary" disabled style="opacity:.45" data-when="rev:stale">Accept revision</button>
+        <button class="btn">Not now</button>
+        <button class="btn">Discard</button>
+        <span class="field">The current version is kept for undo</span>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Reading: Why the Fiedler vector…</span></div>
+      <div class="thread">
+        <a class="earlier" href="#guided">Earlier: reading together</a>
+        <div class="msg you"><div class="who">You</div><div class="bubble">Yes, add something about the soft push. Leave the threshold page for now.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose"><p>I've proposed a revision, and I drafted the threshold page and set it aside so it's there when you want it.</p></div>
+          <a class="pointer" href="#revise" data-when="rev:1"><b>Revision 1 · in the book</b>Adds a section, "Balance is a soft constraint"</a>
+          <details class="old" data-when="rev:2,stale,accepted"><summary>Revision 1 · replaced by revision 2</summary><div>Added a section, "Balance is a soft constraint," with the ±1 argument and a four-vertex example.</div></details>
+        </div>
+        <div class="msg you" data-when="rev:2,stale,accepted"><div class="who">You</div><div class="bubble">Too much. Just one sentence under "Relaxing the cut." The example can stay in our conversation.</div></div>
+        <div class="msg sophia" data-when="rev:2,stale,accepted"><div class="who">Sophia</div><div class="prose"><p>Fair. Revision 2 is one sentence and nothing else.</p></div>
+          <a class="pointer" href="#revise" data-when="rev:2,stale"><b>Revision 2 · in the book</b>Adds one sentence to "Relaxing the cut"</a>
+          <div class="pointer saved" data-when="rev:accepted"><b>✓ Saved</b>Revision 2 · Oct 16</div>
+        </div>
+      </div>
+      <div class="composer"><a class="chip" href="#revise" data-when="rev:1,2,stale">1 revision waiting for you in the book</a><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Push back on the revision, or carry on…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 7 RETURN -->
+<section class="screen frame" id="return" data-basis="session" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> coming back opens the book at its contents and the conversation at a briefing that links to what each claim rests on. "Continue where we left off" comes first. You can correct the briefing; Sophia changes its note, not the page. If the engine can't resume, Sophia says what it rebuilt from.</div>
+  <div class="states" data-key="basis"><span>State</span><button data-val="session">Resumed</button><button data-val="reconstructed">Couldn't resume</button><button data-val="corrected">You corrected it</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Contents</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb"><b>Graph Clustering</b> · Contents</span></div>
+      <div class="toc">
+        <div><h1>Graph Clustering</h1><div class="sm">Begun Oct 14 · 1 chapter · 1 page · last session Oct 16</div></div>
+        <div class="chap">
+          <h2 class="ch">1 · Spectral methods</h2>
+          <ol><li><a href="#page">Why the Fiedler vector splits a graph</a> <span class="sm">· revised Oct 16 · <a href="#page">previous version</a></span></li></ol>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="h" style="padding:0">Open question</div>
+          <div class="q">When does thresholding at zero give a poor cut, and what do sweep cuts fix?</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="h" style="padding:0">Not in the book yet</div>
+          <div class="cardlet" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span style="flex:1 1 260px"><span style="font-family:var(--serif);font-size:16px;color:var(--ink)">Choosing a threshold</span><br><span class="sm">A short draft you set aside on Oct 16. Not in the book.</span></span><button class="btn sm">Review draft</button></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="h" style="padding:0">Where it could go next · Sophia's suggestions</div>
+          <div class="ways">
+            <button class="way"><b>Spectral cuts on unbalanced graphs</b><span>Where the intuition you built hasn't been tested yet</span></button>
+            <button class="way"><b>Normalized cut and the random-walk Laplacian</b><span>Why von Luxburg prefers it, and when the choice matters</span></button>
+          </div>
+          <div class="sm">Pick one to explore in the conversation. Nothing is drafted until you do.</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Graph Clustering</span></div>
+      <div class="thread">
+        <a class="earlier" href="#guided">Show Oct 14–16</a>
+        <div class="day">Thursday, Oct 23 · a week later</div>
+        <div class="msg sophia"><div class="who">Sophia</div>
+          <div class="basis" data-when="basis:session,corrected"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="6" cy="6" r="4.5"/><path d="M6 3.5V6l1.6 1.2"/></svg>From the page, my notes, and our last two sessions</div>
+          <div class="basis warn" data-when="basis:reconstructed"><svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M6 1.5l5 9H1z"/><path d="M6 5v2.5M6 9v.1"/></svg>I couldn't resume our earlier session, so this is rebuilt from the saved conversation, the page, and my notes.</div>
+          <div class="prose">
+            <p>Your goal is to get fluent again with why spectral partitioning works <a href="#goals" style="font-family:var(--sans);font-size:12px">[goal]</a>. You got the signs right on two joined triangles and explained why the bridge endpoints sit near zero <a href="#first" style="font-family:var(--sans);font-size:12px">[your words]</a>. On the 16th we read the page together and added that balance is only a soft push for real values <a href="#revise" style="font-family:var(--sans);font-size:12px">[revision]</a>.</p>
+            <p>We stopped at a pendant vertex: you predicted vertex 1 would move toward it, and it moved the other way <a href="#guided" style="font-family:var(--sans);font-size:12px">[that exchange]</a>. There's also a short draft on choosing a threshold that you set aside.</p>
+          </div>
+          <div class="cardlet" data-when="basis:session,reconstructed"><b>My read, tentative:</b> the relaxation idea seems solid. How the vector rebalances when one side grows is still shaky, and you haven't tried an unbalanced graph yet.</div>
+          <div class="cardlet" data-when="basis:corrected"><b>My read, tentative:</b> <del>the relaxation idea seems solid.</del> <ins>the relaxation idea is solid; you reached the bridge explanation after a hint.</ins> How the vector rebalances when one side grows is still shaky.</div>
+          <div class="prose"><p>Is that how you remember it?</p></div>
+          <div class="ways" role="group" aria-label="Ways back in" data-when="basis:session,reconstructed">
+            <button class="way first"><b>Continue where we left off</b><span>Why vertex 1 moved away from the pendant vertex</span></button>
+            <button class="way"><b>Work through a sweep cut</b><span>Take the open question on with a graph where zero is the wrong threshold</span></button>
+            <button class="way"><b>Read §5.1 together</b><span>The von Luxburg passage the page cites</span></button>
+          </div>
+        </div>
+        <div class="msg you" data-when="basis:corrected"><div class="who">You</div><div class="bubble">Mostly. The bridge explanation wasn't all mine, though. You nudged me there.</div></div>
+        <div class="msg sophia" data-when="basis:corrected"><div class="who">Sophia</div><div class="prose"><p>Thanks. I've changed my note to say you finished the bridge explanation after a hint. The page quotes your words either way, so it stays as it is.</p></div>
+          <div class="caption" style="align-self:flex-start"><a href="#notes">Note updated · Review</a></div>
+          <div class="ways" role="group" aria-label="Ways back in">
+            <button class="way first"><b>Continue where we left off</b><span>Why vertex 1 moved away from the pendant vertex</span></button>
+            <button class="way"><b>Work through a sweep cut</b><span>Take the open question on with a graph where zero is the wrong threshold</span></button>
+            <button class="way"><b>Read §5.1 together</b><span>The von Luxburg passage the page cites</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="composer"><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Correct me, or go somewhere else entirely…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 8 EXPERIMENT -->
+<section class="screen frame" id="experiment" data-run="proposed" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> Sophia proposes an experiment as code plus stated inputs and a known case to check against. Nothing runs until you choose to run it, and then only in a viewer with no network or file access. Keeping it in the book is a separate Accept. <b>Try it:</b> run it and drag the slider; the values are computed live.</div>
+  <div class="states" data-key="run"><span>State</span><button data-val="proposed">Proposed, not run</button><button data-val="running">Running</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Draft experiment: bridge weight and the Fiedler vector</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb">Graph Clustering › Spectral methods</span></div>
+      <div class="banner draft"><span class="grow"><b>Draft experiment.</b> Proposed by Sophia. It isn't in your book, and it hasn't run.</span></div>
+      <article class="page">
+        <h1>Bridge weight and the Fiedler vector</h1>
+        <p>Two triangles joined by one edge, as on the page <a href="#page">Why the Fiedler vector splits a graph</a>. Change the weight of the bridge edge and watch the Fiedler vector and λ<sub>2</sub>.</p>
+        <div class="exp">
+          <div class="bar"><b>Experiment</b><span data-when="run:proposed">Not run</span><span data-when="run:running">Running in restricted viewer</span><span style="margin-left:auto">No network · no file access · no clipboard</span></div>
+          <div class="body">
+            <dl class="params">
+              <dt>Inputs</dt><dd>Bridge weight <i>w</i> from 0.05 to 4; triangle edges fixed at 1</dd>
+              <dt>Computes</dt><dd>Eigenvectors of <i>L</i> = <i>D</i> − <i>A</i> (6 × 6), second-smallest eigenpair</dd>
+              <dt>Known case</dt><dd>At <i>w</i> = 1: ±0.46 outside, ±0.26 at the bridge, λ<sub>2</sub> ≈ 0.44 (from the page)</dd>
+            </dl>
+            <details><summary style="cursor:pointer;font-size:13px">Show code · 38 lines</summary>
+<pre>function laplacian(w) {
+  const E = [[0,1,1],[0,2,1],[1,2,1],[3,4,1],[3,5,1],[4,5,1],[2,3,w]];
+  const A = zeros(6, 6);
+  for (const [i, j, x] of E) { A[i][j] = A[j][i] = x; }
+  return A.map((row, i) =&gt; row.map((x, j) =&gt; (i === j ? sum(row) : 0) - x));
+}
+// Jacobi eigenvalue iteration; returns the second-smallest eigenpair.
+…</pre></details>
+            <div data-when="run:proposed" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <button class="btn primary" data-set="run:running">Run in restricted viewer</button>
+              <span class="hint">Running it doesn't keep it. Check the known case before trusting the output.</span>
+            </div>
+            <div class="sandbox" data-when="run:running">
+              <div class="lock"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2" y="5.5" width="8" height="5" rx="1"/><path d="M4 5.5V4a2 2 0 014 0v1.5"/></svg>Restricted viewer · output below is from the experiment, not from Sophia</div>
+              <label class="slider">Bridge weight <i>w</i><input id="bridge" type="range" min="0.05" max="4" step="0.05" value="1"><b id="bridge-out">1.00</b></label>
+              <svg viewBox="0 0 360 272" width="100%" style="max-width:420px" role="img" aria-label="Fiedler vector values for vertices 1 to 6"><g id="bars" font-family="-apple-system,system-ui,sans-serif"></g></svg>
+              <div style="font-size:13px">λ<sub>2</sub> = <b id="lambda">0.44</b></div>
+              <div class="check">Known case: at <i>w</i> = 1 the values should be ±0.46 and ±0.26 with λ<sub>2</sub> ≈ 0.44. Set the slider to 1.00 to check.</div>
+            </div>
+          </div>
+        </div>
+      </article>
+      <div class="actionbar">
+        <button class="btn primary">Keep in book</button>
+        <button class="btn">Not now</button>
+        <button class="btn">Discard</button>
+        <span class="field">Keeping saves the code, inputs, and known case, not a result</span>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Graph Clustering</span></div>
+      <div class="thread">
+        <div class="day">Thursday, Oct 23</div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">What happens as the bridge gets heavier? I'd like to play with it rather than do more by hand.</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+          <p>An experiment would show that better than more examples. I've proposed one in the book: a slider for the bridge weight that recomputes the Fiedler vector.</p>
+          <p>I haven't run it, and I can't. It runs only if you start it, in a viewer that can't reach the network or your files. When it's running, check <i>w</i> = 1 against the values we already know before trusting anything else it shows.</p>
+        </div>
+          <a class="pointer" href="#experiment"><b>Draft experiment · in the book</b>Bridge weight and the Fiedler vector</a>
+        </div>
+        <div class="msg you" data-when="run:running"><div class="who">You</div><div class="bubble">Checked: 1.00 matches. As w goes up, 3 and 4 head toward zero and λ₂ climbs.</div></div>
+        <div class="msg sophia" data-when="run:running"><div class="who">Sophia</div><div class="prose">
+          <p>Good, that's what the numbers show. Now the other direction: what happens to λ<sub>2</sub> as <i>w</i> goes to zero, and why would you expect that before looking?</p>
+        </div></div>
+      </div>
+      <div class="composer"><a class="chip" href="#experiment">1 draft experiment in the book</a><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Ask, answer, or push back…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 9 CONTENTS -->
+<section class="screen frame" id="contents" data-struct="proposed" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> three weeks in, the book has four pages. Two of them are about turning the vector into a cut, so Sophia proposes a chapter for them. A structure proposal changes only the contents, never page text, and needs the same Accept.</div>
+  <div class="states" data-key="struct"><span>State</span><button data-val="before">Before</button><button data-val="proposed">Chapter proposed</button><button data-val="accepted">Accepted</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Contents</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb"><b>Graph Clustering</b> · Contents</span></div>
+      <div class="toc">
+        <div><h1>Graph Clustering</h1><div class="sm">Begun Oct 14 · 4 pages · last session Nov 3</div></div>
+        <div class="chap">
+          <h2 class="ch">1 · Spectral methods</h2>
+          <ol>
+            <li><a href="#page">Why the Fiedler vector splits a graph</a> <span class="sm">· revised Oct 16</span></li>
+            <li><a href="#contents">Normalized cut and the random-walk Laplacian</a> <span class="sm">· Oct 28</span></li>
+          </ol>
+        </div>
+        <div class="chap" data-when="struct:before">
+          <h2 class="ch" style="font-size:17px;color:var(--muted)">Not in a chapter</h2>
+          <ul style="margin:0;padding-left:22px;font-family:var(--serif);font-size:17px;line-height:1.75"><li><a href="#contents">Choosing a threshold</a> <span class="sm">· Oct 30</span></li><li><a href="#contents">When zero is the wrong threshold</a> <span class="sm">· Nov 3 · a counterexample</span></li></ul>
+        </div>
+        <div class="chap" data-when="struct:proposed">
+          <h2 class="ch" style="font-size:17px;color:var(--muted)">Not in a chapter</h2>
+          <ul style="margin:0;padding-left:22px;font-family:var(--serif);font-size:17px;line-height:1.75"><li class="moved">Choosing a threshold</li><li class="moved">When zero is the wrong threshold</li></ul>
+        </div>
+        <div class="chap proposed" data-when="struct:proposed">
+          <div class="lbl" style="color:#6B5310">Proposed chapter · from Sophia</div>
+          <h2 class="ch">2 · Rounding the relaxation</h2>
+          <ol><li>Choosing a threshold <span class="sm">· moved</span></li><li>When zero is the wrong threshold <span class="sm">· moved</span></li></ol>
+          <div class="sm">Changes only the contents. No page text changes.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><button class="btn primary sm" data-set="struct:accepted">Accept chapter</button><button class="btn sm" data-set="struct:before">Not now</button><button class="btn sm">Rename…</button></div>
+        </div>
+        <div class="chap" data-when="struct:accepted">
+          <h2 class="ch">2 · Rounding the relaxation</h2>
+          <ol><li><a href="#contents">Choosing a threshold</a> <span class="sm">· Oct 30</span></li><li><a href="#contents">When zero is the wrong threshold</a> <span class="sm">· Nov 3 · a counterexample</span></li></ol>
+          <div class="sm">Chapter added Nov 4 · <button class="linkbtn" style="font-size:12.5px" data-set="struct:proposed">Undo</button></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="h" style="padding:0">Open questions</div>
+          <div class="q">Does the normalized Laplacian change where a sweep cut should start?</div>
+          <div class="q">How far can a sweep cut be from the best cut? <span class="sm">(you asked Nov 3)</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="h" style="padding:0">Where it could go next · Sophia's suggestions</div>
+          <div class="ways">
+            <button class="way"><b>Cheeger's inequality</b><span>Answers your second open question: how good a sweep cut is guaranteed to be</span></button>
+            <button class="way"><b>More than two clusters</b><span>From one eigenvector to k, and k-means on the embedding</span></button>
+          </div>
+          <div class="sm">Nothing is drafted until you pick one.</div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Graph Clustering</span></div>
+      <div class="thread">
+        <a class="earlier" href="#return">Show Oct 14 – Nov 3</a>
+        <div class="day">Tuesday, Nov 4</div>
+        <div class="msg sophia"><div class="who">Sophia</div><div class="prose">
+          <p>Welcome back. Last time you built a counterexample where zero is the wrong threshold, and it's now a page.</p>
+          <p data-when="struct:proposed,accepted">You have two pages about turning the Fiedler vector into an actual cut. Would they read better as their own chapter? I've proposed one in the contents, called "Rounding the relaxation." It only moves them; nothing in the pages changes.</p>
+        </div>
+          <a class="pointer" href="#contents" data-when="struct:proposed"><b>Proposed chapter · in the contents</b>Rounding the relaxation</a>
+          <div class="pointer saved" data-when="struct:accepted"><b>✓ Chapter added</b>Rounding the relaxation</div>
+        </div>
+        <div class="msg sophia" data-when="struct:before"><div class="who">Sophia</div><div class="prose"><p>Where do you want to pick up? Your newest open question is how far a sweep cut can be from the best cut.</p></div></div>
+      </div>
+      <div class="composer"><a class="chip" href="#contents" data-when="struct:proposed">1 chapter proposal waiting in the contents</a><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Ask, answer, or push back…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 10 GOALS -->
+<section class="screen frame" id="goals" data-g="tracking" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> each criterion shows the evidence behind it: your attempts, Sophia's dated read of them (which names what it's based on), and your own take beside it. Nothing is a stored score. When a newer attempt arrives after Sophia's read, the read is marked out of date. Only you add, reword, or close a goal; Sophia can only suggest one in conversation, and nothing is stored until you write it.</div>
+  <div class="states" data-key="g"><span>State</span><button data-val="tracking">Tracking</button><button data-val="proposed">Adding a goal Sophia suggested</button><button data-val="met">You mark one met</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Goals</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb"><b>Graph Clustering</b> · Goals</span></div>
+      <div class="goals">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h1>Goals</h1>
+          <p class="lede" style="font-size:14px">What you want from this notebook, in your words. Under each goal: what you've actually done toward it, what Sophia makes of it, and what you make of it. Reading or agreeing doesn't count as progress, and there's no score. Only you add a goal or decide when one is met.</p>
+        </div>
+
+        <!-- A new goal, written by the person -->
+        <div class="goal" data-when="g:proposed">
+          <div class="gh">
+            <div class="lbl">New goal · in your words</div>
+            <textarea class="goalin" rows="2" aria-label="Your goal" placeholder="What do you want from this notebook?"></textarea>
+            <div class="gs">Sophia suggested one way to put it in the conversation. Use it, change it, or write your own.</div>
+          </div>
+          <div class="gfoot"><button class="btn primary sm" data-set="g:tracking">Add goal</button><button class="btn sm" data-set="g:tracking">Cancel</button><span class="hint">Only you add goals. Criteria can come later.</span></div>
+        </div>
+
+        <!-- Active goal -->
+        <div class="goal" data-when="g:tracking,proposed">
+          <div class="gh">
+            <div class="lbl">Working on · since Oct 14</div>
+            <div class="gt">Get fluent again with why spectral partitioning works</div>
+            <div class="gs"><span>Your words, Oct 14: <span class="yourtake" style="font-size:13.5px">"I used to know this cold."</span></span><span>Reworded by you on Oct 16</span>
+              <details class="rec"><summary>Show record</summary><pre>{"id":"g-1b","by":"person","kind":"goal","replaces":"g-1",
+ "text":"Get fluent again with why spectral partitioning works",
+ "status":"working","criteria":[
+  "Explain why the Fiedler vector is a relaxed balanced cut",
+  "Predict the vector on a new graph before computing it",
+  "Say when zero is the wrong threshold, and what to do instead"],
+ "refs":["t-0401"],"session":"s-2","at":"2026-10-16T09:02Z"}</pre></details></div>
+          </div>
+          <div class="gsec">
+            <div class="lbl m">What "there" looks like · your criteria</div>
+            <ul class="crit2">
+              <li>
+                <div class="what">1. Explain why the Fiedler vector is a relaxed balanced cut</div>
+                <div class="ev"><b>Your attempts:</b> <a href="#notes">bridge explanation, Oct 14</a></div>
+                <div class="reads">
+                  <div class="read-s"><span class="who-s">Sophia</span> Shown once, in your own words, after a hint. <span class="based">based on Oct 14</span></div>
+                </div>
+              </li>
+              <li>
+                <div class="what">2. Predict the vector on a new graph before computing it</div>
+                <div class="ev"><b>Your attempts:</b> <a href="#notes">two triangles, Oct 14</a> · <a href="#notes">pendant vertex, Oct 16</a></div>
+                <div class="reads">
+                  <div class="read-s"><span class="who-s">Sophia</span> Partly: signs right, sizes off. <span class="based">based on Oct 14</span> <span class="stale">Newer attempt since · Oct 16</span></div>
+                  <div class="read-p"><span class="who-p">Your take · Oct 23 · <a href="#goals" style="color:inherit">from your message</a></span> "I think I've got the predictions now. The pendant one clicked once I saw the sum had to stay zero."</div>
+                </div>
+              </li>
+              <li>
+                <div class="what">3. Say when zero is the wrong threshold, and what to do instead</div>
+                <div class="ev none">No attempts yet. The open question and a draft page are waiting.</div>
+              </li>
+            </ul>
+          </div>
+          <div class="gsec">
+            <div class="lbl m">Next step · the same one shown in Notes and the briefing</div>
+            <div>Work out why vertex 1 moved away from the pendant vertex, then try a sweep cut where zero is the wrong threshold. That would test criterion 3.</div>
+          </div>
+          <div class="gfoot"><button class="btn sm" data-set="g:met">Mark as met…</button><button class="btn sm">Reword</button><button class="btn sm">Add a criterion</button><button class="btn sm">Drop</button><span class="hint" style="margin-left:auto">Only you change a goal.</span></div>
+        </div>
+
+        <!-- Met -->
+        <div style="display:flex;flex-direction:column;gap:8px" data-when="g:met">
+          <div class="h" style="padding:0">Working on</div>
+          <div class="cardlet">No active goals. Add one when you know what you want next.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px" data-when="g:met">
+          <div class="h" style="padding:0">Met</div>
+          <div class="goal met">
+            <div class="gh">
+              <div class="lbl" style="color:var(--ok)">✓ Met · you marked it Nov 6</div>
+              <div class="gt">Get fluent again with why spectral partitioning works</div>
+              <div class="gs"><span>Oct 14 – Nov 6</span><span>4 pages · 7 attempts</span><button class="linkbtn" style="font-size:12.5px" data-set="g:tracking">Undo</button></div>
+            </div>
+            <div class="gsec">
+              <div class="lbl m">Your note when you closed it</div>
+              <div class="yourtake">"I could explain the whole chain to a student now, including where rounding goes wrong."</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="h" style="padding:0">History · every change is yours</div>
+          <ul class="trail">
+            <li data-when="g:met"><span class="d">Nov 6</span><span>You marked "Get fluent again…" met.</span></li>
+            <li><span class="d">Oct 16</span><span>You added three criteria.</span></li>
+            <li><span class="d">Oct 16</span><span>You reworded it from "Refresh spectral clustering".</span></li>
+            <li><span class="d">Oct 14</span><span>You set the goal in your first message.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Graph Clustering</span></div>
+      <div class="thread">
+        <a class="earlier" href="#return">Show Oct 14–23</a>
+        <div class="day" data-when="g:tracking,proposed">Thursday, Oct 23</div>
+        <div class="msg you" data-when="g:tracking,proposed"><div class="who">You</div><div class="bubble">How am I doing against what I set out to do?</div></div>
+        <div class="msg sophia" data-when="g:tracking,proposed"><div class="who">Sophia</div><div class="prose">
+          <p>Going by what you've actually done: you've explained the relaxation yourself, and on new graphs your predictions are half there. My read on that is from Oct 14, before the pendant vertex, so it may be out of date. Nobody has tried the threshold question yet.</p>
+          <p>That's my read of your attempts, not a grade. How does it look from your side?</p>
+        </div></div>
+        <div class="msg you" data-when="g:tracking,proposed"><div class="who">You</div><div class="bubble">I think I've got the predictions now. The pendant one clicked once I saw the sum had to stay zero. And honestly, I don't just want the refresher, I want to actually know this field.</div><div class="takeact"><span class="hint">✓ Saved by you: the first two sentences, as your take on criterion 2</span></div></div>
+        <div class="msg sophia" data-when="g:proposed"><div class="who">Sophia</div><div class="prose"><p>Then that might be a second, longer goal. One way to put it: <em>"Build real expertise in graph clustering, beyond spectral methods."</em> If it fits, add it on the Goals page in your own words. I can't add goals for you.</p></div></div>
+        <div class="msg sophia" data-when="g:tracking"><div class="who">Sophia</div><div class="prose"><p>Noted as your take. If you want a second, longer goal for that, add it on the Goals page whenever you're ready.</p></div></div>
+
+        <div class="day" data-when="g:met">Thursday, Nov 6</div>
+        <div class="msg you" data-when="g:met"><div class="who">You</div><div class="bubble">I think I'm there on the spectral partitioning goal.</div></div>
+        <div class="msg sophia" data-when="g:met"><div class="who">Sophia</div><div class="prose"><p>Your attempts support that: each criterion has at least one attempt in your own words, and the sweep cut on Nov 3 was yours start to finish. Marking it met is up to you. What do you want from this notebook next?</p></div>
+          <div class="pointer saved"><b>✓ Goal met · marked by you</b>Get fluent again with why spectral partitioning works</div>
+        </div>
+      </div>
+      <div class="composer"><div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Ask, answer, or push back…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div></div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 11 NOTES -->
+<section class="screen frame" id="notes" data-n="list" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> every note keeps three things apart: your exact words (checked against the conversation), Sophia's read (labelled, dated, with what it's based on), and your corrections (in your voice, with "Was:" beneath). A quote that couldn't be checked shows as Sophia's paraphrase, without quotation marks. <b>Try it:</b> correct a read, show the raw record, or delete a note and undo.</div>
+  <div class="states" data-key="n"><span>State</span><button data-val="list">Reading</button><button data-val="correcting">Correcting a read</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Sophia's notes</span></div>
+    <button class="tbtn" aria-pressed="false"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+  <div class="cols one">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+    <main class="pane" style="position:relative">
+      <div class="notes">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <h1>Sophia's notes</h1>
+          <p class="lede" style="font-size:14px">Sophia writes these at the end of each session, and uses them to brief you when you come back. They aren't pages and they aren't a score. Every note rests on something you said or did; if Sophia can't point to it, the note isn't kept. Correct or delete anything.</p>
+        </div>
+
+        <div class="nsec">
+          <div class="h" style="padding:0">Your attempts</div>
+
+          <div class="note2">
+            <div class="k">Attempt · Oct 14 · two joined triangles <span class="rid">n-31</span></div>
+            <div class="yours">"Positive on one triangle, negative on the other, about the same magnitude on all six."</div>
+            <div class="sread"><span class="who-s">Sophia's read</span> Signs right; sizes corrected (the bridge endpoints sit nearer zero). <span class="based">based on your message and the reply after it</span></div>
+            <div class="acts2"><button class="btn sm" data-set="n:correcting">Correct</button><a class="btn sm" href="#first">In conversation</a><details class="rec"><summary class="btn sm">Show record</summary><pre>{"id":"n-31","by":"sophia","kind":"attempt","session":"s-1",
+ "quote":{"entry":"t-0412","text":"Positive on one triangle, negative on the other, about the same magnitude on all six."},
+ "text":"Signs right; sizes corrected (the bridge endpoints sit nearer zero).",
+ "refs":["t-0412","t-0413","g-1#2"],"at":"2026-10-14T10:58Z"}</pre></details><button class="btn sm" data-del>Delete</button></div>
+            <div class="editor" data-when="n:correcting">
+              <label class="lbl m" for="corr1">Your correction replaces Sophia's read. Your words above stay as they are.</label>
+              <textarea id="corr1" rows="2">The signs were right and I knew the bridge ends would be smaller; I just didn't say it.</textarea>
+              <div style="display:flex;gap:8px"><button class="btn primary sm" data-set="n:list">Save correction</button><button class="btn sm" data-set="n:list">Cancel</button></div>
+            </div>
+          </div>
+
+          <div class="note2">
+            <div class="k">Attempt · Oct 14 · the bridge effect <span class="rid">n-32</span></div>
+            <div class="yours">"The bridge is the only edge across the cut. Shrinking both endpoints toward zero lowers (x₃ − x₄)² by more than it costs inside the triangles."</div>
+            <div class="pread"><span class="who-p">Your correction · Oct 23</span> "I finished the bridge explanation after a hint."</div>
+            <div class="was">Was, Sophia's read: "Correct, and entirely your own explanation."</div>
+            <div class="acts2"><a class="btn sm" href="#first">In conversation</a><details class="rec"><summary class="btn sm">Show record</summary><pre>{"id":"n-44","by":"person","kind":"correction","replaces":"n-32",
+ "text":"I finished the bridge explanation after a hint.",
+ "session":"s-3","at":"2026-10-23T09:12Z"}</pre></details><button class="btn sm" data-del>Delete</button></div>
+          </div>
+
+          <div class="note2">
+            <div class="k">Attempt · Oct 16 · pendant vertex <span class="rid">n-38</span></div>
+            <div class="yours">"The new vertex only has one edge to pay for, so it should be the most extreme value. Vertex 1 gets pulled toward it."</div>
+            <div class="sread"><span class="who-s">Sophia's read</span> First half right. Vertex 1 moved the other way, as the vector rebalanced. Worth returning to. <span class="based">based on Oct 16</span></div>
+            <div class="acts2"><button class="btn sm" data-set="n:correcting">Correct</button><a class="btn sm" href="#guided">In conversation</a><button class="btn sm" data-del>Delete</button></div>
+          </div>
+
+          <div class="note2">
+            <div class="k">Attempt · Oct 16 · reading together, stop 1 <span class="rid">n-36</span></div>
+            <div class="para"><span class="who-s">Sophia's paraphrase</span> You said orthogonality to 1 is the balance constraint when x is ±1. <span class="based">The exact words couldn't be matched to the conversation, so they aren't quoted.</span></div>
+            <div class="sread"><span class="who-s">Sophia's read</span> Right for ±1; the real-valued case was new. <span class="based">based on Oct 16</span></div>
+            <div class="acts2"><button class="btn sm" data-set="n:correcting">Correct</button><a class="btn sm" href="#guided">In conversation</a><button class="btn sm" data-del>Delete</button></div>
+          </div>
+        </div>
+
+        <div class="nsec">
+          <div class="h" style="padding:0">Open questions</div>
+          <div class="note2"><div class="k">Question · Oct 14 · also on the page <span class="rid">n-33</span></div><div class="sread" style="background:none;padding:0"><span class="who-s">Sophia</span> When does thresholding at zero give a poor cut, and what do sweep cuts fix?</div><div class="acts2"><button class="btn sm" data-del>Delete</button></div></div>
+        </div>
+
+        <div class="nsec">
+          <div class="h" style="padding:0">Next step · the same one shown on Goals and in the briefing</div>
+          <div class="note2"><div class="k">Next step · Oct 16 <span class="rid">n-40</span></div><div class="sread" style="background:none;padding:0"><span class="who-s">Sophia</span> Work out why vertex 1 moved away from the pendant vertex, then try a sweep cut where zero is the wrong threshold. <span class="based">based on n-38, n-33</span></div><div class="acts2"><button class="btn sm" data-del>Delete</button></div></div>
+        </div>
+
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px">
+          <button class="btn danger">Delete all notes in this notebook…</button>
+          <span class="hint">Pages, goals, and the conversation aren't affected.</span>
+        </div>
+      </div>
+      <div class="toast" hidden role="status">Note deleted. Your words are still in the conversation.<button>Undo</button></div>
+    </main>
+  </div>
+</div>
+</section>
+
+<!-- =================================================================== 12 PROBLEMS -->
+<section class="screen frame" id="problems" data-kind="engine" hidden>
+<div class="brief">
+  <div class="what"><b>Look at:</b> each failure says what happened, what's safe, and what you can do. Sophia never switches to API billing on its own, never claims a save that didn't happen, and says when a source couldn't be checked.</div>
+  <div class="states" data-key="kind"><span>Failure</span><button data-val="engine">Engine stopped</button><button data-val="billing">Subscription unavailable</button><button data-val="save">Save failed</button><button data-val="source">Source unreadable</button></div>
+</div>
+<div class="win">
+  <div class="toolbar"><div class="lights"><i></i><i></i><i></i></div>
+    <button class="tbtn" aria-label="Hide sidebar"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2"/><path d="M6 2.5v11"/></svg></button>
+    <div class="tb-title"><span class="t">Graph Clustering</span><span class="s">Normalized cut and the random-walk Laplacian</span></div>
+    <button class="tbtn" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></svg>Conversation</button>
+  </div>
+
+  <div class="scrim" data-when="kind:billing">
+    <div class="sheet" role="dialog" aria-labelledby="bill-h">
+      <h2 id="bill-h">Your Claude subscription isn't available</h2>
+      <div>Claude Code reports that you're signed out of your Claude subscription. Sophia hasn't sent anything since, and it won't switch to API billing on its own.</div>
+      <div class="detail">claude-agent-acp 0.90.0 · auth: none · last subscription use 10:42</div>
+      <div class="hint">Using an API key would bill your Anthropic API account per request, separately from your subscription.</div>
+      <div class="row"><button class="btn" data-set="kind:engine">Not now</button><button class="btn">Use API billing for this session…</button><button class="btn primary">Sign in again in Terminal</button></div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <nav class="pane side" aria-label="Library and notebook"></nav>
+
+    <div class="pane book">
+      <div class="bookhead"><span class="crumb">Graph Clustering › Spectral methods</span></div>
+      <div class="banner bad" data-when="kind:save"><span class="grow"><b>Couldn't save this page.</b> The disk reported an error, so nothing in your book changed. The draft is still here.</span><button class="btn sm">Try again</button><button class="linkbtn">Details</button></div>
+      <div class="banner draft" data-when="kind:engine,billing,source"><span class="grow"><b>Draft page.</b> It isn't in your book until you accept it.</span></div>
+      <article class="page isdraft">
+        <h1>Normalized cut and the random-walk Laplacian</h1>
+        <h2>Why normalize</h2>
+        <p>RatioCut balances the number of vertices on each side. Ncut balances their total degree instead, so a side made of a few well-connected vertices counts as large. Relaxing Ncut leads to the generalized problem <i>Lx</i> = λ<i>Dx</i>, which is the eigenproblem of the random-walk Laplacian <i>L</i><sub>rw</sub> = <i>I</i> − <i>D</i><sup>−1</sup><i>A</i>.</p>
+        <h2>Why it matters</h2>
+        <p>On graphs with very uneven degrees the two can split differently. von Luxburg recommends the normalized version, and <i>L</i><sub>rw</sub> in particular.</p>
+        <div class="src">
+          <div class="lbl m">Sources</div>
+          <div>U. von Luxburg, "A Tutorial on Spectral Clustering," <i>Statistics and Computing</i> 17 (2007).</div>
+          <div class="box" data-when="kind:engine,billing,save"><div><b>Location:</b> §5.2, "Approximating Ncut"; §8.5, "Which graph Laplacian should be used?"</div><div class="inspected">✓ Read by Sophia, Oct 28</div></div>
+          <div class="box" data-when="kind:source" style="background:#FFF8E6"><div><b>Location:</b> §8.5, "Which graph Laplacian should be used?"</div><div class="unchecked">⚠ Not read. The link returned an error. The recommendation above is from Sophia's memory of the paper, not a check.</div></div>
+        </div>
+      </article>
+      <div class="actionbar">
+        <button class="btn primary" data-when="kind:engine,billing,source">Accept page</button>
+        <button class="btn primary" data-when="kind:save">Try saving again</button>
+        <button class="btn">Not now</button>
+        <button class="btn">Discard</button>
+      </div>
+    </div>
+
+    <aside class="pane chat" aria-label="Conversation">
+      <div class="chathead"><span class="nm">Sophia</span><span class="ctx">Graph Clustering</span></div>
+      <div class="thread">
+        <div class="day">Tuesday, Oct 28</div>
+        <div class="msg you"><div class="who">You</div><div class="bubble">Which Laplacian should I actually use in practice, and why?</div></div>
+        <div class="msg sophia"><div class="who">Sophia</div>
+          <div class="prose"><p>Short version: the normalized one, usually <i>L</i><sub>rw</sub>. RatioCut counts vertices; Ncut counts degree, which better matches what a "cluster" means on a graph with hubs.</p></div>
+          <div class="prose" data-when="kind:source"><p>One caveat: I tried to reread von Luxburg §8.5 to check her exact recommendation, and the link failed. I'm going from memory there, so I've marked that source as not read on the draft. If you can open the PDF, I'll check it against the text.</p></div>
+          <div class="prose" data-when="kind:engine,billing,save"><p>I've drafted a page with both relaxations side by side.</p></div>
+          <a class="pointer" href="#problems"><b>Draft page · in the book</b>Normalized cut and the random-walk Laplacian</a>
+        </div>
+        <div class="msg you" data-when="kind:engine"><div class="who">You</div><div class="bubble">Can you add an example where they split differently?</div></div>
+        <div class="cardlet" data-when="kind:engine" style="border-color:var(--bad-line);background:var(--bad-bg);color:var(--bad)">
+          <b>Sophia stopped responding.</b> The Claude Code connection closed partway through this reply. Your message is saved, and your book and the draft are untouched.
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap"><button class="btn sm">Retry</button><button class="btn sm">Details</button></div>
+        </div>
+        <div class="msg sophia" data-when="kind:save"><div class="who">Sophia</div><div class="prose"><p style="font-family:var(--sans);font-size:13px;color:var(--muted)">The page wasn't saved. I'll wait until the client confirms a save before saying it's in your book.</p></div></div>
+      </div>
+      <div class="composer">
+        <div class="box"><textarea rows="2" aria-label="Message Sophia" placeholder="Ask, answer, or push back…"></textarea><button class="send" aria-label="Send"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 14V4M4.5 8.5L9 4l4.5 4.5"/></svg></button></div>
+        <div class="sees" data-when="kind:engine">Messages will send when Sophia is reachable again.</div>
+      </div>
+    </aside>
+  </div>
+</div>
+</section>
+
+<script src="sidebar.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
