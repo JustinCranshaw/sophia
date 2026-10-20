@@ -27,7 +27,7 @@ func runMusic(dir: URL) {
                          revising: file, session: "s-1", toolUseID: "planted")
     let warning = MusicWarnings(file: file, page: store.readPage(file)!.title, section: nil, tune: "",
                                 warnings: ["Line \(body[..<end.lowerBound].split(separator: "\n").count) of the tune: Unknown character ignored: &&&"])
-    let replies = runner.run(session: "s-1", resume: store.claudeSession,
+    let replies = runner.run(session: "s-1", resume: nil,
                              messages: [(Prompts.musicWarnings([warning]) + "Thanks, that's helpful.", "fix")])
     store.reload()
     let fixed = tunes(file) ?? ""

@@ -414,7 +414,7 @@ func sophiasGoalIsProvisionalUntilConfirmedAndCriteriaOnlyGrow() throws {
 func orphanPageIsListedAfterACrash() throws {
     let store = try tempStore()
     try Data("---\ntitle: \"Orphan\"\n---\nBody\n".utf8).write(to: store.pagesURL.appendingPathComponent("orphan.md"))
-    expect(try NotebookStore(url: store.url).pageFiles == ["orphan.md"])
+    expect(try NotebookStore.open(url: store.url).pageFiles == ["orphan.md"])
 }
 
 // MARK: LearningTests
@@ -593,7 +593,274 @@ func notationWarningsNameTheirPageAndSection() throws {
     expect(told.contains("- “Tunes” (tunes.md): w1; w2; w3; w4; w5 (and 2 more)\n"))
 }
 
+// Page-owned conversation checks. Crash fixtures below represent persisted boundaries, not OS crashes.
+func fixturePage(_ store: NotebookStore, _ title: String = "P", body: String = "First", thread: String = "") throws -> JSONObject {
+    try store.writePage(title: title, content: body, revising: nil, session: "s-1", toolUseID: UUID().uuidString, thread: thread)
+}
+@discardableResult
+func message(_ store: NotebookStore, _ text: String, page: String, role: String = "person", session: String = "s-1") throws -> JSONObject {
+    try store.appendTranscript(["role": .string(role), "text": .string(text), "page": .string(page), "session": .string(session)])
+}
+func verificationInterleavedThreadOwnership() throws {
+    let s = try tempStore()
+    let p = try fixturePage(s).str("file")!, q = try fixturePage(s, "Q").str("file")!
+    let person = try message(s, "P words", page: p)
+    _ = try message(s, "Q words", page: q)
+    let paths: [JSONObject] = [
+        ["role": .string("sophia"), "text": .string("Answer")],
+        ["role": .string("tool"), "tool": .string("WebSearch")],
+        ["role": .string("client"), "purpose": .string("goal_noted")],
+        ["role": .string("tool"), "tool": .string("set_chapter")],
+        ["role": .string("tool"), "tool": .string("about_you")],
+        ["role": .string("tool"), "tool": .string("link")],
+        ["role": .string("client"), "purpose": .string("stopped")],
+        ["role": .string("client"), "purpose": .string("replied")]
+    ]
+    for fields in paths { var fields = fields; fields["page"] = .string(p); expect(NotebookStore.thread(of: try s.appendTranscript(fields)) == p) }
+    let write = try s.writePage(title: "Q", content: "Changed", revising: q, session: "s-1", toolUseID: "cross", thread: p)
+    expect(NotebookStore.thread(of: write) == p)
+    let range = s.editRanges(of: q).last!
+    guard case .saved(let edit) = try s.editPage(file: q, section: range.key, baseHash: range.hash, text: "Protected", session: "s-1") else { expect(false); return }
+    expect(NotebookStore.thread(of: edit) == q && edit.str("hash") == s.pageHash(q))
+    let refusal = try s.writePage(title: "Q", content: "Dropped", revising: q, session: "s-1", toolUseID: "refusal", thread: p)
+    expect(NotebookStore.thread(of: refusal) == q && refusal["refused"] == .bool(true))
+    let release = try s.releaseEdits([edit.str("id")!], session: "s-1")[0]
+    expect(NotebookStore.thread(of: release) == q && release["hash"] == nil)
+    try s.undoRelease(release.str("id")!, session: "s-1")
+    expect(NotebookStore.thread(of: s.transcript.last!) == q)
+    let note = try s.writeNote(["kind": .string("question"), "text": .string("Open")], quote: "P words", revising: nil, session: "s-1", thread: p)
+    expect(note.saved != nil && NotebookStore.thread(of: s.transcript.last!) == p)
+    _ = try s.setMemory([.init(id: nil, text: "Remember", refs: [person.str("id")!])], session: "s-1")
+    expect(NotebookStore.thread(of: s.transcript.last!) == "")
+    for purpose in ["checkpoint", "briefing"] {
+        let e = try s.appendTranscript(["role": .string("client"), "purpose": .string(purpose), "page": .string(p)])
+        expect(NotebookStore.thread(of: e) == "")
+    }
+    expect(NotebookStore.thread(of: [:]) == "" && NotebookStore.thread(of: ["page": .string("")]) == "")
+    expect(NotebookStore.isPending(thread: q, running: p, queued: [q]))
+    expect(NotebookStore.nextStep(thread: q, pending: true) == .wait)
+}
+func verificationUndoAcrossScopesAndReopen() throws {
+    let s = try tempStore(); let w = try fixturePage(s), p = w.str("file")!
+    _ = try message(s, "P conversation", page: p); _ = try message(s, "Q conversation", page: "q.md")
+    let reopened = try NotebookStore.open(url: s.url)
+    expect(reopened.isUndoable(w))
+    let revision = try reopened.writePage(title: "P", content: "Second", revising: p, session: "s-2", toolUseID: "revision", thread: p)
+    _ = try message(reopened, "More", page: p)
+    expect(try NotebookStore.open(url: s.url).isUndoable(revision))
+    expectThrows { try s.undoPageWrite(w.str("id")!, session: "s-1") }
+    try reopened.undoPageWrite(revision.str("id")!, session: "s-2")
+    expect(reopened.readPage(p)?.body == "First\n")
+}
+func verificationLatestReleaseAndOneWayUndo() throws {
+    let s = try tempStore(); let p = try fixturePage(s).str("file")!, r = s.editRanges(of: p).last!
+    guard case .saved(let edit) = try s.editPage(file: p, section: r.key, baseHash: r.hash, text: "Mine", session: "s-1") else { expect(false); return }
+    let release = try s.releaseEdits([edit.str("id")!], session: "s-1")[0]
+    expect(!s.isUndoable(edit) && s.isReleaseUndoable(release))
+    try s.undoRelease(release.str("id")!, session: "s-1")
+    expect(!s.isUndoable(edit) && !s.isReleaseUndoable(release) && !s.isUndoable(s.transcript.last!))
+    expectThrows { try s.undoRelease(release.str("id")!, session: "s-1") }
+    let again = try s.releaseEdits([edit.str("id")!], session: "s-1")[0]
+    _ = try s.writePage(title: "P", content: "Sophia", revising: p, session: "s-1", toolUseID: "rewrite", thread: p)
+    expect(!s.isReleaseUndoable(again))
+}
+func verificationRecoveredRevisionBeforeEntry() throws {
+    let s = try tempStore(); let w = try fixturePage(s), p = w.str("file")!
+    let original = try Data(contentsOf: s.pagesURL.appendingPathComponent(p))
+    for iteration in 0..<2 {
+        try original.write(to: s.pagesURL.appendingPathComponent(NotebookStore.previousName(p)))
+        try Data("---\ntitle: \"P\"\n---\nUnrecorded \(iteration)\n".utf8).write(to: s.pagesURL.appendingPathComponent(p), options: .atomic)
+        let opened = try NotebookStore.open(url: s.url), recovered = opened.transcript.last!
+        expect(recovered["recovered"] == .bool(true) && opened.isUndoable(recovered) && !opened.isUndoable(w))
+        expect(try NotebookStore.open(url: s.url).transcript.count == opened.transcript.count)
+        try opened.undoPageWrite(recovered.str("id")!, session: "s-2")
+        expect(try Data(contentsOf: opened.pagesURL.appendingPathComponent(p)) == original)
+    }
+}
+func verificationRecoveredNewPageBeforeUnfiled() throws {
+    let s = try tempStore(), file = "orphan.md"
+    try Data("Orphan bytes".utf8).write(to: s.pagesURL.appendingPathComponent(file))
+    expect(try NotebookStore(url: s.url).pageFiles.isEmpty)
+    let opened = try NotebookStore.open(url: s.url)
+    expect(opened.pageFiles == [file] && opened.transcript.last?["recovered"] == .bool(true))
+    expect(opened.isUndoable(opened.transcript.last!))
+    expect(try NotebookStore.open(url: s.url).transcript.count == 1)
+    let other = try tempStore(), recorded = try fixturePage(other), f = recorded.str("file")!
+    try Data("{\"chapters\":[],\"unfiled\":[]}".utf8).write(to: other.url.appendingPathComponent("notebook.json"))
+    let listed = try NotebookStore.open(url: other.url)
+    expect(listed.pageFiles == [f] && listed.transcript.count == 1)
+}
+func verificationExternalAndCopyOnlyChanges() throws {
+    let s = try tempStore(), p = try fixturePage(s).str("file")!
+    let r = try s.writePage(title: "P", content: "Second", revising: p, session: "s-1", toolUseID: "r")
+    let count = s.transcript.count
+    try Data("Outside".utf8).write(to: s.pagesURL.appendingPathComponent(p))
+    let external = try NotebookStore.open(url: s.url)
+    expect(external.transcript.count == count && !external.isUndoable(r))
+    let copyOnly = try tempStore(), f = try fixturePage(copyOnly).str("file")!
+    let last = try copyOnly.writePage(title: "P", content: "Second", revising: f, session: "s-1", toolUseID: "r")
+    try Data(contentsOf: copyOnly.pagesURL.appendingPathComponent(f)).write(to: copyOnly.pagesURL.appendingPathComponent(NotebookStore.previousName(f)))
+    let opened = try NotebookStore.open(url: copyOnly.url)
+    expect(opened.transcript.count == 2 && !opened.isUndoable(last))
+    let legacy = try tempStore(), w = try fixturePage(legacy), file = w.str("file")!
+    var old = w; old.removeValue(forKey: "hash")
+    try Data((old.line + "\n").utf8).write(to: legacy.url.appendingPathComponent("transcript.jsonl"))
+    try Data("Outside legacy".utf8).write(to: legacy.pagesURL.appendingPathComponent(file))
+    expect(try NotebookStore.open(url: legacy.url).transcript.count == 1)
+    expect(!legacy.isUndoable(old))
+}
+func verificationAtomicUndoAndNewPageCutoff() throws {
+    let s = try tempStore(), p = try fixturePage(s).str("file")!
+    let bytes = try Data(contentsOf: s.pagesURL.appendingPathComponent(p))
+    let revision = try s.writePage(title: "P", content: "Second", revising: p, session: "s-1", toolUseID: "r")
+    expect(FileManager.default.fileExists(atPath: s.pagesURL.appendingPathComponent(p).path))
+    try s.undoPageWrite(revision.str("id")!, session: "s-1")
+    expect(try Data(contentsOf: s.pagesURL.appendingPathComponent(p)) == bytes)
+    expect(s.transcript.last?.str("hash") == s.pageHash(p) && !s.hasPreviousVersion(p))
+    let newStore = try tempStore(), w = try fixturePage(newStore), f = w.str("file")!
+    try Data("{\"chapters\":[],\"unfiled\":[]}".utf8).write(to: newStore.url.appendingPathComponent("notebook.json"))
+    let cut = try NotebookStore.open(url: newStore.url)
+    expect(cut.pageFiles == [f] && cut.isUndoable(w))
+    try FileManager.default.removeItem(at: cut.pagesURL.appendingPathComponent(f))
+    let gone = try NotebookStore.open(url: cut.url)
+    expect(gone.transcript.count == 1 && !gone.isUndoable(w))
+}
+func verificationNeverReuseUndoneFilename() throws {
+    let s = try tempStore(), w = try fixturePage(s), p = w.str("file")!
+    _ = try message(s, "Keep my words", page: p)
+    try s.undoPageWrite(w.str("id")!, session: "s-1")
+    let next = try fixturePage(s)
+    expect(next.str("file") != p && s.threadEntries(for: p).contains { $0.str("text") == "Keep my words" })
+    let file = next.str("file")!
+    let revision = try s.writePage(title: "Renamed", content: "Body", revising: file, session: "s-1", toolUseID: "r")
+    _ = try s.fileInChapter([file], chapter: "Chapter 1: New home")
+    expect(revision.str("file") == file && s.chapter(of: file) != nil)
+}
+func verificationWindowUsesThroughPosition() throws {
+    let s = try tempStore(), p = "p.md", q = "q.md"
+    for i in 0..<9 {
+        _ = try message(s, "P old \(i)", page: p, role: i % 2 == 0 ? "person" : "sophia")
+        _ = try s.appendTranscript(["role": .string("person"), "purpose": .string("release_edit"), "page": .string(p)])
+    }
+    let through = s.transcript.last(where: NotebookStore.isMessage)!.str("id")!
+    let later = try message(s, "During checkpoint", page: p)
+    _ = try message(s, "Foreign words", page: q)
+    _ = try s.appendTranscript(["purpose": .string("checkpoint"), "through": .string(through)])
+    let outgoing = try message(s, "Outgoing only once", page: p)
+    expect(s.carried(for: p, before: outgoing.str("id")).count == 6)
+    expect(s.window(for: p, before: outgoing.str("id")).contains { $0.str("id") == later.str("id") })
+    let context = Prompts.context(s, thread: p, before: outgoing.str("id"))
+    expect(context.contains("During checkpoint") && !context.contains("Foreign words") && !context.contains("Outgoing only once"))
+    _ = try s.appendTranscript(["purpose": .string("clear"), "page": .string(p)])
+    expect(s.carried(for: p).isEmpty && s.window(for: p).isEmpty)
+    // Q queued before P finished and before its checkpoint entry: dispatch sees current storage.
+    let queued = try message(s, "Queued question", page: q)
+    let late = try message(s, "Saved while Q waited", page: q, role: "sophia")
+    _ = try s.appendTranscript(["purpose": .string("checkpoint"), "through": .string(through)])
+    let rebuilt = Prompts.context(s, thread: q, before: queued.str("id"))
+    expect(rebuilt.contains(late.str("text")!) && !rebuilt.contains("Queued question"))
+}
+func scenario2PageContextAndBookChanges() throws {
+    let s = try tempStore(), p = try fixturePage(s, "P", body: "Page P body").str("file")!, q = try fixturePage(s, "Q", body: "Page Q body").str("file")!
+    let origin = try message(s, "Creating question", page: p)
+    _ = try message(s, "Creating answer", page: p, role: "sophia")
+    let r = try fixturePage(s, "R", thread: p).str("file")!
+    _ = try message(s, "Next turn excluded", page: p)
+    _ = try s.appendLearning(["kind": .string("question"), "text": .string("Relevant by page"), "refs": .array([.string("p:" + q)])], by: "sophia", session: "s-1")
+    _ = try s.appendLearning(["kind": .string("question"), "text": .string("Relevant by quote"), "quote": .object(["entry": origin["id"]!, "text": .string("Creating question")])], by: "sophia", session: "s-1")
+    expect(s.notes(for: q).contains { $0.str("text") == "Relevant by page" })
+    expect(s.notes(for: p).contains { $0.str("text") == "Relevant by quote" })
+    _ = try s.appendLearning(["kind": .string("question"), "text": .string("Relevant by message"), "refs": .array([origin["id"]!])], by: "sophia", session: "s-1")
+    expect(s.notes(for: p).contains { $0.str("text") == "Relevant by message" })
+    let context = Prompts.context(s, thread: r)
+    expect(context.contains("Creating question") && context.contains("Creating answer") && !context.contains("Next turn excluded"))
+    let range = s.editRanges(of: p).last!
+    _ = try s.editPage(file: p, section: range.key, baseHash: range.hash, text: "Person hunk", session: "s-1")
+    let revised = try s.writePage(title: "Q", content: "Q changed", revising: q, session: "s-1", toolUseID: "cross", thread: p)
+    let prefix = Prompts.turnPrefix(s, thread: q)
+    expect(prefix.contains("Person hunk") && prefix.contains(q))
+    try s.undoPageWrite(revised.str("id")!, session: "s-1")
+    expect(Prompts.turnPrefix(s, thread: q).contains("undo_page"))
+    _ = try s.appendTranscript(["role": .string("client"), "tool": .string("write_page"), "recovered": .bool(true), "file": .string(q), "page": .string(q)])
+    expect(!Prompts.turnPrefix(s, thread: q).contains("recovered"))
+    _ = try s.appendTranscript(["purpose": .string("checkpoint"), "through": origin["id"]!])
+    expect(Prompts.context(s, thread: r).contains("Creating question"))
+    _ = try s.appendTranscript(["purpose": .string("clear"), "page": .string(r)])
+    expect(!s.creatingExchange(for: r).isEmpty && !Prompts.context(s, thread: r).contains("Creating question"))
+}
+func scenario3GoalAndNoteQuoteOwnership() throws {
+    let s = try tempStore(), p = try message(s, "My P goal", page: "p.md")
+    _ = try message(s, "Queued Q goal", page: "q.md")
+    let goal = try s.writeGoal(text: "Goal", criteria: [], revising: nil, quote: "My P goal", session: "s-1", thread: "p.md")
+    expect(goal["refs"]?.array == [p["id"]!] && goal["quote"]?["entry"] == p["id"])
+    let note = try s.writeNote(["kind": .string("question"), "text": .string("R starts from P")], quote: "My P goal", revising: nil, session: "s-1", thread: "r.md")
+    expect(note.saved?["quote"]?["entry"] == p["id"])
+    for i in 1..<NotebookStore.liveNotesPerSession {
+        expect(try s.writeNote(["kind": .string("question"), "text": .string("Note \(i)"), "refs": .array([p["id"]!])], quote: nil, revising: nil, session: "s-1", thread: i % 2 == 0 ? "p.md" : "q.md").saved != nil)
+    }
+    expect(try s.writeNote(["kind": .string("question"), "text": .string("Too many"), "refs": .array([p["id"]!])], quote: nil, revising: nil, session: "s-1", thread: "r.md").saved == nil)
+}
+func verificationCheckpointValidationBeforeMutation() throws {
+    let s = try tempStore(), m = try message(s, "Evidence", page: "p.md"), id = m.str("id")!
+    _ = try s.setMemory([.init(id: nil, text: "Existing", refs: [id])], session: "s-1")
+    let transcript = s.transcript, learning = s.learning
+    for text in ["bad JSON", "42", "\"text\"", "{}", "{\"notes\":{}}", "{\"notes\":[],\"memory\":42}", "{\"notes\":[{\"kind\":\"question\",\"text\":\"No evidence\"}],\"memory\":[]}"] {
+        expect(try s.finishCheckpoint(text, failed: false, through: id, entries: [id], session: "s-2", catchUp: false) == .failed)
+        expect(s.transcript == transcript && s.learning == learning)
+    }
+    expect(try s.finishCheckpoint("{\"notes\":[]}", failed: true, through: id, entries: [id], session: "s-2", catchUp: false) == .failed)
+    expect(s.transcript == transcript && s.learning == learning)
+    expect(try s.finishCheckpoint("{\"notes\":[]}", failed: false, through: id, entries: [id], session: "s-2", catchUp: false) == .saved)
+    expect(s.unnotedMessages.isEmpty && s.transcript.last?.str("through") == id && s.learning == learning)
+    let first = try s.appendLearning(["kind": .string("question"), "text": .string("Original historical note"), "refs": .array([.string(id)])], by: "sophia", session: "s-3")
+    _ = try s.appendLearning(["kind": .string("question"), "text": .string("Replacement historical note"), "replaces": first["id"]!, "refs": .array([.string(id)])], by: "sophia", session: "s-4")
+    let prompt = Prompts.checkpoint(s, messages: [m], catchUp: true)
+    expect(prompt.contains("Original historical note") && prompt.contains("Replacement historical note") && prompt.contains("[page: p.md]"))
+    expect(!Prompts.briefing(s).contains("Original historical note"))
+}
+func scenario10TornTranscriptAppend() throws {
+    let s = try tempStore()
+    try Data("{\"role\":\"person\",\"text\":".utf8).write(to: s.url.appendingPathComponent("transcript.jsonl"))
+    _ = try message(s, "Intact", page: "p.md")
+    let lines = try String(contentsOf: s.url.appendingPathComponent("transcript.jsonl"), encoding: .utf8).split(separator: "\n")
+    expect(lines.count == 2 && JSON.parse(String(lines[1]))?["text"] == .string("Intact"))
+    expect(try NotebookStore(url: s.url).transcript.count == 1)
+}
+func scenario10IntentionalEngineExit() throws {
+    let s = try tempStore()
+    for requested in [false, true] {
+        let engine = ClaudeEngine(config: .init(claudePath: "/usr/bin/true", toolServerPath: "/unused", notebookURL: s.url, systemPrompt: "", context: "", session: "s-1", page: "p.md"))
+        let args = engine.arguments
+        expect(!args.contains("--resume"))
+        if let index = args.firstIndex(of: "--mcp-config"), let mcp = JSON.parse(args[index + 1]) {
+            expect(mcp["mcpServers"]?["sophia"]?["args"]?.array == [.string(s.url.path), .string("s-1"), .string("p.md")])
+        } else { expect(false) }
+        var observed: Bool?
+        engine.onEvent = { event in if case .exited(_, _, let stopped) = event { observed = stopped } }
+        try engine.start()
+        if requested { engine.stop() }
+        let deadline = Date().addingTimeInterval(5)
+        while observed == nil && Date() < deadline { _ = RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
+        expect(observed == requested)
+    }
+}
+
 let all: [(String, () throws -> Void)] = [
+    ("verificationInterleavedThreadOwnership", verificationInterleavedThreadOwnership),
+    ("verificationUndoAcrossScopesAndReopen", verificationUndoAcrossScopesAndReopen),
+    ("verificationLatestReleaseAndOneWayUndo", verificationLatestReleaseAndOneWayUndo),
+    ("verificationRecoveredRevisionBeforeEntry", verificationRecoveredRevisionBeforeEntry),
+    ("verificationRecoveredNewPageBeforeUnfiled", verificationRecoveredNewPageBeforeUnfiled),
+    ("verificationExternalAndCopyOnlyChanges", verificationExternalAndCopyOnlyChanges),
+    ("verificationAtomicUndoAndNewPageCutoff", verificationAtomicUndoAndNewPageCutoff),
+    ("verificationNeverReuseUndoneFilename", verificationNeverReuseUndoneFilename),
+    ("verificationWindowUsesThroughPosition", verificationWindowUsesThroughPosition),
+    ("scenario2PageContextAndBookChanges", scenario2PageContextAndBookChanges),
+    ("scenario3GoalAndNoteQuoteOwnership", scenario3GoalAndNoteQuoteOwnership),
+    ("verificationCheckpointValidationBeforeMutation", verificationCheckpointValidationBeforeMutation),
+    ("scenario10TornTranscriptAppend", scenario10TornTranscriptAppend),
+    ("scenario10IntentionalEngineExit", scenario10IntentionalEngineExit),
+
     ("keepsVerifiedQuoteAndStampsNothingFromSophia", keepsVerifiedQuoteAndStampsNothingFromSophia),
     ("misquoteBecomesParaphrase", misquoteBecomesParaphrase),
     ("quoteFromAnEarlierSessionIsRemoved", quoteFromAnEarlierSessionIsRemoved),

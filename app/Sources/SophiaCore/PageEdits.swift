@@ -61,7 +61,7 @@ extension NotebookStore {
         public var label: String { index.map { "§\($0 + 1)" } ?? (key == "(opening)" ? "the opening" : "the page") }
     }
 
-    static func hash(_ text: String) -> String {
+    public static func hash(_ text: String) -> String {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
     }
 
@@ -179,7 +179,7 @@ extension NotebookStore {
             try (raw.prefix(raw.count - oldBody.count) + Data(body.text.utf8)).write(to: current, options: .atomic)
             let hunks = Self.hunks(before, after).map { JSON.object(["before": .string($0.before), "after": .string($0.after)]) }
             var entry: JSONObject = ["role": .string("person"), "purpose": .string("edit_page"), "session": .string(session),
-                                     "file": .string(file), "title": .string(page.title), "section": .string(r.section),
+                                     "file": .string(file), "page": .string(file), "hash": .string(pageHash(file)!), "title": .string(page.title), "section": .string(r.section),
                                      "hunks": .array(hunks)]
             if let i = r.index { entry["index"] = .number(Double(i)) }
             return .saved(try appendTranscriptLocked(entry))
@@ -298,9 +298,13 @@ extension NotebookStore {
     @discardableResult
     public func releaseEdits(_ editIDs: [String], session: String) throws -> [JSONObject] {
         try locked {
-            try editIDs.filter { !isReleased($0) }.map {
-                try appendTranscriptLocked(["role": .string("person"), "purpose": .string("release_edit"),
-                                            "session": .string(session), "entry": .string($0)])
+            try editIDs.filter { id in
+                guard let edit = transcript.first(where: { $0.str("id") == id }), let file = edit.str("file") else { return false }
+                return protectedLines(of: file).contains { $0.edit.str("id") == id }
+            }.map { id in
+                let edit = transcript.first { $0.str("id") == id }!
+                return try appendTranscriptLocked(["role": .string("person"), "purpose": .string("release_edit"),
+                                            "session": .string(session), "entry": .string(id), "page": .string(actionFile(edit) ?? "")])
             }
         }
     }
@@ -308,7 +312,8 @@ extension NotebookStore {
     /// Takes a release back: the edit's lines are protected again.
     public func undoRelease(_ releaseID: String, session: String) throws {
         try locked {
-            _ = try appendTranscriptLocked(["role": .string("client"), "purpose": .string("undo_release"),
+            guard let release = transcript.first(where: { $0.str("id") == releaseID }), isReleaseUndoable(release) else { throw StoreError.notFound }
+            _ = try appendTranscriptLocked(["role": .string("client"), "purpose": .string("undo_release"), "page": .string(actionFile(release) ?? ""),
                                             "session": .string(session), "entry": .string(releaseID)])
         }
     }
