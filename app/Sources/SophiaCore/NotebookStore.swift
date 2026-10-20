@@ -676,7 +676,10 @@ public final class NotebookStore {
                 record["quote"] = .object(["entry": entry["id"]!, "text": .string(q)])
             }
             if let last = personMessages.last?.str("id") { record["refs"] = .array([.string(last)]) }
-            return try appendLearningLocked(record, by: "sophia", session: session)
+            let saved = try appendLearningLocked(record, by: "sophia", session: session)
+            try appendTranscriptLocked(["role": .string("client"), "purpose": .string("goal_noted"),
+                                        "record": saved["id"]!, "page": .string(thread), "session": .string(session)])
+            return saved
         }
     }
 
@@ -696,7 +699,7 @@ public final class NotebookStore {
             var obj = fields
             // Sophia gives the words; the store finds which of the person's messages this session they're from.
             if let q = quote, !q.isEmpty {
-                let matches: (JSONObject) -> Bool = { Self.isPersonMessage($0) && RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }
+                let matches: (JSONObject) -> Bool = { $0.str("session") == session && Self.isPersonMessage($0) && RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }
                 let entry = threadEntries(for: thread).last(where: matches) ?? transcript.last { $0.str("session") == session && matches($0) }
                 obj["quote"] = .object(["entry": entry?["id"] ?? .string(""), "text": .string(q)])
             }
@@ -714,7 +717,7 @@ public final class NotebookStore {
                     return (nil, ["You've written \(mine.count) notes this session. Revise one instead of adding another."])
                 }
             }
-            let out = RecordChecks(store: self).check([.object(obj)], allowedKinds: Self.liveNoteKinds, quoteEntries: Set(transcript.filter { Self.thread(of: $0) == thread || $0.str("session") == session }.compactMap { $0.str("id") }))
+            let out = RecordChecks(store: self).check([.object(obj)], allowedKinds: Self.liveNoteKinds, quoteEntries: Set(transcript.filter { $0.str("session") == session }.compactMap { $0.str("id") }))
             guard var rec = out.kept.first else { return (nil, out.notes) }
             if let noteID { rec["replaces"] = .string(noteID) }
             let saved = try appendLearningLocked(rec, by: "sophia", session: session)

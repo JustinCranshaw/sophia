@@ -1,6 +1,6 @@
-# S1 native checks — prepared, not yet Gate B acceptance
+# S1 native checks — prepared Gate B checklist
 
-Use after independent review and final build/check results are recorded. These checks are not passed by snapshots or core checks. The fixture is reduced and synthetic, not the full historical 240-entry notebook.
+The independent review is complete and its corrections are implemented. The final live check failed, so S1 is not yet ready for acceptance; see [S1.md](S1.md). This checklist is preserved for the native gate once that result is resolved. These checks are not passed by snapshots or core checks. The fixture is reduced and synthetic, not the full historical 240-entry notebook.
 
 ## Launch
 
@@ -11,6 +11,10 @@ SOPHIA_LIBRARY=/private/tmp/sophia-s1-gate-b-20261020/library build/Sophia.app/C
 ```
 
 Notebook: **Fourier analysis**. P is **1.3 The convolution theorem**, Q is **1.4 Sampling and aliasing**. R does not initially exist. The fixture has a protected person edit and a synthetic refusal card on P. Its small history and notes are explicitly synthetic. Only the disposable library is used.
+
+Fresh copies are ready at `/private/tmp/sophia-s1-gate-b-20261020/undo-library` and `/private/tmp/sophia-s1-gate-b-20261020/contents-write-library`. Substitute one of these for `SOPHIA_LIBRARY` when a check requires an untouched edit or an absent R. The first is for destructive Undo/release checks; the second is for creating R from Contents.
+
+A separate two-edit fixture is ready at `/private/tmp/sophia-s1-gate-b-20261020/multi-edit-library`. In check 7, also use its P refusal card: two quoted edits must each have their own “Let Sophia change this edit” button. Release the first: only that edit shows permission granted. Release the second: only its permission can now be undone. Undo it: the second is protected again, the first still visibly permitted, and no older Undo or Undo of Undo is offered. The orchestrator observed the two controls in a snapshot; clicking them remains a native check.
 
 The orchestrator can inspect `library/Fourier analysis/transcript.jsonl` afterward for ownership/completion counts; the operator need only report what the UI did and the questions used.
 

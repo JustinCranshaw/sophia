@@ -124,6 +124,7 @@ final class NotebookSession: ObservableObject {
                 engine?.cancel()
                 if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
                 engine = nil; running = nil; request = nil; isResponding = false; streaming = ""; activity = nil
+                queue = []; pendingTools = [:]; turnTexts = []; requestText = ""; briefAfterNotes = false; dropBriefing = false
                 problem = "Claude Code is set to use an API key (\(source)), which bills separately. Sophia won't continue on it."
                 changed()
             }
@@ -147,15 +148,9 @@ final class NotebookSession: ObservableObject {
             changed()
         case .toolResult(let id):
             guard current, let name = pendingTools.removeValue(forKey: id), name.hasPrefix("mcp__sophia__") else { return }
-            let before = Set(store.pageWrites.compactMap { $0.str("id") })
-            let goalsBefore = Set(store.learning.compactMap { $0.str("id") })
             store.reload(); library.reload()
-            if name == "mcp__sophia__set_goal" {
-                for g in store.learning where g.str("kind") == "goal" && !goalsBefore.contains(g.str("id") ?? "") {
-                    try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("goal_noted"), "record": g["id"]!])
-                }
-            }
-            if name == "mcp__sophia__write_page", let file = store.pageWrites.last(where: { !before.contains($0.str("id") ?? "") })?.str("file") { showWrittenPage(file) }
+            // Match the actual tool call even if another app action already reloaded its write.
+            if name == "mcp__sophia__write_page", let file = store.pageWrite(toolUse: id)?.str("file") { showWrittenPage(file) }
             changed()
         case .turnDone(let isError, let message, _):
             guard current else { return }
@@ -200,13 +195,16 @@ final class NotebookSession: ObservableObject {
     }
 
     private func dispatchNext() {
-        guard !queue.isEmpty, NotebookStore.nextStep(thread: queue[0].thread, pending: isResponding || request != nil) == .reply else { return }
-        let turn = queue.removeFirst()
-        guard ensureEngine(thread: turn.thread, before: turn.id) else { changed(); return }
-        running = turn; isResponding = true
-        let music = musicWarnings.keys.sorted().flatMap { musicWarnings[$0]! }.filter { !toldMusic.contains($0) }
-        toldMusic.formUnion(music)
-        engine?.send(Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music) + turn.text)
+        while !queue.isEmpty, NotebookStore.nextStep(thread: queue[0].thread, pending: isResponding || request != nil) == .reply {
+            let turn = queue.removeFirst()
+            // A failed startup leaves its saved message incomplete; it cannot block other threads.
+            guard ensureEngine(thread: turn.thread, before: turn.id) else { changed(); continue }
+            running = turn; isResponding = true
+            let music = musicWarnings.keys.sorted().flatMap { musicWarnings[$0]! }.filter { !toldMusic.contains($0) }
+            toldMusic.formUnion(music)
+            engine?.send(Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music) + turn.text)
+            return
+        }
     }
 
     func stop() {
@@ -371,18 +369,15 @@ final class NotebookSession: ObservableObject {
     }
 
     /// Permission applies on the next message; it remains undoable until the next page action.
-    func release(_ refusal: JSONObject) {
-        let edits = (refusal["edits"]?.array ?? []).compactMap(\.string)
-        do { _ = try store.releaseEdits(edits, session: session) }
+    func release(_ editID: String) {
+        do { _ = try store.releaseEdits([editID], session: session) }
         catch { problem = error.localizedDescription }
         changed()
     }
 
-    func undoRelease(_ refusal: JSONObject) {
-        let edits = Set((refusal["edits"]?.array ?? []).compactMap(\.string))
-        for release in store.transcript where edits.contains(release.str("entry") ?? "") && store.isReleaseUndoable(release) {
-            try? store.undoRelease(release.str("id")!, session: session)
-        }
+    func undoRelease(_ releaseID: String) {
+        do { try store.undoRelease(releaseID, session: session) }
+        catch { problem = error.localizedDescription }
         changed()
     }
 
