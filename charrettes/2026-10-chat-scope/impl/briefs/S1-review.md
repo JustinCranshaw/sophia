@@ -27,7 +27,7 @@ S1 includes thread ownership, durable Undo/recovery, thread context, pending-sen
 
 ## Evidence and output
 
-Known environment fact: the orchestrator's baseline `swift run sophia-checks` could not execute tests because SwiftPM's manifest sandbox was denied. Redirecting caches fixed the preceding cache-access failure but left `sandbox-exec: sandbox_apply: Operation not permitted`. A request for escalated execution was rejected by the session policy. This is not a test pass and does not by itself establish a source defect. Do not weaken checks or bypass runtime restrictions.
+Current environment fact: Justin enabled full access on 2026-10-20. The orchestrator observed `swift run sophia-checks` exit 0 (all 51 checks), `scripts/make-app.sh debug` exit 0, and the existing `--live` command exit 0 on disposable notebooks, including after the current lead corrections. Earlier manifest-sandbox failures are historical. These results do not establish native focus, queue or UI behavior. Inspect source and meaningful assertions independently; a named check alone is insufficient. Do not weaken checks. Do not read the QC narrative or implementer report as a substitute for the actual diff.
 
 Return only actionable findings, each with severity, exact current file/line, a concrete triggering sequence and observed/inferred consequence. Explain the smallest correction needed for the specified behavior. Cite the governing doc line. Distinguish source inspection from commands you actually ran. Report unresolved validation separately. If there are no confirmed source findings, say so and retain the runtime/UI limitations; do not certify checks or native behavior you did not observe.
 

@@ -97,15 +97,15 @@ final class NotebookSession: ObservableObject {
 
     private func ensureEngine(thread: String, before: String? = nil, internalRequest: Bool = false) -> Bool {
         if !internalRequest, let e = engines[thread], e.isRunning { engine = e; return true }
-        guard let claude = ClaudeEngine.locateClaude() else { problem = "Install Claude Code and sign in to continue."; return false }
-        guard let prompt = Self.sophiaPrompt() else { problem = "SOPHIA.md is missing from the app."; return false }
+        guard let claude = ClaudeEngine.locateClaude() else { if !internalRequest { problem = "Install Claude Code and sign in to continue." }; return false }
+        guard let prompt = Self.sophiaPrompt() else { if !internalRequest { problem = "SOPHIA.md is missing from the app." }; return false }
         let tools = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("sophia-mcp").path
         let e = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: tools, notebookURL: store.url,
                                            systemPrompt: prompt, context: Prompts.context(store, thread: thread, before: before),
-                                           session: session, page: thread))
+                                           session: session, page: thread, readOnly: internalRequest))
         let identity = ObjectIdentifier(e)
         e.onEvent = { [weak self] event in self?.handle(event, identity: identity, thread: thread, internalRequest: internalRequest) }
-        do { try e.start() } catch { problem = "Couldn't start Claude Code: \(error.localizedDescription)"; return false }
+        do { try e.start() } catch { if !internalRequest { problem = "Couldn't start Claude Code: \(error.localizedDescription)" }; return false }
         if internalRequest { checkpointEngine = e } else { engines[thread] = e }
         engine = e
         return true
@@ -160,7 +160,7 @@ final class NotebookSession: ObservableObject {
         case .turnDone(let isError, let message, _):
             guard current else { return }
             turnTexts = []; pendingTools = [:]; isResponding = false; activity = nil; streaming = ""
-            if isError { problem = "Sophia stopped with an error: \(message ?? "Unknown error")" }
+            if isError && !internalRequest { problem = "Sophia stopped with an error: \(message ?? "Unknown error")" }
             if internalRequest { finishRequest(failed: isError) }
             else {
                 if !isError && !source.stopRequested, running != nil {
@@ -175,7 +175,7 @@ final class NotebookSession: ObservableObject {
             guard current else { return }
             engine = nil
             if !stopRequested && isResponding {
-                problem = "The connection to Claude Code closed (exit \(code)). \(stderr.split(separator: "\n").last.map(String.init) ?? "")"
+                if !internalRequest { problem = "The connection to Claude Code closed (exit \(code)). \(stderr.split(separator: "\n").last.map(String.init) ?? "")" }
                 isResponding = false; streaming = ""; activity = nil
                 if internalRequest { finishRequest(failed: true) } else { running = nil; dispatchNext() }
             }

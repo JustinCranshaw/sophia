@@ -28,8 +28,9 @@ struct LiveRunner {
     }
 
     func run(session: String, resume: String?, messages: [(String, String?)], page: String = "") -> [String: String] {
+        let internalRequest = messages.contains { ["checkpoint", "briefing"].contains($0.1 ?? "") }
         let engine = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: toolServer, notebookURL: store.url,
-                                                systemPrompt: prompt, context: Prompts.context(store, thread: page), session: session, page: page))
+                                                systemPrompt: prompt, context: Prompts.context(store, thread: page), session: session, page: page, readOnly: internalRequest))
         var done = false, reply = "", info: [String: String] = [:]
         var queue = messages
         var currentPurpose: String? = nil
@@ -38,6 +39,7 @@ struct LiveRunner {
             guard NotebookStore.nextStep(thread: page, pending: false) == .reply else { return }
             let (text, purpose) = queue.removeFirst()
             currentPurpose = purpose
+            if let purpose { info[purpose + "_failed"] = "true" }
             reply = ""
             var before: String?
             if purpose == nil { before = try! store.appendTranscript(["role": .string("person"), "page": .string(page), "session": .string(session), "text": .string(text)]).str("id") }
@@ -60,7 +62,7 @@ struct LiveRunner {
                 store.reload()
             case .turnDone(let isError, let message, _):
                 if isError { print("  turn error: \(message ?? "")") }
-                if let p = currentPurpose { info[p] = reply }
+                if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false" }
                 else if !isError { try! store.appendTranscript(["role": .string("client"), "purpose": .string("replied"), "page": .string(page), "session": .string(session)]) }
                 next()
             case .exited(let code, _, _):
@@ -95,7 +97,7 @@ func runLive(dir: URL) {
         ("I'd guess positive on one triangle, negative on the other, and the same size on all six vertices.", nil),
         ("That's helpful. Let's keep this in the book, including my prediction.", nil),
     ])
-    print("  auth source: \(s1["apiKeySource"] ?? "?"), tools: \(s1["tools"] ?? "?")")
+    print("  model: \(s1["model"] ?? "?"), auth source: \(s1["apiKeySource"] ?? "?"), tools: \(s1["tools"] ?? "?")")
     store.reload()
     let goals = store.goals
     print(goals.isEmpty ? "FAIL: Sophia recorded no goal." : "  goals: " + goals.map { "\($0.str("id") ?? "") [\(store.isProvisional($0) ? "provisional" : "confirmed")] \($0.str("text") ?? "") (\($0["criteria"]?.array?.count ?? 0) criteria\($0["quote"] == nil ? "" : ", quote verified"))" }.joined(separator: "; "))
@@ -111,7 +113,7 @@ func runLive(dir: URL) {
     let (items, memory, _) = RecordChecks.parseCheckpoint(s2a["checkpoint"] ?? "")
     let out = RecordChecks(store: store).check(items, allowedKinds: RecordChecks.checkpointKinds,
                                                quoteEntries: Set(unnoted.compactMap { $0.str("id") }))
-    let checkpoint = try! store.finishCheckpoint(s2a["checkpoint"] ?? "", failed: false,
+    let checkpoint = try! store.finishCheckpoint(s2a["checkpoint"] ?? "", failed: s2a["checkpoint_failed"] != "false",
         through: unnoted.last?.str("id") ?? "", entries: Set(unnoted.compactMap { $0.str("id") }), session: "s-2", catchUp: true)
     if checkpoint == .failed { print("FAIL: checkpoint could not be saved.") }
     _ = memory
@@ -124,7 +126,7 @@ func runLive(dir: URL) {
     var obj = RecordChecks.extractJSON(s2["briefing"] ?? "")?.object ?? [:]
     obj["kind"] = .string("briefing")
     let b = RecordChecks(store: store).check([.object(obj)], allowedKinds: RecordChecks.briefingKinds, session: "s-2")
-    if let rec = b.kept.first {
+    if s2["briefing_failed"] == "false", let rec = b.kept.first {
         try! store.appendLearning(rec, by: "sophia", session: "s-2")
         let words = (rec.str("text") ?? "").split(whereSeparator: { $0.isWhitespace }).count
         print("  briefing kept (\(words) words), citing: \((rec["refs"]?.array ?? []).compactMap(\.string).joined(separator: ", "))")
