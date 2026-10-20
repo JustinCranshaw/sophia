@@ -22,9 +22,10 @@ public final class ClaudeEngine {
         public var context: String
         public var page: String
         public var session: String
-        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "") {
+        public var readOnly: Bool
+        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false) {
             self.claudePath = claudePath; self.toolServerPath = toolServerPath; self.notebookURL = notebookURL
-            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session
+            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly
         }
     }
 
@@ -46,18 +47,27 @@ public final class ClaudeEngine {
                                      "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_OAUTH_TOKEN",
                                      "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "OPENAI_API_KEY", "CODEX_API_KEY"]
 
+    /// Internal requests may read evidence, but cannot mutate it before validation finishes.
+    static let readingTools = ["mcp__sophia__read_page", "mcp__sophia__recall"]
+    static let writingTools = ["mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__about_you", "mcp__sophia__link"]
+
     public var arguments: [String] {
         let mcp = JSON.object(["mcpServers": .object(["sophia": .object([
             "command": .string(config.toolServerPath),
             "args": .array([.string(config.notebookURL.path), .string(config.session), .string(config.page)])
         ])])]).line
-        let args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+        var args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                     "--include-partial-messages",
-                    "--restricted", "--tools", "WebSearch",
+                    "--restricted", "--tools", config.readOnly ? "" : "WebSearch",
                     "--strict-mcp-config", "--mcp-config", mcp,
-                    "--allowedTools", "mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch",
-                    "--system-prompt", config.systemPrompt,
-                    "--append-system-prompt", config.context]
+                    "--allowedTools"]
+        if config.readOnly {
+            args += Self.readingTools + ["--disallowedTools"] + Self.writingTools
+        } else {
+            // Preserve the user-turn allowlist and its order.
+            args += ["mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch"]
+        }
+        args += ["--system-prompt", config.systemPrompt, "--append-system-prompt", config.context]
         return args
     }
 

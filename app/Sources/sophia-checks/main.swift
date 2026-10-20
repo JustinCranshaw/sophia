@@ -801,6 +801,23 @@ func scenario3GoalAndNoteQuoteOwnership() throws {
     expect(try s.writeNote(["kind": .string("question"), "text": .string("Too many"), "refs": .array([p["id"]!])], quote: nil, revising: nil, session: "s-1", thread: "r.md").saved == nil)
 }
 func verificationCheckpointValidationBeforeMutation() throws {
+    let configStore = try tempStore()
+    func engine(readOnly: Bool) -> ClaudeEngine {
+        ClaudeEngine(config: .init(claudePath: "/usr/bin/true", toolServerPath: "/unused", notebookURL: configStore.url,
+                                  systemPrompt: "", context: "", session: "s-1", readOnly: readOnly))
+    }
+    func values(_ flag: String, in args: [String]) -> [String] {
+        guard let index = args.firstIndex(of: flag) else { return [] }
+        return Array(args.dropFirst(index + 1).prefix { !$0.hasPrefix("--") })
+    }
+    let internalArgs = engine(readOnly: true).arguments, userArgs = engine(readOnly: false).arguments
+    let mutations = ["write_page", "set_goal", "set_chapter", "note", "set_memory", "about_you", "link"].map { "mcp__sophia__" + $0 }
+    expect(values("--tools", in: internalArgs) == [""])
+    expect(values("--allowedTools", in: internalArgs) == ["mcp__sophia__read_page", "mcp__sophia__recall"])
+    expect(Set(values("--disallowedTools", in: internalArgs)) == Set(mutations))
+    expect(values("--tools", in: userArgs) == ["WebSearch"])
+    expect(values("--allowedTools", in: userArgs) == ["mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch"])
+    expect(!userArgs.contains("--disallowedTools") && internalArgs.contains("--restricted") && internalArgs.contains("--strict-mcp-config"))
     let s = try tempStore(), m = try message(s, "Evidence", page: "p.md"), id = m.str("id")!
     _ = try s.setMemory([.init(id: nil, text: "Existing", refs: [id])], session: "s-1")
     let transcript = s.transcript, learning = s.learning
