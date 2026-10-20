@@ -42,7 +42,7 @@ struct ConversationView: View {
                     .padding(.horizontal, 24).padding(.vertical, 20)
                     .frame(maxWidth: .infinity)
                 }
-                .onChange(of: session.store.transcript.count) { _, _ in withAnimation { proxy.scrollTo("bottom") } }
+                .onChange(of: items.map(\.id)) { _, _ in withAnimation { proxy.scrollTo("bottom") } }
                 .onChange(of: session.visibleStreaming) { _, _ in proxy.scrollTo("bottom") }
                 .onAppear { DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) } }
                 .onReceive(NotificationCenter.default.publisher(for: .scrollConversationToEnd)) { _ in
@@ -361,28 +361,30 @@ struct RefusalCard: View {
             let edits = ids.compactMap { id in store.transcript.first { $0.str("id") == id } }
             let file = entry.str("file") ?? ""
             let protected = Set(store.protectedLines(of: file).compactMap { $0.edit.str("id") })
-            let released = !ids.isEmpty && ids.allSatisfy(store.isReleased)
             VStack(alignment: .leading, spacing: 6) {
                 Text("SOPHIA WANTS TO CHANGE YOUR TEXT").font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(.secondary)
                 ForEach(edits, id: \.self.line) { e in
+                    let editID = e.str("id") ?? ""
                     let mine = (e["hunks"]?.array ?? []).compactMap { $0["after"]?.string }.filter { !$0.isEmpty }.joined(separator: " … ")
-                    (Text("Your edit in \(editLabel(e)): ").foregroundColor(.secondary) + Text(verbatim: "“\(mine.count > 200 ? String(mine.prefix(200)) + "…" : mine)”"))
-                        .font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 6) {
+                        (Text("Your edit in \(editLabel(e)): ").foregroundColor(.secondary) + Text(verbatim: "“\(mine.count > 200 ? String(mine.prefix(200)) + "…" : mine)”"))
+                            .font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            if store.isReleased(editID) {
+                                Text("Sophia may change this edit on your next message.").font(.caption).foregroundStyle(.secondary)
+                                if let release = store.transcript.last(where: { $0.str("entry") == editID && store.isReleaseUndoable($0) }), let id = release.str("id") {
+                                    Button("Undo permission to change this edit") { session.undoRelease(id) }
+                                }
+                            } else if protected.contains(editID) {
+                                Button("Let Sophia change this edit") { session.release(editID) }
+                            } else {
+                                Text("Your text there has changed since.").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
                 if let why = entry.str("why") {
                     Text(verbatim: "Sophia: \(why)").font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
-                }
-                HStack {
-                    if released {
-                        Text("Sophia may change this on your next message.").font(.caption).foregroundStyle(.secondary)
-                        if store.transcript.contains(where: { ids.contains($0.str("entry") ?? "") && store.isReleaseUndoable($0) }) {
-                            Button("Undo") { session.undoRelease(entry) }
-                        }
-                    } else if ids.contains(where: protected.contains) {
-                        Button("Let Sophia change this") { session.release(entry) }
-                    } else {
-                        Text("Your text there has changed since.").font(.caption).foregroundStyle(.secondary)
-                    }
                 }
             }
             .controlSize(.small)

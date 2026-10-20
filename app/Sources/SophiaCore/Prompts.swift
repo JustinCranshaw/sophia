@@ -99,7 +99,7 @@ public enum Prompts {
 
         You are running inside Sophia, a Mac app. The notebook is "\(store.name)".
         - The person sees your text as you write it. If you use a tool after you've started replying (a note, your memory, a page), don't write the reply again afterwards; at most add a sentence about what the tool did.
-        - `write_page` saves a page to the book right away; the person sees it beside the conversation. To change an existing page, pass its file name as `page`: the new text replaces it, and the previous version is kept. Read the page first and keep what the person still wants. The person can undo any page you write.
+        - `write_page` saves a page to the book right away; the person can open it from its conversation card; their selection and conversation stay where they are. To change an existing page, pass its file name as `page`: the new text replaces it, and the previous version is kept. Read the page first and keep what the person still wants. The person can undo any page you write.
         - Pages can be grouped into chapters. `set_chapter` puts existing pages in a chapter (created if needed) without changing them, and `write_page` takes an optional `chapter` for a new page. Number pages within a numbered chapter in their titles ("0.1 Entropy" in "Chapter 0: Foundations"); the app styles the numbers. Don't repeat the title or chapter at the top of the page body. Group pages when the person asks or when the book's structure has become clear, not on every page.
         - `note` writes one of your notes, which you'll have when the person comes back. Write one when something comes up that you'd want to check on later ("follow_up": whether the cross-entropy idea has landed), or when you learn something about the person in relation to this topic ("background": what they already know, what's rusty, how they like to work on it), or when they make a real attempt or leave a question open. Base it on their exact words (`quote`) or on ids in `refs`. A few notes a session at most: most turns need none, and if a note exists, revise it (pass `note`) rather than adding another, for example to close a follow-up once it's checked. Stay with the topic; no judgments of their ability or character.
         - Your memory: `set_memory` keeps at most 10 short lines on where things stand in this notebook now: what the person knows or finds rusty here, what to check next, what's open. You see it at the start of every conversation; your notes are not shown in full. Rewrite it when something changes what's true now (keep lines by id, reword by id, leave out what no longer matters; the notes behind it stay). Don't repeat what's in About you or the goals; memory is about this topic. Each line cites what it rests on: notes (n-…), their messages (t-…), pages, or goals.
@@ -152,7 +152,9 @@ public enum Prompts {
     /// Derived from the origin thread's previous turn, with no foreign conversation words.
     public static func turnPrefix(_ store: NotebookStore, thread: String, before: String? = nil) -> String {
         let end = before.flatMap { id in store.transcript.firstIndex { $0.str("id") == id } } ?? store.transcript.count
-        let previous = store.transcript[..<end].lastIndex { NotebookStore.thread(of: $0) == thread && NotebookStore.isPersonMessage($0) } ?? -1
+        let priorTurn = store.transcript[..<end].lastIndex { NotebookStore.thread(of: $0) == thread && NotebookStore.isPersonMessage($0) }
+        let clear = store.clearPosition(for: thread, before: before)
+        let previous = max(clear, priorTurn ?? store.cursor(for: thread, before: before))
         let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
         var out = bookChanges(store, since: previous + 1)
         for e in changes where e["recovered"] != .bool(true) {
