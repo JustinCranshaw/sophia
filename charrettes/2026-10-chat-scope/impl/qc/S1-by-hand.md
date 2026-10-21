@@ -1,6 +1,6 @@
-# S1 native checks — prepared Gate B checklist
+# S1 native checks — Gate B checklist
 
-The independent review is complete and its corrections are implemented. The final live check failed, so S1 is not yet ready for acceptance; see [S1.md](S1.md). This checklist is preserved for the native gate once that result is resolved. These checks are not passed by snapshots or core checks. The fixture is reduced and synthetic, not the full historical 240-entry notebook.
+The independent reviews and corrections are complete. The debug build, all 51 core checks and the fresh live run passed after the additional authorized correction; see [S1.md](S1.md). S1 now waits at Gate B for these native observations and Justin’s explicit continuation. These checks are not passed by snapshots or core checks. The fixture is reduced and synthetic, not the full historical 240-entry notebook.
 
 ## Launch
 
@@ -21,7 +21,7 @@ The orchestrator can inspect `library/Fourier analysis/transcript.jsonl` afterwa
 ## Seven checks
 
 1. **Normal turn and relaunch.** Open P and ask a short question. Wait for completion, close/reopen the notebook. Observable: one answer in P, the same history once after reopening, and exactly one new P-tagged `replied` in the saved log.
-2. **Interleaving.** Ask a longer question on P; while it is streaming open Q and ask the sampling/convolution question from scenario 2. Observable: P's text stays on P, Q's question waits and gets one answer in Q. Open Goals and Notes: the named conversation remains Q.
+2. **Interleaving.** Ask a longer question on P; while it is streaming open Q and ask the sampling/convolution question from scenario 2. Observable: P's text stays on P, Q's question waits and gets one answer in Q. While P is still producing output, scroll up in Q’s existing history: P’s updates must not jump Q to the bottom. Open Goals and Notes: the named conversation remains Q.
 3. **Selection, draft and caret.** On P, hide the book and ask Sophia to create R, titled “1.5 Windowing and spectral leakage.” Type an unsent draft while she writes. Observable: the book reappears on P, conversation stays P, draft and caret remain; only clicking Open on the result selects R. Repeat from Contents in a fresh fixture copy. Record R's actual immutable filename; title-derived creation need not reproduce the historical fixture's short filename.
 4. **Durable one-way Undo.** The seeded P edit should remain undoable after a Q message and relaunch. Undo it: original bytes return, and no Undo of Undo appears. On a fresh copy, release the protected edit using the seeded refusal card: release becomes the sole latest undoable action on P; undoing permission does not restore an older Undo offer. Also repeat with a real Sophia revision, then a Q message.
 5. **Recovery boundaries.** Separate disposable libraries exist under `recovery-revision`, `recovery-new`, `external-overwrite`, and `copy-only` beside `library`. Launch with each library path. Observable: revision/new-file cases have one recovered record after repeated opens; the orphan is unfiled. Outside overwrite/copy-only cases gain none and offer no Undo. Recovered writes do not appear as conversation activity. These are synthetic saved boundaries, not actual process crashes. The orchestrator has already opened/rendered these variants; do not describe them as pristine pre-open fixtures.
