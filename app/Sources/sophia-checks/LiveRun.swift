@@ -151,15 +151,35 @@ func runLive(dir: URL) {
     }
 
     print("Session 2: revising a page")
-    _ = run(session: "s-2", resume: nil, messages: [
-        ("I worked it out: the bridge endpoints come out smaller in magnitude than the outer vertices. Please add that to the page.", nil)])
     store.reload()
-    let revision = store.pageWrites.last { $0["revised"] == .bool(true) }
-    if let r = revision, let file = r.str("file") {
-        print("  revised \(file); previous version kept: \(store.hasPreviousVersion(file)); pages: \(store.pages.count)")
-    } else {
-        print("FAIL: Sophia didn't revise the page in place (pages: \(store.pages.map(\.file).joined(separator: ", ")))")
+    let revisionFile = page.file
+    let beforeRevisionIDs = Set(store.pageWrites.compactMap { $0.str("id") })
+    let beforeRevisionPages = Set(store.pageFiles)
+    let beforeRevisionBytes = try! Data(contentsOf: store.pagesURL.appendingPathComponent(revisionFile))
+    // Generate the personal question only now: the initial page cannot already contain it.
+    let revisionMarker = "S1-NEW-QUESTION-" + UUID().uuidString
+    let newQuestion = "Personal question [\(revisionMarker)]: How would increasing the bridge weight change the endpoint magnitudes?"
+    guard !String(decoding: beforeRevisionBytes, as: UTF8.self).contains(revisionMarker) else {
+        print("FAIL: the new revision marker was already present before the turn."); exit(1)
     }
+    _ = run(session: "s-2", resume: nil, messages: [
+        ("Please add this new personal question at the end of my existing page \(revisionFile). Keep its title and all existing content exactly, and put the question on its own line:\n\n\(newQuestion)\n\nDo not answer the question yet, create another page, or search the web.", nil)])
+    store.reload()
+    let newRevisionWrites = store.pageWrites.filter { !beforeRevisionIDs.contains($0.str("id") ?? "") }
+    let revision = newRevisionWrites.last { $0["revised"] == .bool(true) && $0.str("file") == revisionFile }
+    guard let r = revision, let file = r.str("file"),
+          store.hasPreviousVersion(file), Set(store.pageFiles) == beforeRevisionPages,
+          newRevisionWrites.allSatisfy({ $0["revised"] == .bool(true) && $0.str("file") == revisionFile }),
+          let savedBytes = try? Data(contentsOf: store.pagesURL.appendingPathComponent(file)),
+          savedBytes.starts(with: beforeRevisionBytes),
+          String(decoding: savedBytes, as: UTF8.self).components(separatedBy: "\n").contains(newQuestion),
+          r.str("hash") == store.pageHash(file),
+          let previousBytes = try? Data(contentsOf: store.pagesURL.appendingPathComponent(String(file.dropLast(3)) + ".previous.md")),
+          previousBytes == beforeRevisionBytes else {
+        print("FAIL: Sophia didn't make a new in-place revision of \(revisionFile) preserving its content, requested question, previous bytes and page set (pages: \(store.pages.map(\.file).joined(separator: ", ")))"); exit(1)
+    }
+    print("  revised \(file); previous version kept: \(store.hasPreviousVersion(file)); pages: \(store.pages.count)")
+    print("  new question marker: \(revisionMarker); exact prior bytes retained and only the existing page revised")
     print("Page-origin MCP: revise P and create R from P")
     let p = page.file
     _ = runner.run(session: "s-3", resume: nil, messages: [

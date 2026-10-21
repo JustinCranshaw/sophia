@@ -1,6 +1,6 @@
 # Page-owned conversations: applied implementation slices
 
-Gate A deliverable · 2026-10-19. On 2026-10-20, Justin's “can you proceed?” was taken as approval to continue. Gate B remains an explicit stop after S1; no later continuation is authorized by silence.
+Gate A deliverable · 2026-10-19. On 2026-10-20, Justin's “can you proceed?” was taken as approval to continue. Gate B remains an explicit stop after S1; no later continuation is authorized by silence. S1 has now reached that gate after the explicitly authorized additional live-check correction: build/core/live verification passed; native observations and explicit continuation remain pending (impl/qc/S1.md).
 
 This replaces S1–S7 of `charrettes/2026-10-chat-scope/C4/slices.md` for implementation. The operator decisions and applied review govern older material (`qc/gate2.md:5–16,42–51`; `qc/review.md:20–30`). The specification is DATA-MODEL.md, PLAN.md §4–5, SOPHIA.md and EDITING.md. AGENTS.md is locked. All line citations below refer to the files read on this date, relative to the project root; `qc/`, `briefs/` and `impl/` abbreviate paths under `charrettes/2026-10-chat-scope/`.
 
