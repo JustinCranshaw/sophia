@@ -24,7 +24,7 @@ final class NotebookSession: ObservableObject {
     @Published var place: Place = .contents { didSet {
         switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
-        pendingSource = nil
+        pendingSource = engines[activeThread]?.pendingSource
         if case .page(let f) = place, f == editing?.file { return }; commitEdit()
     } }
     @Published private(set) var activeThread = ""

@@ -441,7 +441,7 @@ struct SourceEvidence: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(entry["is_error"] == .bool(true) ? "Source request did not complete" : "Source response received").font(.caption.weight(.semibold))
-            Text("Provider-extracted source").font(.caption2).foregroundStyle(.secondary)
+            Text(entry["is_error"] == .bool(true) ? "Source access outcome" : "Provider extraction response").font(.caption2).foregroundStyle(.secondary)
             Text(entry.str("url") ?? "").font(.caption).textSelection(.enabled)
             if let returned = entry.str("returned_url"), returned != entry.str("url") {
                 Text("Returned URL: " + returned).font(.caption).textSelection(.enabled)

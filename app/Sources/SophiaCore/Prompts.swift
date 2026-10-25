@@ -162,7 +162,10 @@ public enum Prompts {
             return "[\(e.str("id") ?? "")] sophia (welcome back): \(e.str("text") ?? "")"
         }
         if e["recovered"] == .bool(true) { return nil }
-        if e.str("tool") == "WebFetch" { return "Provider-extracted source evidence (not raw full text or independently verified quotation): " + e.line }
+        if e.str("tool") == "WebFetch" {
+            let label = e["is_error"] == .bool(true) ? "Source request did not complete (not a source passage): " : "Provider-extracted source response (not raw full text or independently verified quotation): "
+            return label + e.line
+        }
         if e.str("tool") == "write_page" {
             if e["unchanged"] == .bool(true) { return "Unchanged \(e.str("file") ?? "")." }
             return e["refused"] == .bool(true) ? "Write refused on \(e.str("file") ?? ""): \(e.str("reason") ?? ""). \(e.str("current") ?? "")"

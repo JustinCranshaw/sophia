@@ -36,8 +36,10 @@ func sourcePermissionsAreExplicitMatchedAndTemporary() throws {
     expect(allowed["behavior"]?.string == "allow" && allowed["updatedInput"] == input)
     let declined = attempt("second") { expect(bridge.decide($0, allow: false)) }
     expect(declined["behavior"]?.string == "deny" && declined["message"]?.string?.contains("chose Don't open") == true)
-    expect(SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("../../first"), toolUseID: "../../first", timeout: 0.1)["behavior"]?.string == "deny")
-    expect(SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("mismatch"), toolUseID: "different", timeout: 0.1)["behavior"]?.string == "deny")
+    let replay = SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("../../first"), toolUseID: "../../first", timeout: 0.1)
+    expect(replay["behavior"]?.string == "deny" && replay["message"]?.string?.contains("already handled or expired") == true)
+    let mismatch = SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("mismatch"), toolUseID: "different", timeout: 0.1)
+    expect(mismatch["behavior"]?.string == "deny" && mismatch["message"]?.string?.contains("did not match the tool call") == true)
     expect(attempt("mismatched-decision") { request in
         SourcePermissionBridge.write(.object(["nonce": .string("wrong"), "generation": .string(request.generation), "toolUseID": .string(request.toolUseID), "allow": .bool(true)]), at: bridge.directory.appendingPathComponent("decision.json"))
     }["behavior"]?.string == "deny")
@@ -48,8 +50,10 @@ func sourcePermissionsAreExplicitMatchedAndTemporary() throws {
     let timedOut = SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("timeout"), toolUseID: "timeout", timeout: 0.01)
     expect(timedOut["behavior"]?.string == "deny" && timedOut["message"]?.string?.contains("no choice was recorded") == true)
     _ = bridge.poll(); expect(bridge.pending == nil)
-    expect(attempt("cancel") { _ in bridge.close() }["behavior"]?.string == "deny")
-    expect(SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("closed"), toolUseID: "closed", timeout: 0.1)["behavior"]?.string == "deny")
+    let cancelled = attempt("cancel") { _ in bridge.close() }
+    expect(cancelled["behavior"]?.string == "deny" && cancelled["message"]?.string?.contains("cancelled") == true)
+    let closed = SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("closed"), toolUseID: "closed", timeout: 0.1)
+    expect(closed["behavior"]?.string == "deny" && closed["message"]?.string?.contains("no longer active") == true)
     for url in ["file:///etc/passwd", "https://person:secret@example.com", "https://person@example.com", "javascript:alert(1)", "https://"] { expect(!SourcePermissionBridge.validURL(url)) }
     expect(SourcePermissionBridge.validURL("https://example.com"))
 }
@@ -81,5 +85,16 @@ func sourceToolsContextAndExtractedEvidenceAgree() throws {
     expect(extraction == content && SourceEvidenceText.plain(content) == content.string)
     try store.appendTranscript(["role": .string("tool"), "tool": .string("WebFetch"), "url": .string("https://example.com"), "content": content, "http_status": .number(200), "is_error": .bool(false)])
     let context = Prompts.context(store, canOpenSources: true)
-    expect(context.contains("Provider-extracted source evidence") && context.contains("untrusted example") && context.contains("https://example.com"))
+    expect(context.contains("Provider-extracted source response") && context.contains("untrusted example") && context.contains("https://example.com"))
+}
+
+
+func failedSourcesAreNotReintroducedAsExtractedPassages() throws {
+    let store = try tempStore()
+    let outcome = "The source request expired; no choice was recorded."
+    try store.appendTranscript(["role": .string("tool"), "tool": .string("WebFetch"), "url": .string("https://example.com"), "content": .string(outcome), "is_error": .bool(true)])
+    let context = Prompts.context(store, canOpenSources: true)
+    expect(context.contains("Source request did not complete (not a source passage)"))
+    expect(context.contains(outcome))
+    expect(!context.contains("Provider-extracted source response"))
 }
