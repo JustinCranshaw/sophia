@@ -25,6 +25,7 @@ swift run sophia-checks                 # record checks, page writes and undo, t
 swift run sophia-reader-checks          # actual WebKit reader, offline fonts, math, music, isolation, and resizing
 swift run sophia-reader-checks --scroll-spike  # the page editor in the page's scroll view: caret visibility, revisions around it
 node reader/check.mjs                   # parser-only checks; optional Node, no npm install
+swift build --product sophia-mcp        # required adjacent tool server for the live commands below
 swift run sophia-checks --live <dir>    # end-to-end against real Claude Code in a disposable notebook
 swift run sophia-checks --probes <dir>  # teaching probes (plain question, pushback, "I don't remember", declined exercise, …); prints replies to read
 swift run sophia-checks --music <dir>   # Sophia writes a tune page with tab, then fixes a tune the app reports warnings for (two turns)
