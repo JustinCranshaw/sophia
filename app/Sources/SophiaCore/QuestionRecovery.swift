@@ -12,7 +12,9 @@ extension NotebookStore {
         guard !later.contains(where: { ["replied", "stopped", "clear"].contains($0.str("purpose") ?? "") }) else { return nil }
         // Older clients did not record completion. An old reply or tool result is ambiguous;
         // page-stamped output proves a newer retry attempt, whose completion is recorded.
-        let output = later.filter { Self.isMessage($0) || $0.str("role") == "tool" }
+        // Shared-memory housekeeping can come from a checkpoint or another thread.
+        let output = later.filter { (Self.isMessage($0) || $0.str("role") == "tool")
+            && !($0.str("tool") == "memory" && $0["page"] != nil) }
         if entries[index]["page"] == nil && !output.isEmpty && !output.contains(where: { $0.str("page") != nil }) { return nil }
         return entries[index]
     }
