@@ -1,0 +1,9 @@
+{
+  "appGone": true,
+  "liveCaptured": [],
+  "protectedExact": true,
+  "changedFiles": [
+    "transcript.jsonl"
+  ],
+  "bridgesRemoved": true
+}
