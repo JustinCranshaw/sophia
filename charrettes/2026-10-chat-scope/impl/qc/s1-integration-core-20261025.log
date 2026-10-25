@@ -1,0 +1,64 @@
+[0/1] Planning build
+Building for debugging...
+[0/5] Write sources
+[1/5] Write swift-version--1AB21518FC5DEDBE.txt
+[3/8] Compiling sophia_checks LibraryChecks.swift
+[4/8] Emitting module sophia_checks
+[5/8] Compiling sophia_checks main.swift
+[5/8] Write Objects.LinkFileList
+[6/8] Linking sophia-checks
+[7/8] Applying sophia-checks
+Build of product 'sophia-checks' complete! (1.64s)
+ok   verificationInterleavedThreadOwnership
+ok   verificationUndoAcrossScopesAndReopen
+ok   verificationLatestReleaseAndOneWayUndo
+ok   verificationRecoveredRevisionBeforeEntry
+ok   verificationRecoveredNewPageBeforeUnfiled
+ok   verificationExternalAndCopyOnlyChanges
+ok   verificationAtomicUndoAndNewPageCutoff
+ok   verificationNeverReuseUndoneFilename
+ok   verificationWindowUsesThroughPosition
+ok   scenario2PageContextAndBookChanges
+ok   scenario3GoalAndNoteQuoteOwnership
+ok   verificationCheckpointValidationBeforeMutation
+ok   scenario10TornTranscriptAppend
+ok   scenario10IntentionalEngineExit
+ok   createdAndEnumeratedNotebooksHaveTheSameURL
+ok   keepsVerifiedQuoteAndStampsNothingFromSophia
+ok   misquoteBecomesParaphrase
+ok   quoteFromAnEarlierSessionIsRemoved
+ok   rejectsDisallowedKindsAndEvidenceFreeRecords
+ok   readMustRestOnAnAttemptNotAPage
+ok   briefingCannotQuoteButCanCite
+ok   sophiaWritesAPageDirectlyAndUndoRemovesIt
+ok   revisionKeepsThePreviousVersionAndUndoRestoresIt
+ok   twoWritersDoNotLoseEachOthersWork
+ok   undecidedDraftsFromOlderNotebooksBecomePages
+ok   sophiasGoalIsProvisionalUntilConfirmedAndCriteriaOnlyGrow
+ok   orphanPageIsListedAfterACrash
+ok   deletingARecordRemovesItsCorrectionsAndUndoRestores
+ok   goalRewordKeepsItsFirstID
+ok   catchUpCoversEverythingSinceTheLastNotesAcrossSessions
+ok   olderCheckpointWithoutThroughCoversWhatCameBefore
+ok   onlyALongQuietCountsAsComingBack
+ok   longBriefingIsNotKept
+ok   sectionNumbersAreReadFromTitles
+ok   pagesMoveIntoNumberedChaptersInOrder
+ok   sophiaNotesDuringTheConversationWithinLimits
+ok   memoryIsRewrittenWholeAndKeepsItsEvidence
+ok   recallFindsNotesByIdPageAndWords
+ok   aboutYouIsProvisionalAndStaysHomeUntilConfirmed
+ok   linksAreConfirmedBeforeAnythingIsRead
+ok   checkpointRepliesCarryNotesAndMemory
+ok   deepLinksNameASectionThatExists
+ok   aReplyWrittenTwiceIsRecognized
+ok   extractsJSONFromAFencedReply
+ok   splicingASectionLeavesEveryOtherByteIdentical
+ok   aCommitWithNoChangeWritesNothing
+ok   aCommitAgainstAChangedSectionIsRefused
+ok   protectedLinesAndQuotesRefuseSophiasRevision
+ok   anOpenSectionIsRefusedAndOthersAreNot
+ok   undoingAPersonEditRestoresThePreviousVersion
+ok   aReleaseLiftsOnlyThatEdit
+ok   notationWarningsNameTheirPageAndSection
+All 52 checks passed.
