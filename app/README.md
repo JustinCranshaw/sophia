@@ -1,6 +1,6 @@
 # Sophia (Mac app)
 
-A native SwiftUI app. Sophia runs on the person's own Claude Code installation: the app launches the unmodified `claude` binary in headless mode with SOPHIA.md as its instructions, a restricted tool set (web search plus Sophia's two notebook tools), and the person's own Claude sign-in. Notebook files follow [DATA-MODEL.md](../DATA-MODEL.md). The approach was tested first in [spikes/claude-headless](../spikes/claude-headless/README.md).
+A native SwiftUI app. Sophia runs on the person's own Claude Code installation: the app launches the unmodified `claude` binary in headless mode with SOPHIA.md as its instructions, a restricted tool set (web search plus Sophia's scoped notebook tools), and the person's own Claude sign-in. Notebook files follow [DATA-MODEL.md](../DATA-MODEL.md). The approach was tested first in [spikes/claude-headless](../spikes/claude-headless/README.md).
 
 ## Requirements
 
@@ -87,6 +87,8 @@ An unanswered question stays in its conversation with **Retry** and a link to th
 - Goals, with criteria, which you can also add, reword, mark met, or drop; Sophia's notes, which you can correct or delete; "Show record" on any note or goal.
 - Markdown pages, replies, and Sophia's notes with LaTeX mathematics: inline formulas, display equations, fractions, matrices, and aligned derivations. Literal code stays code. Earlier Unicode notation remains readable.
 - Music on pages ([MUSIC.md](../MUSIC.md)): ABC notation in an `abc` fence is typeset as staff notation, optionally with a fret-number tab line. Notation warnings show, collapsed, under the tune, and Sophia is told about them with your next message. No playback.
+
+Web research currently finds links and search summaries; the app does not open external web pages or verify full-text passages. Sophia can work with passages the person pastes and with notebook pages, or offer openable links so the person can bring back the relevant text. A successful search is not proof of source-text access.
 
 Not yet: guided reading, web fetch with a permission prompt, distribution signing.
 

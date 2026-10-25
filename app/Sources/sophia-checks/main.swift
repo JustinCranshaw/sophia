@@ -1032,6 +1032,7 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("researchOffersMatchTheExposedWebCapability", researchOffersMatchTheExposedWebCapability),
     ("personCorrectionsReachFreshAndOngoingThreadContext", personCorrectionsReachFreshAndOngoingThreadContext),
     ("savedQuestionsRemainRetryableUntilCompletedStoppedOrCleared", savedQuestionsRemainRetryableUntilCompletedStoppedOrCleared),
     ("verificationInterleavedThreadOwnership", verificationInterleavedThreadOwnership),
