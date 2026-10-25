@@ -187,6 +187,16 @@ final class NotebookSession: ObservableObject {
                 dispatchNext()
             }
             changed()
+        case .routeBlocked(let status):
+            if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
+            guard current else { return }
+            engine = nil; isResponding = false; streaming = ""; activity = nil
+            if internalRequest { finishRequest(failed: true) }
+            else {
+                problem = ClaudeEngine.routeFailureMessage(status, retaining: problem)
+                running = nil; dispatchNext()
+            }
+            changed()
         case .exited(let code, let stderr, let stopRequested):
             if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
             guard current else { return }
