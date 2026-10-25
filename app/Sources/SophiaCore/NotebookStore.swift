@@ -429,6 +429,8 @@ public final class NotebookStore {
     /// Pages leave wherever they were. Chapters left empty are removed.
     public func fileInChapter(_ files: [String], chapter heading: String) throws -> Chapter {
         try locked {
+            var seen = Set<String>()
+            let files = files.filter { seen.insert($0).inserted }
             let known = Set(pageFiles)
             guard !files.isEmpty, files.allSatisfy(known.contains) else { throw StoreError.notFound }
             let (number, title) = Self.splitNumber(heading)
