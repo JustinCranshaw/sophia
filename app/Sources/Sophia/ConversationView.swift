@@ -20,8 +20,9 @@ struct ConversationView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
+                        let retryQuestion = session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread))
                         ForEach(items, id: \.id) { item in
-                            EntryView(session: session, entry: item.entry).id(item.id)
+                            EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion).id(item.id)
                         }
                         if !session.visibleStreaming.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
@@ -123,6 +124,7 @@ struct Who: View {
 struct EntryView: View {
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
+    let retryQuestion: JSONObject?
 
     var body: some View {
         let role = entry.str("role") ?? ""
@@ -138,6 +140,16 @@ struct EntryView: View {
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+                if let question = retryQuestion,
+                   question["id"] == entry["id"], let id = entry.str("id") {
+                    HStack(spacing: 10) {
+                        Text(session.store.hasPartialReply(to: question) ? "Reply interrupted." : "Not answered yet.")
+                            .foregroundStyle(.secondary)
+                        Button("Retry") { session.retry(id) }
+                        Link("Claude Code setup", destination: NotebookSession.setupURL)
+                    }
+                    .font(.caption).buttonStyle(.link)
+                }
             }
         case "sophia":
             VStack(alignment: .leading, spacing: 6) {
