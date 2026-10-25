@@ -149,6 +149,8 @@ The first model-backed test must actually invoke `propose_page` and reach the cl
 
 HTTP is a hypothesis to test, not a demonstrated fix. Claude issue #883 reports missing stdio MCP tools on 0.59.0 through 0.70.0; it does not establish failure on 0.90.0. Both adapters reportedly advertised HTTP support in the review. [S9]
 
+Native source-opening extension (October 25, 2026, SOP-44): isolated official Claude Code 2.1.304 diagnostics demonstrated both denial and exact-URL approval through `--permission-prompt-tool` with product-compatible stream-JSON input, the existing subscription route, and built-in WebFetch. The provider returned extracted Example Domain content and used its own Haiku extraction model alongside the primary model; this is not raw HTML, a product-default model change, or billing/commercial authorization evidence. The native implementation under verification uses one private ephemeral per-engine permission bridge, URL-specific Allow once/Don't open decisions, and saved provider extraction evidence. Internal read-only requests and CLI probes retain their existing restrictions. The original and refined WebSearch-only native comparisons both repeated an incorrect Bard chapter lead; an isolated Opus comparison did too. These failures remain evidence, and source-comparison acceptance requires actual native permission and content results rather than this implementation or the diagnostic alone.
+
 ### Acceptance checks
 
 | Check | Required observation |

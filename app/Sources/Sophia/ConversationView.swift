@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import SophiaCore
 
 struct ConversationView: View {
@@ -54,6 +55,25 @@ struct ConversationView: View {
                 .onReceive(NotificationCenter.default.publisher(for: .scrollConversationToEnd)) { _ in
                     DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
+            }
+            if let request = session.pendingSource {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Open this source?").font(.callout.weight(.semibold))
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(request.url).font(.caption).textSelection(.enabled).lineLimit(2).truncationMode(.middle).help(request.url)
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(request.url, forType: .string)
+                        } label: { Image(systemName: "doc.on.doc") }
+                        .buttonStyle(.plain).help("Copy full source URL").accessibilityLabel("Copy full source URL")
+                    }
+                    Text("Claude will read it and return an extracted passage, which may omit details.").font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("Allow once") { session.decideSource(request, allow: true) }.buttonStyle(.borderedProminent)
+                        Button("Don't open") { session.decideSource(request, allow: false) }
+                    }
+                }
+                .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.accentColor.opacity(0.08))
             }
             if let p = session.problem {
                 HStack(alignment: .top) {
@@ -188,6 +208,8 @@ struct EntryView: View {
                 let n = entry["files"]?.array?.count ?? 0
                 Label("Put \(n) page\(n == 1 ? "" : "s") in \(entry.str("chapter") ?? "a chapter")", systemImage: "books.vertical")
                     .font(.caption).foregroundStyle(.secondary)
+            } else if entry.str("tool") == "WebFetch" {
+                SourceEvidence(entry: entry)
             } else if entry.str("tool") == "WebSearch" {
                 Label("Searched: \(entry.str("query") ?? "")", systemImage: "magnifyingglass").font(.caption).foregroundStyle(.secondary)
             }
@@ -409,5 +431,28 @@ struct RefusalCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.accentColor.opacity(0.35)))
         }
+    }
+}
+
+
+/// Provider output is evidence, displayed as selectable text rather than rendered HTML.
+struct SourceEvidence: View {
+    let entry: JSONObject
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(entry["is_error"] == .bool(true) ? "Source request did not complete" : "Source response received").font(.caption.weight(.semibold))
+            Text(entry["is_error"] == .bool(true) ? "Source access outcome" : "Provider extraction response").font(.caption2).foregroundStyle(.secondary)
+            Text(entry.str("url") ?? "").font(.caption).textSelection(.enabled)
+            if let returned = entry.str("returned_url"), returned != entry.str("url") {
+                Text("Returned URL: " + returned).font(.caption).textSelection(.enabled)
+            }
+            if let location = entry.str("location") { Text("Reported location: " + location).font(.caption).textSelection(.enabled) }
+            DisclosureGroup("Extracted content and outcome") {
+                if let status = entry["http_status"] { Text("HTTP status: " + status.line).font(.caption2).foregroundStyle(.secondary) }
+                Text(SourceEvidenceText.plain(entry["content"] ?? .null)).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
+                Text("Provider extraction may omit details. It is not raw full text or an independently verified quotation.").font(.caption).foregroundStyle(.secondary)
+            }.font(.caption)
+        }
+        .padding(10).background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
     }
 }
