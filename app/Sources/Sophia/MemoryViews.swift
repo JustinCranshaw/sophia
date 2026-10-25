@@ -30,7 +30,7 @@ struct MemoryCard: View {
                     if correcting == id {
                         TextField("What's true instead?", text: $draft).textFieldStyle(.roundedBorder)
                         HStack {
-                            Button("Save") { session.correct(id, text: draft); correcting = nil }.buttonStyle(.borderedProminent)
+                            Button("Save") { if session.correct(id, text: draft) { correcting = nil } }.buttonStyle(.borderedProminent)
                             Button("Cancel") { correcting = nil }
                         }.controlSize(.small)
                     } else {

@@ -474,21 +474,26 @@ final class NotebookSession: ObservableObject {
 
     func setSeparate(_ on: Bool) { try? store.setSeparate(on); changed() }
 
-    func correct(_ recordID: String, text: String) {
+    @discardableResult
+    func correct(_ recordID: String, text: String) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
-        try? store.appendLearning(["kind": .string("correction"), "replaces": .string(recordID), "text": .string(t)], by: "person", session: session)
-        changed()
+        guard !t.isEmpty else { return false }
+        do {
+            try store.appendLearning(["kind": .string("correction"), "replaces": .string(recordID), "text": .string(t)], by: "person", session: session)
+            problem = nil; changed(); return true
+        } catch { problem = "Couldn't save your correction: " + error.localizedDescription; changed(); return false }
     }
 
     func delete(_ recordID: String) {
-        if let removed = try? store.deleteLearning(recordID) { lastDeleted = removed }
+        do { lastDeleted = try store.deleteLearning(recordID); problem = nil }
+        catch { problem = "Couldn't delete that record: " + error.localizedDescription }
         changed()
     }
 
     func undoDelete() {
-        if let r = lastDeleted { try? store.restoreLearning(r) }
-        lastDeleted = nil
+        guard let records = lastDeleted else { return }
+        do { try store.restoreLearning(records); lastDeleted = nil; problem = nil }
+        catch { problem = "Couldn't restore those records: " + error.localizedDescription }
         changed()
     }
 }

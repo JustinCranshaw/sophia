@@ -404,7 +404,7 @@ struct NotesView: View {
             if correcting == id {
                 TextEditor(text: $draft).font(.system(size: 15, design: .serif)).frame(height: 70)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-                HStack { Button("Save correction") { session.correct(id, text: draft); correcting = nil }.buttonStyle(.borderedProminent); Button("Cancel") { correcting = nil } }
+                HStack { Button("Save correction") { if session.correct(id, text: draft) { correcting = nil } }.buttonStyle(.borderedProminent); Button("Cancel") { correcting = nil } }
             } else {
                 HStack {
                     Button(correction == nil ? "Correct" : "Edit correction") {
