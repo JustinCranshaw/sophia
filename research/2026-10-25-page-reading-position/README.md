@@ -10,7 +10,7 @@ Disposable whitelisted copies of the October 24 model-generated guitar pages and
 |---|---:|---:|
 | Long guitar page → shorter practice card via sidebar | short book scroll 0.57675; title/staff omitted |0; title, personal reminder and staff/tab visible |
 | Long guitar page scrolled 850pt → practice-card Open |0.75421; title omitted |0 |
-| Return to prior guitar page | inherited prior reader |0, deliberate return policy |
+| Return to prior guitar page | not measured | 0, deliberate return policy |
 | Direct linked other notebook, same filename |1 (bottom) |0 |
 | Explicit section link to Position A | not used as baseline claim |0.82056; Target section visible at top |
 | Another math page selected | not used as baseline claim |0 |
