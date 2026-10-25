@@ -33,11 +33,13 @@ struct LiveRunner {
         var done = false, reply = "", info: [String: String] = [:]
         var queue = messages
         var currentPurpose: String? = nil
+        var turnTexts: [String] = []
         func next() {
             guard !queue.isEmpty else { engine.stop(); done = true; return }
             let (text, purpose) = queue.removeFirst()
             currentPurpose = purpose
             reply = ""
+            turnTexts = []
             if purpose == nil { try! store.appendTranscript(["role": .string("person"), "session": .string(session), "text": .string(text)]) }
             engine.send(text)
         }
@@ -48,8 +50,9 @@ struct LiveRunner {
                 if source != "none" { print("Claude Code reports an API key source (\(source)); stopping."); engine.stop(); done = true; return }
                 store.claudeSession = sid
             case .assistantText(let t):
-                // As the app does: a second full version of the reply after a tool call is dropped.
-                if Prompts.isRestatement(t, of: [reply]) { info["restated"] = (info["restated"] ?? "") + "x"; break }
+                // As the app does: only a verbatim repeat within the turn is dropped.
+                if Prompts.isRestatement(t, of: turnTexts) { info["restated"] = (info["restated"] ?? "") + "x"; break }
+                turnTexts.append(t)
                 reply += t
                 if currentPurpose == nil { try! store.appendTranscript(["role": .string("sophia"), "session": .string(session), "text": .string(t)]) }
             case .toolUse(_, let name, let input):
