@@ -13,6 +13,11 @@ func goalEvidenceFollowsOnlyExplicitAttemptChains() throws {
     let statement = try store.appendTranscript(["role": .string("person"), "text": .string("An actual saved statement")])
     let onlyCriteria: JSONObject = ["refs": .array([.string(root + "#1"), .string(root + "#3")])]
     expect(store.attemptSourceReferences(onlyCriteria).isEmpty)
+    expect(store.attemptSourceReferences(["refs": .array([.string(root)])]).isEmpty)
+    expect(store.attemptSourceReferences(["refs": .array([.string("g-malformed#not-a-position")])]).isEmpty)
+    let declined = try store.writeGoal(text: "Declined fixture", criteria: ["Not accepted"], revising: nil, quote: nil, session: "s-1")
+    _ = try store.deleteLearning(declined.str("id")!)
+    expect(store.attemptSourceReferences(["refs": .array([.string(declined.str("id")! + "#1")])]).isEmpty)
     var withStatement = onlyCriteria
     withStatement["refs"] = .array([.string(root + "#1"), statement["id"]!, .string(root + "#3")])
     expect(store.attemptSourceReferences(withStatement) == [statement.str("id")!])
