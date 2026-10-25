@@ -1015,7 +1015,9 @@ func scenario10TornTranscriptAppend() throws {
 func scenario10IntentionalEngineExit() throws {
     let s = try tempStore()
     let fixture = s.url.appendingPathComponent("exit-fixture")
-    let script = "#!/bin/sh\ncase \" $* \" in *\" auth status \"*) printf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'; exit 0;; esac\nexit 0\n"
+    let launched = s.url.appendingPathComponent("launched")
+    let script = "#!/bin/sh\ncase \" $* \" in *\" auth status \"*) printf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'; exit 0;; esac\nread -r line\nprintf launched > '" + launched.path + "'\nsleep 0.2\nexit 0\n"
+
     try script.write(to: fixture, atomically: true, encoding: .utf8)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.path)
     for requested in [false, true] {
@@ -1028,14 +1030,25 @@ func scenario10IntentionalEngineExit() throws {
         var observed: Bool?
         engine.onEvent = { event in if case .exited(_, _, let stopped) = event { observed = stopped } }
         try engine.start(); engine.send("Synthetic exit fixture")
-        if requested { engine.stop() }
+        if requested {
+            let launchedDeadline = Date().addingTimeInterval(3)
+            while !FileManager.default.fileExists(atPath: launched.path) && Date() < launchedDeadline { _ = RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01)) }
+            expect(engine.process?.isRunning == true)
+            engine.stop()
+        }
         let deadline = Date().addingTimeInterval(5)
         while observed == nil && Date() < deadline { _ = RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
         expect(observed == requested)
+        try? FileManager.default.removeItem(at: launched)
     }
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("controlledProtocolFailuresKeepTheirActualOutcome", controlledProtocolFailuresKeepTheirActualOutcome),
+    ("shutdownInterruptionKeepsSavedRetryButExplicitStopDoesNot", shutdownInterruptionKeepsSavedRetryButExplicitStopDoesNot),
+    ("cancelledEngineDropsLateOutputAndRetiresSourceBridge", cancelledEngineDropsLateOutputAndRetiresSourceBridge),
+    ("ownedProcessCleanupPreservesGraceAndStopsKnownChildren", ownedProcessCleanupPreservesGraceAndStopsKnownChildren),
+    ("ownedProcessSignalsRequireMatchingBirthIdentity", ownedProcessSignalsRequireMatchingBirthIdentity),
     ("providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages", providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages),
     ("wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites", wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites),
     ("wholeLibraryCopyIncludesSharedBackgroundAndLinks", wholeLibraryCopyIncludesSharedBackgroundAndLinks),
@@ -1122,7 +1135,8 @@ let all: [(String, () throws -> Void)] = [
     ("anOpenSectionIsRefusedAndOthersAreNot", anOpenSectionIsRefusedAndOthersAreNot),
     ("undoingAPersonEditRestoresThePreviousVersion", undoingAPersonEditRestoresThePreviousVersion),
     ("aReleaseLiftsOnlyThatEdit", aReleaseLiftsOnlyThatEdit),
-    ("notationWarningsNameTheirPageAndSection", notationWarningsNameTheirPageAndSection)
+    ("notationWarningsNameTheirPageAndSection", notationWarningsNameTheirPageAndSection),
+    ("pendingStatusQuitCannotLaunchOrLeaveItsOwnedProcess", pendingStatusQuitCannotLaunchOrLeaveItsOwnedProcess)
 ]
 for (name, test) in all {
     current = name

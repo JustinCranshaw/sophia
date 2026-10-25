@@ -16,6 +16,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         UXHarness.startIfRequested()
         #endif
     }
+    private var terminating = false
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !terminating else { return .terminateLater }
+        terminating = true
+        NotificationCenter.default.post(name: .prepareToTerminate, object: nil)
+        OwnedClaudeProcess.finishForApplicationTermination { sender.reply(toApplicationShouldTerminate: true) }
+        return .terminateLater
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }
 
@@ -101,6 +109,7 @@ struct SophiaApp: App {
 }
 
 extension Notification.Name {
+    static let prepareToTerminate = Notification.Name("SophiaPrepareToTerminate")
     static let newNotebook = Notification.Name("SophiaNewNotebook")
     static let editPage = Notification.Name("SophiaEditPage")
     static let scrollConversationToEnd = Notification.Name("SophiaScrollConversationToEnd")

@@ -50,7 +50,8 @@ public enum ClaudeStatusCheck {
         let reader = pipe.fileHandleForReading
         defer { try? reader.close(); try? pipe.fileHandleForWriting.close() }
         guard fcntl(reader.fileDescriptor, F_SETFL, O_NONBLOCK) != -1 else { return .unknown }
-        do { try p.run() } catch { return .unknown }
+        let owned: OwnedClaudeProcess
+        do { owned = try OwnedClaudeProcess.launch(p) } catch { return .unknown }
         try? pipe.fileHandleForWriting.close()
         var data = Data(), bytes = [UInt8](repeating: 0, count: 4096), failed = false
         let deadline = Date().addingTimeInterval(max(0.01, timeout))
@@ -66,10 +67,7 @@ public enum ClaudeStatusCheck {
         }
         while p.isRunning && Date() < deadline { usleep(10_000) }
         if p.isRunning {
-            failed = true; p.terminate()
-            let grace = Date().addingTimeInterval(0.2)
-            while p.isRunning && Date() < grace { usleep(10_000) }
-            if p.isRunning { Darwin.kill(p.processIdentifier, SIGKILL) }
+            failed = true; owned.stop(grace: 0)
         }
         p.waitUntilExit()
         return failed ? .unknown : ClaudeReadiness.parse(data, exitCode: p.terminationStatus)
