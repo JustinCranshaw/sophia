@@ -1014,8 +1014,12 @@ func scenario10TornTranscriptAppend() throws {
 }
 func scenario10IntentionalEngineExit() throws {
     let s = try tempStore()
+    let fixture = s.url.appendingPathComponent("exit-fixture")
+    let script = "#!/bin/sh\ncase \" $* \" in *\" auth status \"*) printf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'; exit 0;; esac\nexit 0\n"
+    try script.write(to: fixture, atomically: true, encoding: .utf8)
+    try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.path)
     for requested in [false, true] {
-        let engine = ClaudeEngine(config: .init(claudePath: "/usr/bin/true", toolServerPath: "/unused", notebookURL: s.url, systemPrompt: "", context: "", session: "s-1", page: "p.md"))
+        let engine = ClaudeEngine(config: .init(claudePath: fixture.path, toolServerPath: "/unused", notebookURL: s.url, systemPrompt: "", context: "", session: "s-1", page: "p.md"))
         let args = engine.arguments
         expect(!args.contains("--resume"))
         if let index = args.firstIndex(of: "--mcp-config"), let mcp = JSON.parse(args[index + 1]) {
@@ -1023,7 +1027,7 @@ func scenario10IntentionalEngineExit() throws {
         } else { expect(false) }
         var observed: Bool?
         engine.onEvent = { event in if case .exited(_, _, let stopped) = event { observed = stopped } }
-        try engine.start()
+        try engine.start(); engine.send("Synthetic exit fixture")
         if requested { engine.stop() }
         let deadline = Date().addingTimeInterval(5)
         while observed == nil && Date() < deadline { _ = RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.02)) }
@@ -1032,8 +1036,15 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages", providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages),
     ("wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites", wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites),
     ("wholeLibraryCopyIncludesSharedBackgroundAndLinks", wholeLibraryCopyIncludesSharedBackgroundAndLinks),
+    ("providerRouteGuardWithholdsEveryDeniedOrFailedStatus", providerRouteGuardWithholdsEveryDeniedOrFailedStatus),
+    ("providerRouteGuardAllowsOnceWithIdenticalProcessContext", providerRouteGuardAllowsOnceWithIdenticalProcessContext),
+    ("providerRouteGuardRechecksReusedAndInternalRequests", providerRouteGuardRechecksReusedAndInternalRequests),
+    ("providerRouteGuardCannotFlushAfterStopOrCancel", providerRouteGuardCannotFlushAfterStopOrCancel),
+    ("providerRouteGuardRetainsSavedRetryAndFailedCheckpointEvidence", providerRouteGuardRetainsSavedRetryAndFailedCheckpointEvidence),
+    ("providerRouteGuardDoesNotStrandBufferedRequestFailure", providerRouteGuardDoesNotStrandBufferedRequestFailure),
     ("localConnectionStatusIsAllowlistedAndRouteSpecific", localConnectionStatusIsAllowlistedAndRouteSpecific),
     ("localConnectionProcessIsBoundedAndScrubbed", localConnectionProcessIsBoundedAndScrubbed),
     ("droppingAReviewedRevisionPreservesCriteriaAndRejectsStaleActions", droppingAReviewedRevisionPreservesCriteriaAndRejectsStaleActions),
