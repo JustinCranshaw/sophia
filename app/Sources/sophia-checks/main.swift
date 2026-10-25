@@ -1044,6 +1044,13 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes", almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes),
+    ("almanacContextAndCapabilitiesExcludeUnselectedPrivateMaterial", almanacContextAndCapabilitiesExcludeUnselectedPrivateMaterial),
+    ("almanacDailyAdmissionHasNoCatchupOrAutomaticRetryDebt", almanacDailyAdmissionHasNoCatchupOrAutomaticRetryDebt),
+    ("almanacScopeChangesAndCancellationPreventStaleWrites", almanacScopeChangesAndCancellationPreventStaleWrites),
+    ("almanacRecordedRunsReconcileWithoutDuplicatePagesOrInferredSuccess", almanacRecordedRunsReconcileWithoutDuplicatePagesOrInferredSuccess),
+    ("almanacSearchEvidenceIsActualAndNeverAnOpenedPassage", almanacSearchEvidenceIsActualAndNeverAnOpenedPassage),
+
     ("checkpointFailuresPreserveTheQuestionAndExposePartialNotes", checkpointFailuresPreserveTheQuestionAndExposePartialNotes),
     ("pageRecoveryRetainsExactRepeatedEditsAndDismissesOnlyOne", pageRecoveryRetainsExactRepeatedEditsAndDismissesOnlyOne),
     ("existingNotebookReadsKeepFormatAndNeverRepair", existingNotebookReadsKeepFormatAndNeverRepair),

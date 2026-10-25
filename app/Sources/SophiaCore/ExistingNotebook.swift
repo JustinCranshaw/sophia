@@ -18,9 +18,11 @@ public final class ExistingNotebook {
             return NotebookStore.editRanges(in: body).first { $0.index == section.index }?.text
         }
     }
+    public let almanacConfiguration: JSON?
     public let name: String
     public let isSeparate: Bool
     public let pageFiles: [String]
+    private let directory: ReadDirectory
     private let pages: ReadDirectory
     private let groups: [(number: String?, title: String, files: [String])]
     private let loose: [String]
@@ -55,7 +57,8 @@ public final class ExistingNotebook {
         let all = groups.flatMap(\.files) + looseFiles
         // Absence is the supported legacy optional flag; a malformed flag is not permission.
         guard meta["separate"] == nil || meta["separate"]?.bool != nil else { return nil }
-        self.name = name; self.pages = pages; self.groups = groups; self.loose = looseFiles
+        self.almanacConfiguration = meta["almanac"]
+        self.name = name; self.directory = directory; self.pages = pages; self.groups = groups; self.loose = looseFiles
         self.pageFiles = all; self.isSeparate = meta["separate"]?.bool == true
     }
 
@@ -70,6 +73,15 @@ public final class ExistingNotebook {
             records.append(record)
         }
         return records
+    }
+
+    /// Exact authored run identity for a notification click; never constructs a writable store.
+    func almanacAction(id: String) -> JSONObject? {
+        guard almanacConfiguration != nil, let data = directory.read("transcript.jsonl"), let text = String(data: data, encoding: .utf8) else { return nil }
+        let records = text.split(separator: "\n").compactMap { JSON.parse(String($0))?.object }
+        guard let action = records.last(where: { $0.str("tool") == "write_page" && $0.str("tool_use") == "almanac:" + id && $0["refused"] != .bool(true) && $0["recovered"] != .bool(true) }),
+              let write = action.str("id"), !records.contains(where: { $0.str("purpose") == "undo_page" && $0.str("entry") == write }) else { return nil }
+        return action
     }
 
     public func readPage(_ file: String) -> Page? {

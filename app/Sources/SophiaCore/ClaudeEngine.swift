@@ -11,6 +11,7 @@ public final class ClaudeEngine {
         case toolUse(id: String, name: String, input: JSON)
         case toolResult(id: String)
         case sourcePermission(SourcePermissionBridge.Request?)
+        case searchResult(AlmanacSearchEvidence)
         case sourceResult(id: String, input: JSON, content: JSON, metadata: JSON, isError: Bool)
         case turnDone(isError: Bool, message: String?, session: String?)
         case routeBlocked(ClaudeReadiness)
@@ -25,11 +26,12 @@ public final class ClaudeEngine {
         public var context: String
         public var page: String
         public var session: String
+        public var almanac: Bool
         public var readOnly: Bool
         public var sourcePermissions: SourcePermissionBridge?
-        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false, sourcePermissions: SourcePermissionBridge? = nil) {
+        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false, sourcePermissions: SourcePermissionBridge? = nil, almanac: Bool = false) {
             self.claudePath = claudePath; self.toolServerPath = toolServerPath; self.notebookURL = notebookURL
-            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly; self.sourcePermissions = readOnly ? nil : sourcePermissions
+            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly; self.almanac = almanac; self.sourcePermissions = readOnly || almanac ? nil : sourcePermissions
         }
     }
 
@@ -47,6 +49,7 @@ public final class ClaudeEngine {
     var buffer = Data()
     var stderrText = ""
     private var sourceTimer: DispatchSourceTimer?
+    private var searchUses: [String: JSON] = [:]
     private var sourceUses: [String: JSON] = [:]
     public var pendingSource: SourcePermissionBridge.Request? { config.sourcePermissions?.pending }
     public func setSourceAccessActive(_ active: Bool) {
@@ -94,13 +97,16 @@ public final class ClaudeEngine {
         if let permissions = config.sourcePermissions {
             servers["source_permissions"] = .object(["command": .string(config.toolServerPath), "args": .array([.string("--source-permissions"), .string(permissions.directory.path)])])
         }
+        if config.almanac { servers = [:] }
         let mcp = JSON.object(["mcpServers": .object(servers)]).line
         var args = processConfiguration.isolationArguments + ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                     "--include-partial-messages",
-                    "--tools", config.readOnly ? "" : (config.sourcePermissions == nil ? "WebSearch" : "WebSearch,WebFetch"),
+                    "--tools", config.almanac ? "WebSearch" : config.readOnly ? "" : (config.sourcePermissions == nil ? "WebSearch" : "WebSearch,WebFetch"),
                     "--strict-mcp-config", "--mcp-config", mcp,
                     "--allowedTools"]
-        if config.readOnly {
+        if config.almanac {
+            args += ["WebSearch", "--disallowedTools", "WebFetch"] + Self.readingTools + Self.writingTools
+        } else if config.readOnly {
             args += Self.readingTools + ["--disallowedTools"] + Self.writingTools
         } else {
             // Preserve the user-turn allowlist and its order.
@@ -266,6 +272,7 @@ public final class ClaudeEngine {
                 case "text": if let t = block["text"]?.string, !t.isEmpty { onEvent(.assistantText(t)) }
                 case "tool_use":
                     let id = block["id"]?.string ?? "", name = block["name"]?.string ?? ""
+                    if name == "WebSearch", config.almanac { searchUses[id] = block["input"] ?? .null }
                     if name == "WebFetch", config.sourcePermissions != nil { sourceUses[id] = block["input"] ?? .null }
                     onEvent(.toolUse(id: id, name: name, input: block["input"] ?? .null))
                 default: break
@@ -274,6 +281,9 @@ public final class ClaudeEngine {
         case "user":
             for block in ev["message"]?["content"]?.array ?? [] where block["type"]?.string == "tool_result" {
                 if let id = block["tool_use_id"]?.string {
+                    if let input = searchUses.removeValue(forKey: id) {
+                        onEvent(.searchResult(.init(id: id, input: input, content: block["content"] ?? .null, metadata: ev["tool_use_result"] ?? .null, isError: block["is_error"]?.bool ?? false)))
+                    }
                     if let input = sourceUses.removeValue(forKey: id) {
                         onEvent(.sourceResult(id: id, input: input, content: block["content"] ?? .null, metadata: ev["tool_use_result"] ?? .null, isError: block["is_error"]?.bool ?? false))
                     }

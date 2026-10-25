@@ -1,0 +1,74 @@
+{
+  "expectedDisposableNotebook": "/private/tmp/sophia-sop32-refined-ui/library/Freedom and citizenship",
+  "allObservedCwdMatch": true,
+  "versions": [
+    "2.1.304"
+  ],
+  "counts": {
+    "performed": 2
+  },
+  "redactedShapes": {
+    "performed": {
+      "topKeys": [
+        "durationSeconds",
+        "query",
+        "results",
+        "searchCount"
+      ],
+      "searchCount": 1,
+      "resultKinds": [
+        "dict",
+        "str"
+      ],
+      "objectKeys": [
+        [
+          "content",
+          "tool_use_id"
+        ]
+      ],
+      "contentItemKeys": [
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ],
+        [
+          "title",
+          "url"
+        ]
+      ],
+      "hasNonemptySummary": true,
+      "isError": false
+    }
+  },
+  "scope": "one exact previously owned SOP32 refined developer fixture; not the reviewer broad263-event scan",
+  "rawContentCopied": false,
+  "sessionID": "867676e3-c5d7-4b74-b6ba-4177e499d55f"
+}
