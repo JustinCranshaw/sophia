@@ -1,6 +1,6 @@
 # Finish for now failure feedback — SOP54
 
-On the working tree based on `4ef700a9c4a4eb27723c965301c50de4eaa4ddd9`, `swift run sophia-checks` passed all 99 checks and `scripts/make-app.sh` built the debug app and MCP. This adds one focused checkpoint persistence check, before the existing final process-Quit gate.
+On the working tree based on `4ef700a9c4a4eb27723c965301c50de4eaa4ddd9`, `swift run sophia-checks` passed all 99 checks and `scripts/make-app.sh debug` built the debug app and MCP (the retained package log begins “Building for debugging…”). This adds one focused checkpoint persistence check, before the existing final process-Quit gate.
 
 Controlled native checks used disposable synthetic notebooks and an explicitly synthetic local CLI fixture; no provider request or real learner material was involved. The fixture supplied malformed JSON, invalid evidence references, an error result, a valid note, and a retention-aware empty-note retry. These are protocol/state checks, not evidence of model quality or automatic deduplication.
 
