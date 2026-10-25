@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 final class AppModel: ObservableObject {
     let library = Library()
+    let connection = ConnectionState()
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
     @Published var problem: String?
@@ -38,7 +39,7 @@ final class AppModel: ObservableObject {
             if let current = open, current.bookShown { bookVisibility[current.store.url.path] = true }
             open?.shutdown()
             do {
-                let next = try NotebookSession(url: url)
+                let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged)
                 next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
                 open = next
             } catch { problem = error.localizedDescription; return }
@@ -78,6 +79,7 @@ struct SophiaApp: App {
         WindowGroup("Sophia") {
             RootView()
                 .environmentObject(model)
+                .environmentObject(model.connection)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowToolbarStyle(.unified)
@@ -85,6 +87,9 @@ struct SophiaApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("New Notebook…") { NotificationCenter.default.post(name: .newNotebook, object: nil) }
                     .keyboardShortcut("n")
+            }
+            CommandGroup(after: .appInfo) {
+                Button("Connection & Data…") { model.connection.detailsShown = true }
             }
             CommandGroup(after: .pasteboard) {
                 Divider()
@@ -103,19 +108,32 @@ extension Notification.Name {
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject private var connection: ConnectionState
     @State private var naming = false
     @State private var newName = ""
     @State private var startingText = ""
     @State private var drafts: [String: String] = [:]
 
     var body: some View {
-        NavigationSplitView {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 420)
-        } detail: {
-            if let s = model.open { NotebookView(session: s, drafts: $drafts) } else { EmptyLibraryView(naming: $naming) }
+        VStack(spacing: 0) {
+            if !connection.acknowledged {
+                ConnectionView(connection: connection, compact: true)
+                Divider()
+            }
+            NavigationSplitView {
+                SidebarView()
+                    .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 420)
+            } detail: {
+                if let s = model.open { NotebookView(session: s, drafts: $drafts) } else { EmptyLibraryView(naming: $naming) }
+            }
+        }
+        .sheet(isPresented: $connection.detailsShown) {
+            ConnectionView(connection: connection).frame(width: 560)
         }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Connection & Data") { connection.detailsShown = true }
+            }
             ToolbarItem(placement: .navigation) {
                 Button { naming = true } label: { Label("New Notebook", systemImage: "plus") }
                     .help("New notebook")
