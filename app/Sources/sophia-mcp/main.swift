@@ -78,7 +78,7 @@ let tools: [[String: Any]] = [
     ],
     [
         "name": "note",
-        "description": "Write one of your notes on this notebook, which you'll see when the person comes back, or revise one of yours (pass its id as `note`). Kinds: \"follow_up\" (something to check on later, such as whether an idea has landed), \"background\" (something you learned about the person in relation to this topic: what they know, what's rusty, how they like to work on it), \"attempt\" (something they tried: quote their words; text is your tentative read), \"question\" (an open question). Every note needs their exact words as `quote` or ids in `refs`. Note only what you'd want to know next time; most turns need no note.",
+        "description": "Write one of your notes on this notebook, which you'll see when the person comes back, or revise one of yours (pass its id as `note`). Kinds: \"follow_up\" (something to check on later, such as whether an idea has landed), \"background\" (something you learned about the person in relation to this topic: what they know, what's rusty, how they like to work on it), \"attempt\" (something they tried: quote their words; text is your tentative read), \"question\" (an open question). Every note needs their exact words as `quote` or ids in `refs`. When a noteworthy actual attempt addresses an existing goal criterion, include its known criterion ref and state which part it supports, what help preceded it, and what remains unshown; do not infer mastery or create goals or notes just to fill criteria. Note only what you'd want to know next time; most turns need no note.",
         "inputSchema": [
             "type": "object",
             "properties": [

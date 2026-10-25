@@ -1037,6 +1037,8 @@ func scenario10IntentionalEngineExit() throws {
 
 let all: [(String, () throws -> Void)] = [
     ("providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages", providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages),
+    ("goalEvidenceFollowsOnlyExplicitAttemptChains", goalEvidenceFollowsOnlyExplicitAttemptChains),
+    ("goalEvidenceKeepsReadOrderAndHonestUnlinkedAttempts", goalEvidenceKeepsReadOrderAndHonestUnlinkedAttempts),
     ("wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites", wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites),
     ("wholeLibraryCopyIncludesSharedBackgroundAndLinks", wholeLibraryCopyIncludesSharedBackgroundAndLinks),
     ("providerRouteGuardWithholdsEveryDeniedOrFailedStatus", providerRouteGuardWithholdsEveryDeniedOrFailedStatus),
