@@ -108,12 +108,12 @@ func runAttributionProbe(dir: URL) {
         print("FAIL: the person's correction is absent from the next context or briefing input.")
         exit(1)
     }
-    print("PERSON CORRECTION: direct-store diagnostic, same API as Notes; present in next context and briefing input.")
+    print("PERSON CORRECTION to \(note.str("id") ?? "unknown"): direct-store diagnostic, same API as Notes; present in next context and briefing input.")
     // A fresh provider context explicitly exercises the corrected durable records, without a CLI
     // resume snapshot of the old instructions. This does not prove live Notes UI propagation.
     let returned = runner.run(session: "s-2", resume: nil, messages: [
-        ("Before we continue, whose wording needed correction, what separate belief did I say I had, and what should we pick up next? Keep it short.", "return"),
-        (briefing, "briefing")
+        (briefing, "briefing"),
+        ("Before we continue, whose wording needed correction, what separate belief did I say I had, and what should we pick up next? Keep it short.", "return")
     ])
     print("ACTUAL RETURN REPLY: " + (returned["return"] ?? ""))
     print("ACTUAL BRIEFING: " + (returned["briefing"] ?? ""))
