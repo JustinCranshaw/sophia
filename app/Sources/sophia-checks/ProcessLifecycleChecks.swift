@@ -32,7 +32,7 @@ func ownedProcessCleanupPreservesGraceAndStopsKnownChildren() throws {
         let p = Process(), input = Pipe()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/python3"); p.arguments = ["-I", script.path, folder.path, mode]
         p.standardInput = input; p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
-        let owned = try OwnedClaudeProcess.launch(p)
+        var owned: OwnedClaudeProcess? = try OwnedClaudeProcess.launch(p)
         var child: OwnedClaudeProcess.Identity?
         defer { child?.signal(SIGKILL) } // Exact captured fixture identity, even after a failed assertion.
         if mode != "graceful" {
@@ -46,7 +46,8 @@ func ownedProcessCleanupPreservesGraceAndStopsKnownChildren() throws {
             expect(lifecycleWait { !p.isRunning && child?.alive != true })
             try input.fileHandleForWriting.close()
         } else {
-            owned.stop(grace: 0.1)
+            owned?.stop(grace: 0.1)
+            owned = nil // Session/engine may disappear before the cleanup deadline.
             try input.fileHandleForWriting.close()
             expect(lifecycleWait { !p.isRunning && child?.alive != true })
         }
