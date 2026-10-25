@@ -32,6 +32,7 @@ struct NotebookRows: View {
             }
             .buttonStyle(.plain)
             .help(url.lastPathComponent)
+            .modifier(NotebookCopyActions(url: url))
         }
     }
 }
@@ -43,6 +44,7 @@ struct OpenNotebookRows: View {
         let store = session.store
         let provisional = store.goals.filter { store.isProvisional($0) }.count
         row(.contents, store.name, "book", bold: true)
+            .modifier(NotebookCopyActions(url: store.url))
         row(.goals, "Goals", "scope", indent: true,
             trailing: provisional > 0 ? "\(provisional) to confirm" : store.goals.isEmpty ? nil : "\(store.goals.filter { $0.str("status") == "working" }.count)")
         row(.notes, "Sophia's notes", "note.text", indent: true, trailing: noteCount == 0 ? nil : "\(noteCount)")
