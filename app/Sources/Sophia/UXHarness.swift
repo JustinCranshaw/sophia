@@ -63,7 +63,8 @@ enum UXHarness {
 
     static var activeWindow: NSWindow? {
         // A popover can be in front while the main window remains key. Never capture another app.
-        let base = NSApp.orderedWindows.first(where: { $0.isVisible }) ?? NSApp.keyWindow
+        let popover = NSApp.windows.first(where: { $0.isVisible && $0.accessibilityRole() == .popover })
+        let base = popover ?? NSApp.keyWindow ?? NSApp.orderedWindows.first(where: { $0.isVisible })
         return base?.attachedSheet ?? base
     }
 

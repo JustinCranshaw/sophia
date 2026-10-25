@@ -272,7 +272,9 @@ struct AlmanacStatusView: View {
                 Divider()
                 Button("Themes & timing…") { almanac.showSettings() }
                 if snapshot.settings?.enabled == true {
-                    Button(snapshot.settings?.paused == true ? "Resume daily preparation" : "Pause daily preparation") { almanac.pauseDaily() }
+                    if snapshot.settings?.automatic == true {
+                        Button(snapshot.settings?.paused == true ? "Resume daily preparation" : "Pause daily preparation") { almanac.pauseDaily() }
+                    } else { Text("Daily preparation is off").font(.caption).foregroundStyle(.secondary) }
                     Button("Disable Almanac") { almanac.disable() }
                 }
                 Divider()
@@ -289,7 +291,7 @@ struct AlmanacStatusView: View {
         switch snapshot.phase {
         case .unconfigured: return "Choose themes to begin"
         case .idle: return snapshot.latestEntry == nil ? "Ready to prepare" : "Latest entry opened"
-        case .paused: return "Daily preparation paused"
+        case .paused: return snapshot.settings?.automatic == true ? "Daily preparation paused" : "Manual preparation · daily is off"
         case .needsThemes: return "Choose an available notebook title or topic"
         case .preparing: return "Preparing an entry · your current notebook stays open"
         case .ready: return "An entry is ready to read"
@@ -317,7 +319,7 @@ struct AlmanacToolbarView: View {
         switch worker.snapshot.phase {
         case .preparing: return "Almanac · Preparing"
         case .failed, .needsThemes: return "Almanac · Needs attention"
-        case .paused: return "Almanac · Paused"
+        case .paused: return worker.snapshot.settings?.automatic == true ? "Almanac · Paused" : worker.snapshot.waitingEntry != nil ? "Almanac · Ready" : "Almanac"
         default: return worker.snapshot.waitingEntry != nil ? "Almanac · Ready" : "Almanac"
         }
     }
