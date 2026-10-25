@@ -59,9 +59,13 @@ if args.action == "launch":
     raise SystemExit(0)
 command = {k: v for k, v in vars(args).items() if k not in ("directory", "return_gap", "without_claude") and v is not None}
 if args.action == "key" and not args.text:
-    command["text"] = {36: "\r", 53: "\x1b", 126: "\uf700", 125: "\uf701",
+    characters = {36: "\r", 53: "\x1b", 126: "\uf700", 125: "\uf701",
                        123: "\uf702", 124: "\uf703", 116: "\uf72c", 121: "\uf72d",
-                       115: "\uf729", 119: "\uf72b", 51: "\x7f", 48: "\t"}.get(args.code or 36, "\r")
+                       115: "\uf729", 119: "\uf72b", 51: "\x7f", 48: "\t"}
+    code = args.code if args.code is not None else 36
+    if code not in characters:
+        parser.error("This key code requires --text with its actual character")
+    command["text"] = characters[code]
 name = f"{time.time_ns()}-{uuid.uuid4().hex[:6]}.json"
 folder = root / "commands"
 folder.mkdir(exist_ok=True)
