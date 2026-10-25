@@ -8,6 +8,7 @@ struct ConversationView: View {
     @State private var followsLatest = true
     @State private var hasNewActivity = false
     @State private var scrollPosition: ConversationScrollPosition?
+    @State private var settlingViewport = false
 
     init(session: NotebookSession, draft: Binding<String> = .constant("")) {
         self.session = session
@@ -44,11 +45,11 @@ struct ConversationView: View {
                             } else if session.visibleThinking && session.visibleStreaming.isEmpty {
                                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Sophia is thinking…").font(.caption).foregroundStyle(.secondary) }.id("activity")
                             }
-                            Color.clear.frame(height: 1).id("bottom")
                         }
                         .frame(maxWidth: Self.measure, alignment: .leading)
                         .padding(.horizontal, 24).padding(.vertical, 20)
                         .frame(maxWidth: .infinity)
+                        .id("bottom")
                         .background {
                             GeometryReader { content in
                                 Color.clear.preference(key: ConversationScrollPositionKey.self,
@@ -61,15 +62,28 @@ struct ConversationView: View {
                         guard let position else { return }
                         let previous = scrollPosition
                         scrollPosition = position
+                        if let previous, followsLatest,
+                           abs(position.frame.width - previous.frame.width) > 0.5 || abs(position.viewport - previous.viewport) > 0.5 {
+                            settlingViewport = true
+                        }
+                        // The native clip view can adjust a frame after SwiftUI reports the
+                        // new viewport. Keep the existing follow choice through that reflow.
+                        if settlingViewport {
+                            let shortContent = position.frame.height <= position.viewport + 1 && abs(position.frame.minY) <= 1
+                            if shortContent || abs(position.frame.maxY - position.viewport) <= 1 { settlingViewport = false }
+                            followIfNeeded(proxy)
+                            return
+                        }
                         // Appended content changes the bottom, not the origin. A resize alone
                         // also must not turn following off or manufacture unread activity.
                         if let previous, abs(position.frame.minY - previous.frame.minY) > 0.5,
-                           abs(position.viewport - previous.viewport) < 0.5 {
+                           abs(position.viewport - previous.viewport) < 0.5,
+                           abs(position.frame.width - previous.frame.width) < 0.5 {
                             let upward = position.frame.minY - previous.frame.minY
                             let shrink = max(0, previous.frame.height - position.frame.height)
                             // Even a small deliberate upward move stops following. A shorter
                             // document can also clamp the origin upward without a scroll.
-                            if upward > shrink + 0.5 {
+                            if upward > shrink + 0.5, position.frame.maxY > position.viewport + 0.5 {
                                 followsLatest = false
                             } else if upward < -0.5 {
                                 followsLatest = position.frame.maxY <= position.viewport + 32
@@ -175,6 +189,7 @@ struct ConversationView: View {
     private func jumpToLatest(_ proxy: ScrollViewProxy) {
         followsLatest = true
         hasNewActivity = false
+        settlingViewport = false
         followIfNeeded(proxy)
     }
 
@@ -183,6 +198,7 @@ struct ConversationView: View {
         guard !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, session.canSend else { return }
         followsLatest = true
         hasNewActivity = false
+        settlingViewport = false
         message = ""
         session.send(t)
     }
