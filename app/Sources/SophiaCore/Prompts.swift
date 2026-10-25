@@ -16,6 +16,10 @@ public enum Prompts {
     Research access in this app: ordinary conversations can use WebSearch for links and search summaries, but there is no tool for opening external web pages or inspecting their full text. You can read passages the person supplies here and available notebook pages with read_page. Before offering an inspected-passage comparison, state the external-page limit and offer a concrete handoff: find openable links and ask the person to bring back the relevant passages. A search result, summary or remembered quotation is not verified source text. Keep those distinct from the person's supplied passages and your interpretation. Label pasted passages as person-provided, not independently checked against their source URL. Search links are unverified candidates: do not call a document or chapter readable, complete or suitable for a particular passage based only on its search snippet. Repeated searches cannot provide the missing page-reading capability. If the person asks for no page changes, continue in conversation without offering a page write.
     """
 
+    static let approvedResearchAccess = """
+    Research access in this conversation: WebSearch discovers candidate links. WebFetch can request opening one HTTP(S) source through the person's native Allow once / Don't open decision. Never invoke the permission callback yourself or retry a denied source without their request. WebFetch returns provider-extracted content, which may be lossy; it is not raw full text or an independently verified verbatim quotation. Cite the requested URL and only a returned URL or location actually supplied by the tool. Distinguish the extracted passage from search summaries, recollection, person-provided text and your interpretation. Do not claim you inspected a source before its actual tool result. If access fails or is declined, explain the limit and offer links or a pasted-passage continuation. Respect requests for no page changes, including no page-writing offer.
+    """
+
     static func goalsText(_ store: NotebookStore) -> String {
         let goals = store.goals.filter { $0.str("status") != "dropped" }
         guard !goals.isEmpty else { return "No goals recorded yet." }
@@ -99,7 +103,7 @@ public enum Prompts {
     }
 
     /// Added to the system prompt when the conversation process starts.
-    public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil) -> String {
+    public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil, canOpenSources: Bool = false) -> String {
         let pages = pageList(store)
         let library = LibraryStore(root: store.url.deletingLastPathComponent())
         let separate = store.isSeparate
@@ -123,7 +127,7 @@ public enum Prompts {
         - Pages and your replies render Markdown with LaTeX math. Use $...$ for inline mathematics and $$ on separate lines for display equations. Use LaTeX for fractions, subscripts, matrices, and aligned derivations; don't put equations in code fences. Escape literal currency dollars as \\$ in Markdown. Music goes in ```abc fences (ABC notation), which the reader typesets as staff notation. Keep page titles, goal titles, and goal criteria in plain text.
         - Messages that begin with "[Sophia app]" come from the app, not the person. Follow their output format exactly.
 
-        \(researchAccess)
+        \(canOpenSources ? approvedResearchAccess : researchAccess)
 
         Goals:
         \(goalsText(store))
@@ -158,6 +162,7 @@ public enum Prompts {
             return "[\(e.str("id") ?? "")] sophia (welcome back): \(e.str("text") ?? "")"
         }
         if e["recovered"] == .bool(true) { return nil }
+        if e.str("tool") == "WebFetch" { return "Provider-extracted source evidence (not raw full text or independently verified quotation): " + e.line }
         if e.str("tool") == "write_page" {
             if e["unchanged"] == .bool(true) { return "Unchanged \(e.str("file") ?? "")." }
             return e["refused"] == .bool(true) ? "Write refused on \(e.str("file") ?? ""): \(e.str("reason") ?? ""). \(e.str("current") ?? "")"

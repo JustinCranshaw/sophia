@@ -1,6 +1,6 @@
 # Sophia (Mac app)
 
-A native SwiftUI app. Sophia runs on the person's own Claude Code installation: the app launches the unmodified `claude` binary in headless mode with SOPHIA.md as its instructions, a restricted tool set (web search plus Sophia's scoped notebook tools), and the person's own Claude sign-in. Notebook files follow [DATA-MODEL.md](../DATA-MODEL.md). The approach was tested first in [spikes/claude-headless](../spikes/claude-headless/README.md).
+A native SwiftUI app. Sophia runs on the person's own Claude Code installation: the app launches the unmodified `claude` binary in headless mode with SOPHIA.md as its instructions, a restricted tool set (web search, source opening with explicit permission, and Sophia's scoped notebook tools), and the person's own Claude sign-in. Notebook files follow [DATA-MODEL.md](../DATA-MODEL.md). The approach was tested first in [spikes/claude-headless](../spikes/claude-headless/README.md).
 
 ## Requirements
 
@@ -89,9 +89,11 @@ An unanswered question stays in its conversation with **Retry** and a link to th
 - Markdown pages, replies, and Sophia's notes with LaTeX mathematics: inline formulas, display equations, fractions, matrices, and aligned derivations. Literal code stays code. Earlier Unicode notation remains readable.
 - Music on pages ([MUSIC.md](../MUSIC.md)): ABC notation in an `abc` fence is typeset as staff notation, optionally with a fret-number tab line. Notation warnings show, collapsed, under the tune, and Sophia is told about them with your next message. No playback.
 
-Web research currently finds links and search summaries; the app does not open external web pages or verify full-text passages. Sophia can work with passages the person pastes and with notebook pages, or offer openable links so the person can bring back the relevant text. A successful search is not proof of source-text access.
+WebSearch discovers candidate links and summaries. In ordinary native conversations, Sophia can request built-in WebFetch: the URL appears with **Allow once** and **Don't open**. There is no remembered approval. Stop, process exit or a notebook switch retires access; switching conversations denies pending access, and returning permits a fresh request. Internal checkpoint/briefing requests cannot fetch. CLI checks/probes retain WebSearch-only behavior unless supplied a native approval bridge.
 
-Not yet: guided reading, web fetch with a permission prompt, distribution signing.
+A returned extraction appears as selectable text under **Provider-extracted source**, with the requested URL, actual returned URL/status when present, and a collapsible content block. It is the provider's potentially lossy extraction, not raw full text or an independently verified quotation. Source errors and refusals remain visible. Sophia can also discuss person-pasted passages and notebook pages. A successful search, approval or advertised capability alone is not proof of actual source access.
+
+Not yet: guided reading, distribution signing.
 
 ## Markdown and mathematics
 

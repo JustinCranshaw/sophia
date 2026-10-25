@@ -9,6 +9,28 @@ import Foundation
 import SophiaCore
 
 let args = CommandLine.arguments
+// Separate approval-only mode never opens a notebook or exposes its tools.
+if args.count == 3, args[1] == "--source-permissions" {
+    let directory = URL(fileURLWithPath: args[2], isDirectory: true)
+    while let line = readLine(), let data = line.data(using: .utf8) {
+        guard let message = try? JSONDecoder().decode(JSON.self, from: data), let id = message["id"] else { continue }
+        let result: JSON
+        switch message["method"]?.string {
+        case "initialize": result = .object(["protocolVersion": .string("2024-11-05"), "capabilities": .object(["tools": .object([:])]), "serverInfo": .object(["name": .string("sophia-source-permissions"), "version": .string("1")])])
+        case "tools/list": result = .object(["tools": .array([.object(["name": .string("approve"), "description": .string("Host permission callback for opening one web source. Do not invoke directly."), "inputSchema": .object(["type": .string("object"), "properties": .object(["tool_name": .object(["type": .string("string")]), "input": .object(["type": .string("object")]), "tool_use_id": .object(["type": .string("string")])]), "required": .array([.string("tool_name"), .string("input"), .string("tool_use_id")])])])])])
+        case "tools/call":
+            let params = message["params"]
+            if params?["name"]?.string == "approve" {
+                let decision = SourcePermissionBridge.awaitDecision(directory: directory, arguments: params?["arguments"] ?? .null, toolUseID: params?["_meta"]?["claudecode/toolUseId"]?.string ?? "")
+                result = .object(["content": .array([.object(["type": .string("text"), "text": .string(decision.line)])])])
+            } else { result = .object(["content": .array([.object(["type": .string("text"), "text": .string("Unknown permission callback.")])]), "isError": .bool(true)]) }
+        default: result = .object([:])
+        }
+        print(JSON.object(["jsonrpc": .string("2.0"), "id": id, "result": result]).line)
+        fflush(stdout)
+    }
+    exit(0)
+}
 let notebook = URL(fileURLWithPath: args.count > 1 ? args[1] : ".")
 let session = args.count > 2 ? args[2] : "s-0"
 let thread = args.count > 3 ? args[3] : ""

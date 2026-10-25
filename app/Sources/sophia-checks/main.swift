@@ -1037,6 +1037,8 @@ let all: [(String, () throws -> Void)] = [
     ("aFailedLearningAppendKeepsExistingEvidence", aFailedLearningAppendKeepsExistingEvidence),
     ("learningIdentitiesSurviveDeletionCorrectionAndUndo", learningIdentitiesSurviveDeletionCorrectionAndUndo),
     ("legacyLearningReferencesReserveIDsAndRestoreRefusesCollisions", legacyLearningReferencesReserveIDsAndRestoreRefusesCollisions),
+    ("sourcePermissionsAreExplicitMatchedAndTemporary", sourcePermissionsAreExplicitMatchedAndTemporary),
+    ("sourceToolsContextAndExtractedEvidenceAgree", sourceToolsContextAndExtractedEvidenceAgree),
     ("researchOffersMatchTheExposedWebCapability", researchOffersMatchTheExposedWebCapability),
     ("editedCorrectionsKeepOriginalEvidenceAndReachNextTurn", editedCorrectionsKeepOriginalEvidenceAndReachNextTurn),
     ("personCorrectionsReachFreshAndOngoingThreadContext", personCorrectionsReachFreshAndOngoingThreadContext),

@@ -23,6 +23,8 @@ final class NotebookSession: ObservableObject {
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
         switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
+        for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
+        pendingSource = nil
         if case .page(let f) = place, f == editing?.file { return }; commitEdit()
     } }
     @Published private(set) var activeThread = ""
@@ -34,6 +36,7 @@ final class NotebookSession: ObservableObject {
     @Published var streaming = ""
     @Published var isResponding = false
     @Published var activity: String?
+    @Published var pendingSource: SourcePermissionBridge.Request?
     @Published var problem: String?
     @Published var learningProblem: String? // Notes feedback must not replace an unsaved page-edit recovery message.
     @Published var editing: PageEditing?             // the range of a page open in the editor
@@ -101,9 +104,11 @@ final class NotebookSession: ObservableObject {
         guard let claude = ClaudeEngine.locateClaude() else { if !internalRequest { problem = "Claude Code isn’t installed. Open the setup guide, install it and sign in from Terminal, then choose Retry on your saved question." }; return false }
         guard let prompt = Self.sophiaPrompt() else { if !internalRequest { problem = "SOPHIA.md is missing from the app." }; return false }
         let tools = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("sophia-mcp").path
+        let permissions = internalRequest ? nil : try? SourcePermissionBridge()
+        permissions?.setActive(thread == activeThread)
         let e = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: tools, notebookURL: store.url,
-                                           systemPrompt: prompt, context: Prompts.context(store, thread: thread, before: before),
-                                           session: session, page: thread, readOnly: internalRequest))
+                                           systemPrompt: prompt, context: Prompts.context(store, thread: thread, before: before, canOpenSources: permissions != nil),
+                                           session: session, page: thread, readOnly: internalRequest, sourcePermissions: permissions))
         let identity = ObjectIdentifier(e)
         e.onEvent = { [weak self] event in self?.handle(event, identity: identity, thread: thread, internalRequest: internalRequest) }
         do { try e.start() } catch { if !internalRequest { problem = "Couldn't start Claude Code: \(error.localizedDescription)" }; return false }
@@ -112,7 +117,7 @@ final class NotebookSession: ObservableObject {
         return true
     }
 
-    func shutdown() { commitEdit(); engines.values.forEach { $0.stop() }; checkpointEngine?.stop(); engines = [:]; engine = nil }
+    func shutdown() { pendingSource = nil; commitEdit(); engines.values.forEach { $0.stop() }; checkpointEngine?.stop(); engines = [:]; engine = nil }
 
     private func handle(_ event: ClaudeEngine.Event, identity: ObjectIdentifier, thread: String, internalRequest: Bool) {
         // A terminating process may report its exit after a replacement has started.
@@ -139,6 +144,17 @@ final class NotebookSession: ObservableObject {
             if Prompts.isRestatement(t, of: turnTexts) { streaming = ""; changed(); return }
             try? store.appendTranscript(["role": .string("sophia"), "page": .string(thread), "session": .string(session), "text": .string(t)])
             streaming = ""; changed()
+        case .sourcePermission(let pending):
+            guard !internalRequest, thread == activeThread else { return }
+            pendingSource = pending; changed()
+        case .sourceResult(let id, let input, let content, let metadata, let isError):
+            guard current, !internalRequest else { return }
+            var record: JSONObject = ["role": .string("tool"), "page": .string(thread), "session": .string(session), "tool": .string("WebFetch"),
+                "tool_use_id": .string(id), "url": input["url"] ?? .null, "content": content, "is_error": .bool(isError)]
+            if let url = metadata["url"] { record["returned_url"] = url }
+            if let status = metadata["code"] { record["http_status"] = status }
+            if let location = metadata["location"] { record["location"] = location }
+            try? store.appendTranscript(record); activity = nil; changed()
         case .toolUse(let id, let name, let input):
             guard current else { return }
             pendingTools[id] = name
@@ -146,6 +162,7 @@ final class NotebookSession: ObservableObject {
                 let q = input["query"]?.string ?? ""
                 activity = "Searching: \(q)"
                 try? store.appendTranscript(["role": .string("tool"), "page": .string(thread), "session": .string(session), "tool": .string("WebSearch"), "query": .string(q)])
+            } else if name == "WebFetch" { activity = "Opening source: " + (input["url"]?.string ?? "")
             } else if name == "mcp__sophia__write_page" { activity = "Sophia is writing…" }
             changed()
         case .toolResult(let id):
@@ -177,6 +194,12 @@ final class NotebookSession: ObservableObject {
             }
             changed()
         }
+    }
+
+    func decideSource(_ request: SourcePermissionBridge.Request, allow: Bool) {
+        guard pendingSource == request, let source = engines[activeThread], source.pendingSource == request else { return }
+        source.decideSource(request, allow: allow)
+        pendingSource = nil
     }
 
     var canSend: Bool { !isPending(activeThread) }
@@ -229,6 +252,7 @@ final class NotebookSession: ObservableObject {
 
     func stop() {
         guard let turn = running else { return }
+        pendingSource = nil
         // Detach first: late output from this process cannot complete or corrupt a replacement.
         engines[turn.thread] = nil; engine?.cancel(); engine = nil
         isResponding = false; running = nil; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
