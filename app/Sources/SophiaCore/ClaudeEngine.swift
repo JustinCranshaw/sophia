@@ -10,6 +10,8 @@ public final class ClaudeEngine {
         case assistantText(String)
         case toolUse(id: String, name: String, input: JSON)
         case toolResult(id: String)
+        case sourcePermission(SourcePermissionBridge.Request?)
+        case sourceResult(id: String, input: JSON, content: JSON, metadata: JSON, isError: Bool)
         case turnDone(isError: Bool, message: String?, session: String?)
         case exited(code: Int32, stderr: String, stopRequested: Bool)
     }
@@ -23,9 +25,10 @@ public final class ClaudeEngine {
         public var page: String
         public var session: String
         public var readOnly: Bool
-        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false) {
+        public var sourcePermissions: SourcePermissionBridge?
+        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false, sourcePermissions: SourcePermissionBridge? = nil) {
             self.claudePath = claudePath; self.toolServerPath = toolServerPath; self.notebookURL = notebookURL
-            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly
+            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly; self.sourcePermissions = readOnly ? nil : sourcePermissions
         }
     }
 
@@ -38,6 +41,20 @@ public final class ClaudeEngine {
     var stdin: FileHandle?
     var buffer = Data()
     var stderrText = ""
+    private var sourceTimer: DispatchSourceTimer?
+    private var sourceUses: [String: JSON] = [:]
+    public var pendingSource: SourcePermissionBridge.Request? { config.sourcePermissions?.pending }
+    public func setSourceAccessActive(_ active: Bool) {
+        config.sourcePermissions?.setActive(active)
+        onEvent(.sourcePermission(nil))
+    }
+    public func decideSource(_ request: SourcePermissionBridge.Request, allow: Bool) {
+        _ = config.sourcePermissions?.decide(request, allow: allow)
+        onEvent(.sourcePermission(nil))
+    }
+    private func closeSources() {
+        sourceTimer?.cancel(); sourceTimer = nil; config.sourcePermissions?.close(); onEvent(.sourcePermission(nil))
+    }
 
     public init(config: Config) { self.config = config }
 
@@ -52,13 +69,17 @@ public final class ClaudeEngine {
     static let writingTools = ["mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__about_you", "mcp__sophia__link"]
 
     public var arguments: [String] {
-        let mcp = JSON.object(["mcpServers": .object(["sophia": .object([
+        var servers: JSONObject = ["sophia": .object([
             "command": .string(config.toolServerPath),
             "args": .array([.string(config.notebookURL.path), .string(config.session), .string(config.page)])
-        ])])]).line
+        ])]
+        if let permissions = config.sourcePermissions {
+            servers["source_permissions"] = .object(["command": .string(config.toolServerPath), "args": .array([.string("--source-permissions"), .string(permissions.directory.path)])])
+        }
+        let mcp = JSON.object(["mcpServers": .object(servers)]).line
         var args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                     "--include-partial-messages",
-                    "--restricted", "--tools", config.readOnly ? "" : "WebSearch",
+                    "--restricted", "--tools", config.readOnly ? "" : (config.sourcePermissions == nil ? "WebSearch" : "WebSearch,WebFetch"),
                     "--strict-mcp-config", "--mcp-config", mcp,
                     "--allowedTools"]
         if config.readOnly {
@@ -66,6 +87,10 @@ public final class ClaudeEngine {
         } else {
             // Preserve the user-turn allowlist and its order.
             args += ["mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch"]
+        }
+        if config.sourcePermissions != nil {
+            args += ["--permission-prompt-tool", "mcp__source_permissions__approve", "--permission-prompts", "host", "--permission-mode", "manual",
+                     "--settings", JSON.object(["permissions": .object(["ask": .array([.string("WebFetch")])])]).line]
         }
         args += ["--system-prompt", config.systemPrompt, "--append-system-prompt", config.context]
         return args
@@ -96,6 +121,7 @@ public final class ClaudeEngine {
                 outPipe.fileHandleForReading.readabilityHandler = nil
                 errPipe.fileHandleForReading.readabilityHandler = nil
                 self.isRunning = false
+                self.closeSources()
                 self.onEvent(.exited(code: proc.terminationStatus, stderr: self.stderrText, stopRequested: self.stopRequested))
             }
         }
@@ -103,6 +129,17 @@ public final class ClaudeEngine {
         process = p
         stdin = inPipe.fileHandleForWriting
         isRunning = true
+        if let permissions = config.sourcePermissions {
+            let timer = DispatchSource.makeTimerSource(queue: .main)
+            timer.schedule(deadline: .now(), repeating: .milliseconds(100))
+            timer.setEventHandler { [weak self] in
+                guard let self else { return }
+                let before = permissions.pending
+                _ = permissions.poll()
+                if before != permissions.pending { self.onEvent(.sourcePermission(permissions.pending)) }
+            }
+            sourceTimer = timer; timer.resume()
+        }
     }
 
     public func send(_ text: String) {
@@ -113,6 +150,7 @@ public final class ClaudeEngine {
     /// Closes input so Claude Code can finish and save the session, then terminates it if it hasn't exited.
     public func stop() {
         stopRequested = true
+        closeSources()
         try? stdin?.close()
         stdin = nil
         guard let p = process, p.isRunning else { return }
@@ -122,6 +160,7 @@ public final class ClaudeEngine {
     /// Ends the current reply immediately.
     public func cancel() {
         stopRequested = true
+        closeSources()
         try? stdin?.close()
         stdin = nil
         if process?.isRunning == true { process?.terminate() }
@@ -152,13 +191,21 @@ public final class ClaudeEngine {
             for block in ev["message"]?["content"]?.array ?? [] {
                 switch block["type"]?.string {
                 case "text": if let t = block["text"]?.string, !t.isEmpty { onEvent(.assistantText(t)) }
-                case "tool_use": onEvent(.toolUse(id: block["id"]?.string ?? "", name: block["name"]?.string ?? "", input: block["input"] ?? .null))
+                case "tool_use":
+                    let id = block["id"]?.string ?? "", name = block["name"]?.string ?? ""
+                    if name == "WebFetch", config.sourcePermissions != nil { sourceUses[id] = block["input"] ?? .null }
+                    onEvent(.toolUse(id: id, name: name, input: block["input"] ?? .null))
                 default: break
                 }
             }
         case "user":
             for block in ev["message"]?["content"]?.array ?? [] where block["type"]?.string == "tool_result" {
-                if let id = block["tool_use_id"]?.string { onEvent(.toolResult(id: id)) }
+                if let id = block["tool_use_id"]?.string {
+                    if let input = sourceUses.removeValue(forKey: id) {
+                        onEvent(.sourceResult(id: id, input: input, content: block["content"] ?? .null, metadata: ev["tool_use_result"] ?? .null, isError: block["is_error"]?.bool ?? false))
+                    }
+                    onEvent(.toolResult(id: id))
+                }
             }
         case "result":
             let isError = ev["is_error"]?.bool ?? false

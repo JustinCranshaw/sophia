@@ -1032,11 +1032,14 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("failedSourcesAreNotReintroducedAsExtractedPassages", failedSourcesAreNotReintroducedAsExtractedPassages),
     ("legacyDeletionReservesIDsBeforeAnyNewAppend", legacyDeletionReservesIDsBeforeAnyNewAppend),
     ("legacyDuplicateMemoryRefusesUpdateWithoutAWrite", legacyDuplicateMemoryRefusesUpdateWithoutAWrite),
     ("aFailedLearningAppendKeepsExistingEvidence", aFailedLearningAppendKeepsExistingEvidence),
     ("learningIdentitiesSurviveDeletionCorrectionAndUndo", learningIdentitiesSurviveDeletionCorrectionAndUndo),
     ("legacyLearningReferencesReserveIDsAndRestoreRefusesCollisions", legacyLearningReferencesReserveIDsAndRestoreRefusesCollisions),
+    ("sourcePermissionsAreExplicitMatchedAndTemporary", sourcePermissionsAreExplicitMatchedAndTemporary),
+    ("sourceToolsContextAndExtractedEvidenceAgree", sourceToolsContextAndExtractedEvidenceAgree),
     ("researchOffersMatchTheExposedWebCapability", researchOffersMatchTheExposedWebCapability),
     ("editedCorrectionsKeepOriginalEvidenceAndReachNextTurn", editedCorrectionsKeepOriginalEvidenceAndReachNextTurn),
     ("personCorrectionsReachFreshAndOngoingThreadContext", personCorrectionsReachFreshAndOngoingThreadContext),
