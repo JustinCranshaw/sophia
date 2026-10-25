@@ -30,7 +30,7 @@ struct MemoryCard: View {
                     if correcting == id {
                         TextField("What's true instead?", text: $draft).textFieldStyle(.roundedBorder)
                         HStack {
-                            Button("Save") { session.correct(id, text: draft); correcting = nil }.buttonStyle(.borderedProminent)
+                            Button("Save") { if session.correct(id, text: draft) { correcting = nil } }.buttonStyle(.borderedProminent)
                             Button("Cancel") { correcting = nil }
                         }.controlSize(.small)
                     } else {
@@ -38,7 +38,10 @@ struct MemoryCard: View {
                             Text("Based on " + (m["refs"]?.array ?? []).compactMap(\.string).joined(separator: ", "))
                                 .font(.caption2).foregroundStyle(.tertiary)
                             Spacer()
-                            if store.correction(of: id) == nil { Button("Correct") { draft = ""; correcting = id } }
+                            Button(store.correction(of: id) == nil ? "Correct" : "Edit correction") {
+                                draft = store.correction(of: id)?.str("text") ?? m.str("text") ?? ""
+                                correcting = id
+                            }
                             Button("Forget", role: .destructive) { session.delete(id) }
                         }.controlSize(.mini).buttonStyle(.link)
                     }
