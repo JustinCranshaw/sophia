@@ -1,0 +1,13 @@
+{
+  "source": "/tmp/sophia-sop44-original-ui/library/Freedom and citizenship",
+  "cutThrough": "t-0045",
+  "cutAt": "2026-10-24T23:23:52Z",
+  "sourceTranscriptSHA": "1b9c9e697e6514293bc12a10e1b271bc7c710abb29610df2dac9a3250532a82e",
+  "retainedTranscriptCount": 45,
+  "retainedLearningCount": 32,
+  "preservedHistoricalLearningHighWatermarks": {
+    "g": "3",
+    "n": "37"
+  },
+  "developerFixtureNotLearner": true
+}
