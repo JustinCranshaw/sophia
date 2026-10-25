@@ -447,6 +447,11 @@ struct GoalsView: View {
     @State private var text = ""
     @State private var criterion = ""
 
+    private var hasStaleDraft: Bool {
+        guard let editing else { return false }
+        return !session.store.goals.contains { $0.str("id") == editing }
+    }
+
     var body: some View {
         let store = session.store
         ScrollViewReader { proxy in
@@ -463,11 +468,19 @@ struct GoalsView: View {
                         .onSubmit { if session.addGoal(newGoal) { newGoal = "" } }
                     Button("Add goal") { if session.addGoal(newGoal) { newGoal = "" } }.disabled(newGoal.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+                if hasStaleDraft {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Unsaved goal wording").font(.headline)
+                        Text("The goal changed before this wording could be saved. Copy it before dismissing if you want to use it later.").font(.caption).foregroundStyle(.secondary)
+                        Text(text).textSelection(.enabled)
+                        Button("Dismiss unsaved wording") { editing = nil; text = "" }
+                    }.card().id("unsaved-goal-wording")
+                }
                 VStack(spacing: 14) { ForEach(store.goals.reversed(), id: \.self.line) { g in goalCard(g).id(g.str("id") ?? "") } }
             }
             .onChange(of: session.goalReviewID, initial: true) { _, id in
-                guard let id else { return }
-                DispatchQueue.main.async { proxy.scrollTo(id, anchor: .top) }
+                guard let target = hasStaleDraft ? "unsaved-goal-wording" : id else { return }
+                DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
             }
         }
     }
@@ -527,7 +540,7 @@ struct GoalsView: View {
                 HStack {
                     if status == "working" {
                         Button("Mark as met") { session.updateGoal(g, status: "met") }
-                        Button("Reword") { text = g.str("text") ?? ""; editing = id }
+                        Button("Reword") { text = g.str("text") ?? ""; editing = id }.disabled(hasStaleDraft)
                         Button("Drop") { session.updateGoal(g, status: "dropped") }
                     } else {
                         Button("Reopen") { session.updateGoal(g, status: "working") }

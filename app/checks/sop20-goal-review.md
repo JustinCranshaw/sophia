@@ -17,3 +17,9 @@ Observed through real native controls:
 - Explicit Drop goal retained all five criteria/history, removed provisional status and showed Dropped both in Goals and the matching conversation card. `/tmp/sophia-sop20-revision-drop.json`, screenshot `results/1792921395726526000-e0d85c.png`.
 
 Original PNGs were visually inspected. Native Cmd-Q exited PID46561; the driver's expected post-exit response timed out after the process was already gone. No provider invocation, delayed retention, billing or human usability claim. No source permission or conversation-scroll behavior was changed.
+
+## Stale Reword follow-up
+
+The independent reviewer deferred a short unsaved-wording race. The integration owner required fixing it before merge. A native baseline reproduction confirmed that a production-MCP revision between Reword and Save refused the stale save but hid the exact typed wording (`/tmp/sophia-sop20-reword-baseline-stale-save.json`, screenshot `results/1792922166963333000-015da5.png`).
+
+The existing GoalsView draft state now renders a selectable Unsaved goal wording block when its edited version is no longer current. It is independent of goalProblem, and new Reword controls cannot replace it until explicit dismissal. Native fixed replay retained `EXACT_UNSAVED_GOAL_20: Compare the citizenship and voting claims carefully.` after refusal, with learning bytes unchanged (`results/1792922216100409000-613acd.png`). Keep earlier then cleared the error but retained the exact text and disabled Reword (`results/1792922216792325000-d5c051.png`); Dismiss unsaved wording removed it and re-enabled Reword (`results/1792922217568626000-34fa1d.png`). Original PNGs inspected, debug app/MCP rebuild passed, no provider calls. Cmd-Q exited PID59157, verified gone. This is transient view-state recovery, not durable draft persistence.
