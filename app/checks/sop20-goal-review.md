@@ -1,0 +1,19 @@
+# SOP-20 goal review — October 25, 2026
+
+Goal cards open Review rather than confirm an unseen scope. Goals shows the full title, quotation, revision context and every criterion before the decision controls. Provisional proposals have no Reword, status or Add criterion path that implicitly confirms them. The person may keep talking without confirming.
+
+A new proposal can be rejected as a whole with Not my goal and restored with existing Undo. A revision can be explicitly dropped as a whole, retaining its entire criterion array and history. Keep the earlier version requires exactly matching criterion arrays: shrinking/replacing the array can reinterpret positional evidence, including an earlier deleted note restored with Undo. Individual criterion editing/removal is deliberately unsupported; leave provisional, drop the whole goal or choose a separate narrower goal. All decisions validate the exact current ID under the existing writer lock.
+
+Developer checks: all 72 core checks (66 main baseline + six goal checks), debug app/MCP build, diff check. The focused checks cover exact confirmation/provenance, stale decisions/no mutation, compatible whole-version restoration, new-proposal delete/restore, saved B evidence and deleted-B/Undo positional regressions, and explicit dropped revision preservation. Before the conservative compatibility check, the two B regressions reproduced B evidence resolving to newly added C. No schema/history repair was added.
+
+Native evidence is a controlled replay, not new model output or human evidence. `/tmp/sophia-sop20-fixture.json` records exact initial model goal records and simulated learner statements copied read-only from the October 24 math/history/music notebooks. The disposable `/tmp/sophia-sop20-ui` has no pages, authentication material or model requests. A large explicit return threshold prevented automatic return processing. The truncated transcript contains the original question and goal event, so the unrelated Retry marker is fixture incompleteness, not an observed provider failure.
+
+Observed through real native controls:
+
+- Conceptual goal: Review exposed all three original criteria, including derivation and omega squared, before Not my goal removed the whole proposal. Screenshot `results/1792921346999013000-f2b4a3.png` is indexed by `/tmp/sophia-sop20-math-review.json` (use that JSON's screenshot path as authoritative).
+- History goal: Review exposed all three criteria and original quotation; Confirm copied exactly the reviewed scope. `/tmp/sophia-sop20-source-review.json`, screenshot `results/1792921338317768000-af17ec.png`.
+- Music goal: reviewed four criteria then Confirm; a production-MCP title-only revision retained those four criteria, and Keep earlier restored the prior confirmed wording. A further production-MCP proposal added Count triplets; Keep earlier was visibly disabled with the positional-evidence explanation. `/tmp/sophia-sop20-music-incompatible-review.json`, screenshot `results/1792921387485214000-8ce605.png`.
+- While that revision's Confirm remained rendered, another actual production-MCP call changed its wording. Pressing the old native Confirm refused without changing learning bytes and focused the current proposal with a clear error. `/tmp/sophia-sop20-stale-confirm.json`, screenshot `results/1792921394836628000-959e48.png`.
+- Explicit Drop goal retained all five criteria/history, removed provisional status and showed Dropped both in Goals and the matching conversation card. `/tmp/sophia-sop20-revision-drop.json`, screenshot `results/1792921395726526000-e0d85c.png`.
+
+Original PNGs were visually inspected. Native Cmd-Q exited PID46561; the driver's expected post-exit response timed out after the process was already gone. No provider invocation, delayed retention, billing or human usability claim. No source permission or conversation-scroll behavior was changed.

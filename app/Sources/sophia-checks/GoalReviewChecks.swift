@@ -95,3 +95,22 @@ func deletedCriterionEvidenceCannotBeRetargetedBeforeUndo() throws {
     expect(current["criteria"]?.array?[1].string == "Criterion B")
     expect(store.record(note.str("id")!) == note && store.isProvisional(current))
 }
+
+func droppingAReviewedRevisionPreservesCriteriaAndRejectsStaleActions() throws {
+    let store = try tempStore()
+    let first = try store.writeGoal(text: "Compare sources", criteria: ["Criterion A"], revising: nil, quote: nil, session: "s-1")
+    let confirmed = try store.confirmGoalProposal(first.str("id")!, session: "s-1")
+    let revision = try store.writeGoal(text: "Compare sources broadly", criteria: ["Criterion B"], revising: confirmed.str("id"), quote: nil, session: "s-2")
+    let root = store.rootID(of: revision.str("id")!)
+    let note = try store.appendLearning(["kind": .string("attempt"), "text": .string("B evidence"), "refs": .array([.string(root + "#2")])], by: "sophia", session: "s-2")
+    let dropped = try store.dropGoalProposal(revision.str("id")!, session: "s-1")
+    expect(dropped.str("status") == "dropped" && !store.isProvisional(dropped))
+    for key in ["text", "criteria", "quote", "refs"] { expect(dropped[key] == revision[key]) }
+    expect(store.rootID(of: dropped.str("id")!) == root && store.record(note.str("id")!) == note)
+    let file = store.url.appendingPathComponent("learning.jsonl"), before = try Data(contentsOf: file)
+    expectThrows { try store.dropGoalProposal(revision.str("id")!, session: "s-1") }
+    expectThrows { try store.confirmGoalProposal(revision.str("id")!, session: "s-1") }
+    expect(try Data(contentsOf: file) == before)
+    let initial = try store.writeGoal(text: "New proposal", criteria: [], revising: nil, quote: nil, session: "s-3")
+    expectThrows { try store.dropGoalProposal(initial.str("id")!, session: "s-1") }
+}

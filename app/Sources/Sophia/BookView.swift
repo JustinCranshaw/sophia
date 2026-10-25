@@ -512,9 +512,10 @@ struct GoalsView: View {
                     let compatible = previous.map { ($0["criteria"]?.array ?? []) == (g["criteria"]?.array ?? []) } ?? false
                     Button(g.str("replaces") == nil ? "Not my goal" : "Keep the earlier version") { session.discardGoal(g) }
                         .disabled(g.str("replaces") != nil && !compatible)
+                    if g.str("replaces") != nil { Button("Drop goal") { session.dropGoalProposal(g) } }
                 }.controlSize(.small)
                 if let previousID = g.str("replaces"), let previous = store.record(previousID), (previous["criteria"]?.array ?? []) != (g["criteria"]?.array ?? []) {
-                    Text("Earlier criteria differ. Keeping that version could reassign saved or undoable evidence; leave this provisional or choose a separate narrower goal.").font(.caption).foregroundStyle(.secondary)
+                    Text("Earlier criteria differ. Keeping that version could reassign saved or undoable evidence; leave this provisional, drop the whole goal, or choose a separate narrower goal.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text("You can leave this provisional and keep talking without confirming.").font(.caption).foregroundStyle(.secondary)
                 }

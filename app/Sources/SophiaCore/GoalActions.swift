@@ -6,7 +6,7 @@ extension NotebookStore {
         public var errorDescription: String? {
             switch self {
             case .changed: return "That goal changed. Review its current version before deciding."
-            case .criteriaDiffer: return "Keeping an earlier version with different criteria could reassign saved or undoable evidence. Leave this proposal provisional or choose a separate narrower goal."
+            case .criteriaDiffer: return "Keeping an earlier version with different criteria could reassign saved or undoable evidence. Leave this proposal provisional, drop the whole goal, or choose a separate narrower goal."
             }
         }
     }
@@ -42,6 +42,18 @@ extension NotebookStore {
                 return []
             }
             return try deleteLearningLocked(id)
+        }
+    }
+
+    /// Dropping a reviewed revision retains every criterion and its evidence identity.
+    @discardableResult
+    public func dropGoalProposal(_ id: String, session: String) throws -> JSONObject {
+        try locked {
+            let goal = try goalForPersonAction(id, provisional: true)
+            guard goal.str("replaces") != nil else { throw GoalActionError.changed }
+            var next = goalVersion(goal, replacing: id)
+            next["status"] = .string("dropped")
+            return try appendLearningLocked(next, by: "person", session: session)
         }
     }
 

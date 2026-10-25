@@ -464,6 +464,15 @@ final class NotebookSession: ObservableObject {
         changed()
     }
 
+    func dropGoalProposal(_ goal: JSONObject) {
+        guard let id = goal.str("id") else { return }
+        do {
+            let saved = try store.dropGoalProposal(id, session: session)
+            goalReviewID = saved.str("id"); goalProblem = nil
+        } catch { goalActionFailed(goal, error: error) }
+        changed()
+    }
+
     func discardGoal(_ goal: JSONObject) {
         guard let id = goal.str("id") else { return }
         do {

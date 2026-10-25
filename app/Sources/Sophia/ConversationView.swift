@@ -318,7 +318,7 @@ struct PageWriteCard: View {
     }
 }
 
-/// A goal Sophia recorded from the conversation, with Confirm while it is still provisional.
+/// A goal Sophia recorded from the conversation, with full review before confirmation.
 struct GoalNotedCard: View {
     @ObservedObject var session: NotebookSession
     let recordID: String
