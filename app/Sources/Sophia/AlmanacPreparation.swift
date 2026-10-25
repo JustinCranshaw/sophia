@@ -62,6 +62,7 @@ final class AlmanacPreparation: ObservableObject {
         guard !closed else { return }
         let previousEntry = snapshot.latestEntry?.id
         refresh()
+        guard problem != Self.reopenAfterStorageFailure else { return }
         // A Retry that discovers its already-recorded page only exposes that page.
         if snapshot.latestEntry?.id != previousEntry, snapshot.waitingEntry != nil { return }
         guard engine == nil else { return }
