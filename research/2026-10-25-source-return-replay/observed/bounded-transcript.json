@@ -72,9 +72,9 @@
     "tool": "WebFetch",
     "tool_use_id": "toolu_01QfxgiHHPpVQHyJWbYL27yA",
     "url": "https://www.ericfoner.com/articles/011321NYer.html",
-    "providerExtractionSHA256": "43693676847f86a2cba8105ae22a92ad88daba8eba2153a395f9ab80d8b4b7b5",
-    "providerExtractionUTF8Bytes": 150,
-    "contentRetainedPrivately": true
+    "contentRetainedPrivately": true,
+    "deniedOutcomeSHA256": "43693676847f86a2cba8105ae22a92ad88daba8eba2153a395f9ab80d8b4b7b5",
+    "deniedOutcomeUTF8Bytes": 150
   },
   {
     "at": "2026-10-25T14:54:18Z",

@@ -23,6 +23,10 @@
     {
       "text": "Memory is up to date. Nothing more is needed from the sources for this step",
       "verification": "additional actual assistant reply after note/memory writes; relevant to open SOP25 pacing/filler, no new fix proposed"
+    },
+    {
+      "text": "both using the word 'failure'",
+      "verification": "The actual Du Bois extraction t-0051 explicitly says neither 'failure' nor 'splendid failure' appears in the portion inspected; final reply t-0055 attributes absent wording to that account."
     }
   ],
   "newToolRecords": [
