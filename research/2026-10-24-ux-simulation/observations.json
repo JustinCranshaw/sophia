@@ -1,0 +1,347 @@
+{
+  "date": "2026-10-24",
+  "baseCommit": "1e3b67dd4760cf78d7d445c10ee2af245d5dafb5",
+  "environment": {
+    "macOS": "26.2 (25C56)",
+    "swift": "6.2.3",
+    "nodeInstalled": "26.0.0 (not required by harness)",
+    "claudeInstalledAndLaunchedPath": "/Users/justincranshaw/.local/bin/claude",
+    "claudeResolvedVersion": "2.1.304",
+    "adapter": "none",
+    "sdk": "none; app launches installed unmodified CLI",
+    "harness": "Python standard library + AppKit debug bridge; no added dependencies"
+  },
+  "personas": [
+    {
+      "run": "math",
+      "name": "Elena Ruiz",
+      "age": 36,
+      "background": "Structural engineer returning to vibration analysis",
+      "topic": "Eigenvectors and vibration modes",
+      "submissions": 7,
+      "plannedReturn": true,
+      "captures": 69,
+      "uiResults": 69,
+      "testAppClosed": true
+    },
+    {
+      "run": "history",
+      "name": "Jamal Brooks",
+      "age": 52,
+      "background": "Library book-discussion coordinator",
+      "topic": "Reconstruction and citizenship",
+      "submissions": 7,
+      "plannedReturn": true,
+      "captures": 81,
+      "uiResults": 81,
+      "testAppClosed": true
+    },
+    {
+      "run": "music",
+      "name": "Theo Park",
+      "age": 24,
+      "background": "Self-taught guitarist",
+      "topic": "Rhythm in staff and tab notation",
+      "submissions": 7,
+      "plannedReturn": true,
+      "captures": 73,
+      "uiResults": 73,
+      "testAppClosed": true
+    },
+    {
+      "run": "onboarding",
+      "name": "Priya Shah",
+      "age": 47,
+      "background": "Museum educator and gardener without CLI experience",
+      "topic": "First-time setup; fungi question",
+      "submissions": 3,
+      "failedDependencySubmissions": 1,
+      "realModelSubmissions": 2,
+      "plannedReturn": false,
+      "captures": 17,
+      "uiResults": 17,
+      "testAppClosed": true
+    }
+  ],
+  "limits": [
+    "Simulated learners, not real people or independent mastery evidence",
+    "60-second accelerated returns, not delayed retention",
+    "Harness-repair interruptions excluded from product failures",
+    "Missing-install branch exercised with explicit debug-only fault injection",
+    "Existing signed-in dependency supplied; no fresh install/account/login or expired-login test",
+    "No independent billing corroboration; attribution inconclusive",
+    "No raw provider-event capture for missing answer; cause unresolved",
+    "Learners did not inspect source, notebook files, prompts or external topic research"
+  ],
+  "verification": {
+    "debugBundle": "passed",
+    "releaseBuild": "passed; debug markers absent from strings output",
+    "coreChecks": "37 passed",
+    "pythonSyntax": "passed",
+    "diffCheck": "passed"
+  },
+  "issues": [
+    {
+      "id": "SOP-18",
+      "title": "Give the first inquiry room before an empty book occupies the window",
+      "url": "https://linear.app/decomposer/issue/SOP-18/give-the-first-inquiry-room-before-an-empty-book-occupies-the-window",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 3,
+      "parentId": "SOP-34"
+    },
+    {
+      "id": "SOP-19",
+      "title": "Show Goals, notes, and saved pages in the sidebar immediately after creating a notebook",
+      "url": "https://linear.app/decomposer/issue/SOP-19/show-goals-notes-and-saved-pages-in-the-sidebar-immediately-after",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-33"
+    },
+    {
+      "id": "SOP-20",
+      "title": "Show a proposed goal's success criteria before the person confirms it",
+      "url": "https://linear.app/decomposer/issue/SOP-20/show-a-proposed-goals-success-criteria-before-the-person-confirms-it",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-35"
+    },
+    {
+      "id": "SOP-21",
+      "title": "Distinguish Sophia's explanation errors from the learner's misconceptions in saved notes",
+      "url": "https://linear.app/decomposer/issue/SOP-21/distinguish-sophias-explanation-errors-from-the-learners",
+      "project": "Sophia \u00b7 Access and companion validation",
+      "priority": 2,
+      "parentId": "SOP-35"
+    },
+    {
+      "id": "SOP-22",
+      "title": "Let people edit an existing correction in Sophia's notes and working memory",
+      "url": "https://linear.app/decomposer/issue/SOP-22/let-people-edit-an-existing-correction-in-sophias-notes-and-working",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 3,
+      "parentId": "SOP-35"
+    },
+    {
+      "id": "SOP-23",
+      "title": "Open a newly selected page at its beginning instead of inheriting another page's scroll",
+      "url": "https://linear.app/decomposer/issue/SOP-23/open-a-newly-selected-page-at-its-beginning-instead-of-inheriting",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-34"
+    },
+    {
+      "id": "SOP-24",
+      "title": "Turn note evidence references into readable links to the actual exchange or page",
+      "url": "https://linear.app/decomposer/issue/SOP-24/turn-note-evidence-references-into-readable-links-to-the-actual",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 3,
+      "parentId": "SOP-35"
+    },
+    {
+      "id": "SOP-25",
+      "title": "Keep short learning answers from turning into a stream of bookkeeping and filler replies",
+      "url": "https://linear.app/decomposer/issue/SOP-25/keep-short-learning-answers-from-turning-into-a-stream-of-bookkeeping",
+      "project": "Sophia \u00b7 Access and companion validation",
+      "priority": 2,
+      "parentId": "SOP-34"
+    },
+    {
+      "id": "SOP-26",
+      "title": "Show captured goal attempts during a session instead of saying No attempts yet",
+      "url": "https://linear.app/decomposer/issue/SOP-26/show-captured-goal-attempts-during-a-session-instead-of-saying-no",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-35"
+    },
+    {
+      "id": "SOP-27",
+      "title": "Keep a learner's question answered when the same turn revises a page",
+      "url": "https://linear.app/decomposer/issue/SOP-27/keep-a-learners-question-answered-when-the-same-turn-revises-a-page",
+      "project": "Sophia \u00b7 Access and companion validation",
+      "priority": 2,
+      "parentId": "SOP-34"
+    },
+    {
+      "id": "SOP-28",
+      "title": "Make return briefings open the relevant page or section without an unfulfilled navigation promise",
+      "url": "https://linear.app/decomposer/issue/SOP-28/make-return-briefings-open-the-relevant-page-or-section-without-an",
+      "project": "Sophia \u00b7 Access and companion validation",
+      "priority": 2,
+      "parentId": "SOP-36"
+    },
+    {
+      "id": "SOP-29",
+      "title": "Check agent prerequisites before a new learner sends their first question",
+      "url": "https://linear.app/decomposer/issue/SOP-29/check-agent-prerequisites-before-a-new-learner-sends-their-first",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-33"
+    },
+    {
+      "id": "SOP-30",
+      "title": "Explain accountless Sophia, provider sign-in, billing, and data flow before the first request",
+      "url": "https://linear.app/decomposer/issue/SOP-30/explain-accountless-sophia-provider-sign-in-billing-and-data-flow",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-33"
+    },
+    {
+      "id": "SOP-31",
+      "title": "Recover the first question after agent setup fails, with a clear retry action",
+      "url": "https://linear.app/decomposer/issue/SOP-31/recover-the-first-question-after-agent-setup-fails-with-a-clear-retry",
+      "project": "Sophia \u00b7 Reliable local Mac beta",
+      "priority": 2,
+      "parentId": "SOP-33"
+    },
+    {
+      "id": "SOP-32",
+      "title": "Ground source-comparison offers in passages Sophia can actually inspect",
+      "url": "https://linear.app/decomposer/issue/SOP-32/ground-source-comparison-offers-in-passages-sophia-can-actually",
+      "project": "Sophia \u00b7 Access and companion validation",
+      "priority": 2,
+      "parentId": "SOP-36"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "onboarding/results/1792884234772972000-812b06.png",
+      "copy": "evidence/missing-provider-after-send.png",
+      "issues": [
+        "SOP-29",
+        "SOP-30"
+      ]
+    },
+    {
+      "file": "onboarding/results/1792884331909825000-85fcc7.png",
+      "copy": "evidence/visible-question-unavailable-to-sophia.png",
+      "issues": [
+        "SOP-31"
+      ]
+    },
+    {
+      "file": "math/results/1792883647393526000-913dfc.png",
+      "copy": "evidence/explanation-error-becomes-learner-note.png",
+      "issues": [
+        "SOP-21",
+        "SOP-24"
+      ]
+    },
+    {
+      "file": "math/results/1792883893239650000-e7ed88.png",
+      "copy": "evidence/captured-attempts-empty-goals.png",
+      "issues": [
+        "SOP-26"
+      ]
+    },
+    {
+      "file": "history/results/1792884420793914000-277c14.png",
+      "copy": "evidence/uninspected-source-comparison.png",
+      "issues": [
+        "SOP-32"
+      ]
+    },
+    {
+      "file": "music/results/1792883494867342000-4bc1cb.png",
+      "copy": "evidence/rendered-staff-and-tab.png",
+      "positive": "Staff and tab explanation rendered"
+    },
+    {
+      "file": "music/results/1792883687516678000-cd9b62.png",
+      "copy": "evidence/new-page-wrong-scroll.png",
+      "issues": [
+        "SOP-23"
+      ]
+    },
+    {
+      "file": "math/results/1792883814230898000-330c3a.png",
+      "copy": "evidence/saved-personal-edit.png",
+      "positive": "Person's engineering reminder saved and undoable"
+    }
+  ],
+  "captureRangeUTC": {
+    "first": "2026-10-24T23:07:43Z",
+    "last": "2026-10-24T23:27:01Z"
+  },
+  "totalScreenshots": 240,
+  "totalLearnerSubmissions": 24,
+  "implementationPlan": {
+    "outcomes": [
+      {
+        "key": "first_inquiry",
+        "id": "SOP-33",
+        "title": "Deliver a dependable first inquiry and connection recovery",
+        "url": "https://linear.app/decomposer/issue/SOP-33/deliver-a-dependable-first-inquiry-and-connection-recovery",
+        "project": "Sophia \u00b7 Reliable local Mac beta",
+        "children": [
+          "SOP-19",
+          "SOP-29",
+          "SOP-30",
+          "SOP-31"
+        ]
+      },
+      {
+        "key": "learning_focus",
+        "id": "SOP-34",
+        "title": "Keep the learning conversation focused and uninterrupted",
+        "url": "https://linear.app/decomposer/issue/SOP-34/keep-the-learning-conversation-focused-and-uninterrupted",
+        "project": "Sophia \u00b7 Reliable local Mac beta",
+        "children": [
+          "SOP-18",
+          "SOP-23",
+          "SOP-25",
+          "SOP-27"
+        ]
+      },
+      {
+        "key": "trustworthy_notebook",
+        "id": "SOP-35",
+        "title": "Make goals, corrections and learning evidence trustworthy",
+        "url": "https://linear.app/decomposer/issue/SOP-35/make-goals-corrections-and-learning-evidence-trustworthy",
+        "project": "Sophia \u00b7 Reliable local Mac beta",
+        "children": [
+          "SOP-20",
+          "SOP-21",
+          "SOP-22",
+          "SOP-24",
+          "SOP-26"
+        ]
+      },
+      {
+        "key": "actionable_return",
+        "id": "SOP-36",
+        "title": "Make returning lead directly to a grounded next action",
+        "url": "https://linear.app/decomposer/issue/SOP-36/make-returning-lead-directly-to-a-grounded-next-action",
+        "project": "Sophia \u00b7 Access and companion validation",
+        "children": [
+          "SOP-28",
+          "SOP-32"
+        ]
+      }
+    ],
+    "validation": {
+      "id": "SOP-37",
+      "title": "Replay the four learner journeys and validate a meaningful week-later return",
+      "url": "https://linear.app/decomposer/issue/SOP-37/replay-the-four-learner-journeys-and-validate-a-meaningful-week-later",
+      "project": "Sophia \u00b7 Access and companion validation",
+      "blockedBy": [
+        "SOP-33",
+        "SOP-34",
+        "SOP-35",
+        "SOP-36"
+      ]
+    },
+    "sequence": {
+      "startFirst": [
+        "SOP-33",
+        "SOP-34"
+      ],
+      "next": [
+        "SOP-35",
+        "SOP-36"
+      ],
+      "validateAfter": [
+        "SOP-37"
+      ]
+    }
+  }
+}

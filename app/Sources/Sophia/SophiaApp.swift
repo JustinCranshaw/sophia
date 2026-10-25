@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             NSApp.setActivationPolicy(.accessory)
         }
+        #if DEBUG
+        UXHarness.startIfRequested()
+        #endif
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 }

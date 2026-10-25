@@ -160,6 +160,13 @@ public final class ClaudeEngine {
     /// The official Claude Code binary. Wrappers on PATH (for example terminal integrations)
     /// may add their own settings, so the installer's location is preferred.
     public static func locateClaude() -> String? {
+        #if DEBUG
+        // Exercise the real missing-install UX without touching the person's installation or login.
+        let env = ProcessInfo.processInfo.environment
+        if let harness = env["SOPHIA_UX_HARNESS"],
+           env["SOPHIA_LIBRARY"]?.hasPrefix(harness + "/") == true,
+           env["SOPHIA_UX_NO_CLAUDE"] == "1" { return nil }
+        #endif
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let candidates = [ProcessInfo.processInfo.environment["SOPHIA_CLAUDE"],
                           home + "/.local/bin/claude", home + "/.claude/local/claude",
