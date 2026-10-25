@@ -126,6 +126,7 @@ final class AlmanacModel: ObservableObject {
 
     func prepare() {
         guard !stopped else { return }
+        controlsShown = false
         guard connection.acknowledged else {
             problem = "Review Connection & Data before preparing an entry. Closing that information does not start preparation."
             connection.detailsShown = true; return
@@ -255,7 +256,7 @@ struct AlmanacStatusView: View {
                 Text(entry.title).font(.caption.weight(.medium)).lineLimit(2).help(entry.title)
                 Text("Prepared \(shortDate(entry.preparedAt))").font(.caption).foregroundStyle(.secondary)
             }
-            if let problem = almanac.problem ?? worker.problem ?? snapshot.problem {
+            if !sidebar, let problem = almanac.problem ?? worker.problem ?? snapshot.problem {
                 Text(problem).font(.caption).foregroundStyle(.red).lineLimit(nil)
                     .fixedSize(horizontal: false, vertical: true).help(problem)
             }
@@ -288,6 +289,7 @@ struct AlmanacStatusView: View {
     private var status: String {
         let snapshot = worker.snapshot
         if snapshot.settings?.enabled == false { return "Disabled · saved entries stay readable" }
+        if almanac.problem != nil || worker.problem != nil || snapshot.problem != nil { return "New entry did not finish" }
         switch snapshot.phase {
         case .unconfigured: return "Choose themes to begin"
         case .idle: return snapshot.latestEntry == nil ? "Ready to prepare" : "Latest entry opened"
@@ -295,7 +297,7 @@ struct AlmanacStatusView: View {
         case .needsThemes: return "Choose an available notebook title or topic"
         case .preparing: return "Preparing an entry · your current notebook stays open"
         case .ready: return "An entry is ready to read"
-        case .failed: return "Preparation did not finish"
+        case .failed: return "New entry did not finish"
         case .cancelled: return "Preparation cancelled"
         }
     }
@@ -305,6 +307,7 @@ struct AlmanacToolbarView: View {
     @ObservedObject var worker: AlmanacPreparation
     @ObservedObject var almanac: AlmanacModel
     let read: (AlmanacEntry) -> Void
+    @FocusState private var optionsFocused: Bool
     var body: some View {
         Button(label) { almanac.controlsShown.toggle() }
             .popover(isPresented: $almanac.controlsShown) {
@@ -312,10 +315,16 @@ struct AlmanacToolbarView: View {
                     Text("Sophia’s Almanac").font(.headline)
                     AlmanacStatusView(worker: worker, almanac: almanac) { entry in almanac.controlsShown = false; read(entry) }
                 }.padding(16).frame(width: 350)
+                    .focusable()
+                    .focusEffectDisabled()
+                    .focused($optionsFocused)
+                    .onAppear { optionsFocused = true }
+                    .onExitCommand { almanac.controlsShown = false }
             }
     }
     private var label: String {
         if worker.snapshot.settings?.enabled == false { return "Almanac · Off" }
+        if almanac.problem != nil || worker.problem != nil || worker.snapshot.problem != nil { return "Almanac · Needs attention" }
         switch worker.snapshot.phase {
         case .preparing: return "Almanac · Preparing"
         case .failed, .needsThemes: return "Almanac · Needs attention"

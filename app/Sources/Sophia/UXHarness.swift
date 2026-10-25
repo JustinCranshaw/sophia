@@ -121,7 +121,7 @@ enum UXHarness {
             if let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                           windowNumber: window.windowNumber, context: nil, characters: chars, charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
                 if flags.contains(.command), NSApp.mainMenu?.performKeyEquivalent(with: event) == true { result["performed"] = true }
-                else { window.sendEvent(event); result["performed"] = true }
+                else { NSApp.postEvent(event, atStart: false); result["performed"] = true }
             }
         case "type":
             if let window = activeWindow, let text = cmd["text"] as? String {
