@@ -768,6 +768,38 @@ func verificationAtomicUndoAndNewPageCutoff() throws {
     let gone = try NotebookStore.open(url: cut.url)
     expect(gone.transcript.count == 1 && !gone.isUndoable(w))
 }
+func verificationNoOpRevisionCannotClaimOutsideEdits() throws {
+    let s = try tempStore(), first = try fixturePage(s, "No-op", body: "Same bytes"), file = first.str("file")!
+    let current = s.url.appendingPathComponent("pages").appendingPathComponent(file)
+    let unchangedBytes = try Data(contentsOf: current)
+    let same = try s.writePage(title: "No-op", content: "Same bytes", revising: file, session: "s-1", toolUseID: "same")
+    expect(same["unchanged"] == .bool(true) && !s.hasPreviousVersion(file))
+    expectThrows { try s.undoPageWrite(same.str("id")!, session: "s-2") }
+    let afterNoOp = try Data(contentsOf: current)
+    expect(!s.isUndoable(same) && !s.isUndoable(first) && afterNoOp == unchangedBytes)
+    let outside = unchangedBytes + Data("\nOutside wording\n".utf8)
+    try outside.write(to: current, options: .atomic)
+    let opened = try NotebookStore.open(url: s.url)
+    expect(!opened.transcript.contains { $0["recovered"] == .bool(true) })
+    let afterOpen = try Data(contentsOf: current)
+    expect(!opened.isUndoable(same) && afterOpen == outside)
+
+    // A real later copy/write cutoff still has the evidence required for recovery.
+    let interrupted = try tempStore(), initial = try fixturePage(interrupted, "Later cutoff", body: "Before"), p = initial.str("file")!
+    _ = try interrupted.writePage(title: "Later cutoff", content: "Before", revising: p, session: "s-1", toolUseID: "same")
+    let page = interrupted.url.appendingPathComponent("pages").appendingPathComponent(p)
+    let previous = page.deletingPathExtension().appendingPathExtension("previous.md")
+    let prior = try Data(contentsOf: page)
+    try FileManager.default.copyItem(at: page, to: previous)
+    try (prior + Data("\nInterrupted new text\n".utf8)).write(to: page, options: .atomic)
+    let recovered = try NotebookStore.open(url: interrupted.url)
+    let records = recovered.transcript.filter { $0["recovered"] == .bool(true) }
+    expect(records.count == 1 && recovered.isUndoable(records[0]))
+    try recovered.undoPageWrite(records[0].str("id")!, session: "s-2")
+    let restored = try Data(contentsOf: page)
+    expect(restored == prior && !recovered.isUndoable(records[0]))
+}
+
 func verificationNeverReuseUndoneFilename() throws {
     let s = try tempStore(), w = try fixturePage(s), p = w.str("file")!
     _ = try message(s, "Keep my words", page: p)
@@ -802,6 +834,18 @@ func verificationWindowUsesThroughPosition() throws {
     _ = try s.appendTranscript(["purpose": .string("checkpoint"), "through": .string(through)])
     let rebuilt = Prompts.context(s, thread: q, before: queued.str("id"))
     expect(rebuilt.contains(late.str("text")!) && !rebuilt.contains("Queued question"))
+
+    // A separate briefing process stops before the ordinary reply is rebuilt from storage.
+    let returning = try tempStore(), prior = try message(returning, "Earlier Contents question", page: "")
+    _ = try returning.appendTranscript(["purpose": .string("checkpoint"), "through": prior["id"]!])
+    let offer = "Shall we compare the two filter responses next?"
+    _ = try returning.appendTranscript(["role": .string("sophia"), "purpose": .string("briefing"), "page": .string(""), "text": .string(offer)])
+    let answer = try message(returning, "Yes, let's do that", page: "")
+    let resumed = Prompts.context(returning, thread: "", before: answer.str("id"))
+    expect(resumed.contains(offer) && !resumed.contains("Yes, let's do that"))
+    expect(!Prompts.context(returning, thread: "p.md").contains(offer))
+    _ = try returning.appendTranscript(["purpose": .string("clear"), "page": .string("")])
+    expect(!Prompts.context(returning, thread: "").contains(offer))
 }
 func scenario2PageContextAndBookChanges() throws {
     let s = try tempStore(), p = try fixturePage(s, "P", body: "Page P body").str("file")!, q = try fixturePage(s, "Q", body: "Page Q body").str("file")!
@@ -950,6 +994,7 @@ let all: [(String, () throws -> Void)] = [
     ("verificationRecoveredNewPageBeforeUnfiled", verificationRecoveredNewPageBeforeUnfiled),
     ("verificationExternalAndCopyOnlyChanges", verificationExternalAndCopyOnlyChanges),
     ("verificationAtomicUndoAndNewPageCutoff", verificationAtomicUndoAndNewPageCutoff),
+    ("verificationNoOpRevisionCannotClaimOutsideEdits", verificationNoOpRevisionCannotClaimOutsideEdits),
     ("verificationNeverReuseUndoneFilename", verificationNeverReuseUndoneFilename),
     ("verificationWindowUsesThroughPosition", verificationWindowUsesThroughPosition),
     ("scenario2PageContextAndBookChanges", scenario2PageContextAndBookChanges),

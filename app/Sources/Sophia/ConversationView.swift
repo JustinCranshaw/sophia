@@ -261,7 +261,7 @@ struct PageWriteCard: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: revised ? "doc.text.magnifyingglass" : "doc.text").foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text(undone ? (revised ? "CHANGE UNDONE" : "PAGE REMOVED") : (revised ? "REVISED A PAGE" : "ADDED A PAGE"))
+                Text(entry["unchanged"] == .bool(true) ? "PAGE UNCHANGED" : undone ? (revised ? "CHANGE UNDONE" : "PAGE REMOVED") : (revised ? "REVISED A PAGE" : "ADDED A PAGE"))
                     .font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(.secondary)
                 Text(entry.str("title") ?? file).font(.system(size: 15, design: .serif))
                     .strikethrough(undone && !revised).foregroundStyle(undone ? .secondary : .primary)

@@ -141,8 +141,12 @@ public enum Prompts {
 
     static func contextLine(_ e: JSONObject) -> String? {
         if NotebookStore.isMessage(e) { return "[\(e.str("id") ?? "")] \(e.str("role") ?? ""): \(e.str("text") ?? "")" }
+        if e.str("role") == "sophia", e.str("purpose") == "briefing" {
+            return "[\(e.str("id") ?? "")] sophia (welcome back): \(e.str("text") ?? "")"
+        }
         if e["recovered"] == .bool(true) { return nil }
         if e.str("tool") == "write_page" {
+            if e["unchanged"] == .bool(true) { return "Unchanged \(e.str("file") ?? "")." }
             return e["refused"] == .bool(true) ? "Write refused on \(e.str("file") ?? ""): \(e.str("reason") ?? ""). \(e.str("current") ?? "")"
                 : "Saved \(e.str("file") ?? "") (\(e["revised"] == .bool(true) ? "revision" : "new page"))."
         }

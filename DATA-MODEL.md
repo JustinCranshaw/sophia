@@ -118,6 +118,7 @@ Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ...
 
   A file name never changes once used: a revision keeps its file whatever the title becomes, moving a page between chapters changes only notebook.json, and a new page never reuses a file name already in the transcript.
 - A page write is a `tool` entry: `{ "tool": "write_page", "file", "title", "revised"?: true, "tool_use", "hash", "page" }`. `file` is the page written. `page` is the thread the request came from, which may be another page. `hash` is the SHA-256 of the page's bytes as written.
+- A byte-identical revision records the same `write_page` shape with `unchanged: true`, without rewriting the page. It is the latest action but has no Undo; a redundant previous version is removed so an outside edit cannot be mistaken for a later interrupted write.
 - **A recovered write** is `{ "role": "client", "tool": "write_page", "recovered": true, "file", "page": <file>, "hash", "revised"?: true }`. The app writes it on opening a notebook for a write that a crash cut off before its entry, in two cases:
   - a page whose bytes don't match the latest recorded hash while `.previous.md` does (the copy was made, then the crash came);
   - a page file listed in neither notebook.json nor the transcript.

@@ -513,12 +513,20 @@ public final class NotebookStore {
             if let file, pageFiles.contains(file) {
                 let current = pagesURL.appendingPathComponent(file)
                 let previous = pagesURL.appendingPathComponent(Self.previousName(file))
-                try? FileManager.default.removeItem(at: previous)
-                try FileManager.default.copyItem(at: current, to: previous)
-                try Data(text.utf8).write(to: current, options: .atomic)
-                return try appendTranscriptLocked(["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
-                                                   "tool_use": .string(toolUseID), "file": .string(file), "title": .string(title),
-                                                   "revised": .bool(true), "page": .string(thread), "hash": .string(Self.hash(text))])
+                let bytes = Data(text.utf8)
+                let unchanged = try Data(contentsOf: current) == bytes
+                if FileManager.default.fileExists(atPath: previous.path) {
+                    try FileManager.default.removeItem(at: previous)
+                }
+                if !unchanged {
+                    try FileManager.default.copyItem(at: current, to: previous)
+                    try bytes.write(to: current, options: .atomic)
+                }
+                var entry: JSONObject = ["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
+                                         "tool_use": .string(toolUseID), "file": .string(file), "title": .string(title),
+                                         "revised": .bool(true), "page": .string(thread), "hash": .string(Self.hash(text))]
+                if unchanged { entry["unchanged"] = .bool(true) }
+                return try appendTranscriptLocked(entry)
             }
             let name = uniqueFile(for: title)
             try Data(text.utf8).write(to: pagesURL.appendingPathComponent(name), options: .atomic)
@@ -573,7 +581,7 @@ public final class NotebookStore {
 
     public func isUndoable(_ e: JSONObject) -> Bool {
         guard e.str("tool") == "write_page" || e.str("purpose") == "edit_page",
-              e["refused"] != .bool(true), let id = e.str("id"), let file = e.str("file"),
+              e["refused"] != .bool(true), e["unchanged"] != .bool(true), let id = e.str("id"), let file = e.str("file"),
               let hash = e.str("hash"), isLatestWrite(id), pageHash(file) == hash else { return false }
         if e["revised"] == .bool(true) || e.str("purpose") == "edit_page" {
             guard let previous = pageHash(Self.previousName(file)), previous != hash else { return false }

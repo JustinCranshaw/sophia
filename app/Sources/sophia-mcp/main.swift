@@ -202,6 +202,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
                store.chapter(of: file).map({ NotebookStore.splitNumber(chapter).rest.lowercased() != $0.title.lowercased() }) ?? true {
                 filed = " It is in \(try store.fileInChapter([file], chapter: chapter).heading)."
             }
+            if e["unchanged"] == .bool(true) { return "Unchanged \(file): the page already matches." + filed }
             return (page == nil ? "Saved as a new page, \(file). The person can see it and undo it." : "Revised \(file). The previous version is kept, and the person can undo it.") + filed
         case "set_chapter":
             let chapter = (a["chapter"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)

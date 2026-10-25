@@ -1,14 +1,13 @@
 [0/1] Planning build
 Building for debugging...
-[0/5] Write sources
-[1/5] Write swift-version--1AB21518FC5DEDBE.txt
-[3/8] Compiling sophia_checks LibraryChecks.swift
-[4/8] Emitting module sophia_checks
-[5/8] Compiling sophia_checks main.swift
-[5/8] Write Objects.LinkFileList
-[6/8] Linking sophia-checks
-[7/8] Applying sophia-checks
-Build of product 'sophia-checks' complete! (1.64s)
+[0/3] Write swift-version--1AB21518FC5DEDBE.txt
+[1/4] Write sources
+[3/6] Compiling sophia_checks main.swift
+[4/6] Emitting module sophia_checks
+[4/7] Write Objects.LinkFileList
+[5/7] Linking sophia-checks
+[6/7] Applying sophia-checks
+Build of product 'sophia-checks' complete! (1.33s)
 ok   verificationInterleavedThreadOwnership
 ok   verificationUndoAcrossScopesAndReopen
 ok   verificationLatestReleaseAndOneWayUndo
@@ -16,6 +15,7 @@ ok   verificationRecoveredRevisionBeforeEntry
 ok   verificationRecoveredNewPageBeforeUnfiled
 ok   verificationExternalAndCopyOnlyChanges
 ok   verificationAtomicUndoAndNewPageCutoff
+ok   verificationNoOpRevisionCannotClaimOutsideEdits
 ok   verificationNeverReuseUndoneFilename
 ok   verificationWindowUsesThroughPosition
 ok   scenario2PageContextAndBookChanges
@@ -61,4 +61,4 @@ ok   anOpenSectionIsRefusedAndOthersAreNot
 ok   undoingAPersonEditRestoresThePreviousVersion
 ok   aReleaseLiftsOnlyThatEdit
 ok   notationWarningsNameTheirPageAndSection
-All 52 checks passed.
+All 53 checks passed.
