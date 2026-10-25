@@ -1,0 +1,97 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--1AB21518FC5DEDBE.txt
+[3/7] Emitting module SophiaCore
+[4/7] Compiling SophiaCore Prompts.swift
+[5/7] Compiling SophiaCore NotebookStore.swift
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/SophiaCore/NotebookStore.swift:161:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+159 |             for rec in out.kept { kept.append(try appendLearningLocked(rec, by: "sophia", session: session)["id"]!) }
+160 |             if let memory { _ = try setMemory(memory, session: session) }
+161 |             try appendTranscriptLocked(["role": .string("client"), "page": .string(""), "session": .string(session),
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+162 |                                         "purpose": .string("checkpoint"), "through": .string(through),
+163 |                                         "catch_up": .bool(catchUp), "kept": .array(kept)])
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/SophiaCore/NotebookStore.swift:626:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+624 |                                         "page": .string(e["revised"] == .bool(true) || e.str("purpose") == "edit_page" ? file : Self.thread(of: e))]
+625 |             if let hash = pageHash(file) { undo["hash"] = .string(hash) }
+626 |             try appendTranscriptLocked(undo)
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+627 |         }
+628 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/SophiaCore/NotebookStore.swift:649:21: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+647 |                 let w = try writePage(title: payload.str("title") ?? "Untitled", content: payload.str("content") ?? "",
+648 |                                       revising: nil, session: session, toolUseID: e.str("tool_use") ?? "")
+649 |                 try appendTranscriptLocked(["role": .string("client"), "session": .string(session), "purpose": .string("filed_draft"),
+    |                     `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+650 |                                             "proposal": .string(pid), "file": w["file"] ?? .null])
+651 |             }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/SophiaCore/NotebookStore.swift:680:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+678 |             if let last = personMessages.last?.str("id") { record["refs"] = .array([.string(last)]) }
+679 |             let saved = try appendLearningLocked(record, by: "sophia", session: session)
+680 |             try appendTranscriptLocked(["role": .string("client"), "purpose": .string("goal_noted"),
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+681 |                                         "record": saved["id"]!, "page": .string(thread), "session": .string(session)])
+682 |             return saved
+[5/9] Write sources
+[7/11] Compiling sophia_checks main.swift
+[8/11] Emitting module sophia_checks
+[8/11] Write Objects.LinkFileList
+[9/11] Linking sophia-checks
+[10/11] Applying sophia-checks
+Build of product 'sophia-checks' complete! (3.58s)
+ok   verificationInterleavedThreadOwnership
+ok   verificationUndoAcrossScopesAndReopen
+ok   verificationLatestReleaseAndOneWayUndo
+ok   verificationRecoveredRevisionBeforeEntry
+ok   verificationRecoveredNewPageBeforeUnfiled
+ok   verificationExternalAndCopyOnlyChanges
+ok   verificationAtomicUndoAndNewPageCutoff
+ok   verificationNeverReuseUndoneFilename
+ok   verificationWindowUsesThroughPosition
+ok   scenario2PageContextAndBookChanges
+ok   scenario3GoalAndNoteQuoteOwnership
+ok   verificationCheckpointValidationBeforeMutation
+ok   scenario10TornTranscriptAppend
+ok   scenario10IntentionalEngineExit
+ok   keepsVerifiedQuoteAndStampsNothingFromSophia
+ok   misquoteBecomesParaphrase
+ok   quoteFromAnEarlierSessionIsRemoved
+ok   rejectsDisallowedKindsAndEvidenceFreeRecords
+ok   readMustRestOnAnAttemptNotAPage
+ok   briefingCannotQuoteButCanCite
+ok   sophiaWritesAPageDirectlyAndUndoRemovesIt
+ok   revisionKeepsThePreviousVersionAndUndoRestoresIt
+ok   twoWritersDoNotLoseEachOthersWork
+ok   undecidedDraftsFromOlderNotebooksBecomePages
+ok   sophiasGoalIsProvisionalUntilConfirmedAndCriteriaOnlyGrow
+ok   orphanPageIsListedAfterACrash
+ok   deletingARecordRemovesItsCorrectionsAndUndoRestores
+ok   goalRewordKeepsItsFirstID
+ok   catchUpCoversEverythingSinceTheLastNotesAcrossSessions
+ok   olderCheckpointWithoutThroughCoversWhatCameBefore
+ok   onlyALongQuietCountsAsComingBack
+ok   longBriefingIsNotKept
+ok   sectionNumbersAreReadFromTitles
+ok   pagesMoveIntoNumberedChaptersInOrder
+ok   sophiaNotesDuringTheConversationWithinLimits
+ok   memoryIsRewrittenWholeAndKeepsItsEvidence
+ok   recallFindsNotesByIdPageAndWords
+ok   aboutYouIsProvisionalAndStaysHomeUntilConfirmed
+ok   linksAreConfirmedBeforeAnythingIsRead
+ok   checkpointRepliesCarryNotesAndMemory
+ok   deepLinksNameASectionThatExists
+ok   aReplyWrittenTwiceIsRecognized
+ok   extractsJSONFromAFencedReply
+ok   splicingASectionLeavesEveryOtherByteIdentical
+ok   aCommitWithNoChangeWritesNothing
+ok   aCommitAgainstAChangedSectionIsRefused
+ok   protectedLinesAndQuotesRefuseSophiasRevision
+ok   anOpenSectionIsRefusedAndOthersAreNot
+ok   undoingAPersonEditRestoresThePreviousVersion
+ok   aReleaseLiftsOnlyThatEdit
+ok   notationWarningsNameTheirPageAndSection
+All 51 checks passed.

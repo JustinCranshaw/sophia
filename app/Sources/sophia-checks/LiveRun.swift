@@ -27,43 +27,48 @@ struct LiveRunner {
         self.claude = claude
     }
 
-    func run(session: String, resume: String?, messages: [(String, String?)]) -> [String: String] {
+    func run(session: String, resume: String?, messages: [(String, String?)], page: String = "") -> [String: String] {
+        let internalRequest = messages.contains { ["checkpoint", "briefing"].contains($0.1 ?? "") }
         let engine = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: toolServer, notebookURL: store.url,
-                                                systemPrompt: prompt, context: Prompts.context(store), resume: resume, session: session))
+                                                systemPrompt: prompt, context: Prompts.context(store, thread: page), session: session, page: page, readOnly: internalRequest))
         var done = false, reply = "", info: [String: String] = [:]
         var queue = messages
         var currentPurpose: String? = nil
         var turnTexts: [String] = []
         func next() {
             guard !queue.isEmpty else { engine.stop(); done = true; return }
+            guard NotebookStore.nextStep(thread: page, pending: false) == .reply else { return }
             let (text, purpose) = queue.removeFirst()
             currentPurpose = purpose
+            if let purpose { info[purpose + "_failed"] = "true" }
             reply = ""
             turnTexts = []
-            if purpose == nil { try! store.appendTranscript(["role": .string("person"), "session": .string(session), "text": .string(text)]) }
-            engine.send(text)
+            var before: String?
+            if purpose == nil { before = try! store.appendTranscript(["role": .string("person"), "page": .string(page), "session": .string(session), "text": .string(text)]).str("id") }
+            engine.send((purpose == nil ? Prompts.turnPrefix(store, thread: page, before: before) : "") + text)
         }
         engine.onEvent = { ev in
             switch ev {
             case .started(let sid, let source, let tools, let model):
                 info["apiKeySource"] = source; info["tools"] = tools.joined(separator: ","); info["model"] = model
                 if source != "none" { print("Claude Code reports an API key source (\(source)); stopping."); engine.stop(); done = true; return }
-                store.claudeSession = sid
+                _ = sid
             case .assistantText(let t):
                 // As the app does: only a verbatim repeat within the turn is dropped.
                 if Prompts.isRestatement(t, of: turnTexts) { info["restated"] = (info["restated"] ?? "") + "x"; break }
                 turnTexts.append(t)
                 reply += t
-                if currentPurpose == nil { try! store.appendTranscript(["role": .string("sophia"), "session": .string(session), "text": .string(t)]) }
+                if currentPurpose == nil { try! store.appendTranscript(["role": .string("sophia"), "page": .string(page), "session": .string(session), "text": .string(t)]) }
             case .toolUse(_, let name, let input):
                 print("  tool used: \(name) \(input["title"]?.string ?? input["text"]?.string ?? input["query"]?.string ?? "")")
             case .toolResult:
                 store.reload()
             case .turnDone(let isError, let message, _):
                 if isError { print("  turn error: \(message ?? "")") }
-                if let p = currentPurpose { info[p] = reply }
+                if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false" }
+                else if !isError { try! store.appendTranscript(["role": .string("client"), "purpose": .string("replied"), "page": .string(page), "session": .string(session)]) }
                 next()
-            case .exited(let code, _):
+            case .exited(let code, _, _):
                 done = true
                 if code != 0 { print("  claude exited \(code)") }
             default: break
@@ -95,7 +100,7 @@ func runLive(dir: URL) {
         ("I'd guess positive on one triangle, negative on the other, and the same size on all six vertices.", nil),
         ("That's helpful. Let's keep this in the book, including my prediction.", nil),
     ])
-    print("  auth source: \(s1["apiKeySource"] ?? "?"), tools: \(s1["tools"] ?? "?")")
+    print("  model: \(s1["model"] ?? "?"), auth source: \(s1["apiKeySource"] ?? "?"), tools: \(s1["tools"] ?? "?")")
     store.reload()
     let goals = store.goals
     print(goals.isEmpty ? "FAIL: Sophia recorded no goal." : "  goals: " + goals.map { "\($0.str("id") ?? "") [\(store.isProvisional($0) ? "provisional" : "confirmed")] \($0.str("text") ?? "") (\($0["criteria"]?.array?.count ?? 0) criteria\($0["quote"] == nil ? "" : ", quote verified"))" }.joined(separator: "; "))
@@ -107,24 +112,24 @@ func runLive(dir: URL) {
 
     print("Session 2: coming back; notes on the last session, which was closed without ending it")
     let unnoted = store.unnotedMessages
-    let s2a = run(session: "s-2", resume: store.claudeSession, messages: [(Prompts.checkpoint(store, messages: unnoted, catchUp: true), "checkpoint")])
+    let s2a = run(session: "s-2", resume: nil, messages: [(Prompts.checkpoint(store, messages: unnoted, catchUp: true), "checkpoint")])
     let (items, memory, _) = RecordChecks.parseCheckpoint(s2a["checkpoint"] ?? "")
     let out = RecordChecks(store: store).check(items, allowedKinds: RecordChecks.checkpointKinds,
                                                quoteEntries: Set(unnoted.compactMap { $0.str("id") }))
-    for r in out.kept { try! store.appendLearning(r, by: "sophia", session: "s-2") }
-    if let memory { let r = try! store.setMemory(memory, session: "s-2"); for p in r.problems { print("  memory: \(p)") } }
+    let checkpoint = try! store.finishCheckpoint(s2a["checkpoint"] ?? "", failed: s2a["checkpoint_failed"] != "false",
+        through: unnoted.last?.str("id") ?? "", entries: Set(unnoted.compactMap { $0.str("id") }), session: "s-2", catchUp: true)
+    if checkpoint == .failed { print("FAIL: checkpoint could not be saved.") }
+    _ = memory
     print("  memory after the checkpoint (\(store.memory.count) lines):" + store.memory.map { "\n    \($0.str("id") ?? ""): \($0.str("text") ?? "")" }.joined())
-    try! store.appendTranscript(["role": .string("client"), "session": .string("s-2"), "purpose": .string("checkpoint"),
-                                 "through": .string(unnoted.last?.str("id") ?? ""), "catch_up": .bool(true), "kept": .array([])])
     print("  Sophia wrote \(items.count) records; kept \(out.kept.count); quotes verified: \(out.kept.filter { $0["quote"] != nil }.count); messages still without notes: \(store.unnotedMessages.count)")
     for n in out.notes { print("  not kept / changed: \(n)") }
 
     print("Session 2: return briefing")
-    let s2 = run(session: "s-2", resume: store.claudeSession, messages: [(Prompts.briefing(store), "briefing")])
+    let s2 = run(session: "s-2", resume: nil, messages: [(Prompts.briefing(store), "briefing")])
     var obj = RecordChecks.extractJSON(s2["briefing"] ?? "")?.object ?? [:]
     obj["kind"] = .string("briefing")
     let b = RecordChecks(store: store).check([.object(obj)], allowedKinds: RecordChecks.briefingKinds, session: "s-2")
-    if let rec = b.kept.first {
+    if s2["briefing_failed"] == "false", let rec = b.kept.first {
         try! store.appendLearning(rec, by: "sophia", session: "s-2")
         let words = (rec.str("text") ?? "").split(whereSeparator: { $0.isWhitespace }).count
         print("  briefing kept (\(words) words), citing: \((rec["refs"]?.array ?? []).compactMap(\.string).joined(separator: ", "))")
@@ -135,7 +140,7 @@ func runLive(dir: URL) {
     print("Session 2: recall, About you, and links")
     library.reload()
     print("  About you: " + (library.aboutLines.isEmpty ? "nothing proposed" : library.aboutLines.map { "\($0.str("id") ?? "") [\(LibraryStore.isProvisional($0) ? "provisional" : "confirmed")] \($0.str("text") ?? "")" }.joined(separator: "; ")))
-    _ = run(session: "s-2", resume: store.claudeSession, messages: [
+    _ = run(session: "s-2", resume: nil, messages: [
         ("Remind me, what did I get wrong last time about the two triangles? Short answer.", nil),
         ("Does any of this connect to my other notebooks?", nil)])
     library.reload()
@@ -144,19 +149,55 @@ func runLive(dir: URL) {
     if let l = links.first(where: { $0["to"]?["page"]?.string == rq }) {
         try! library.confirmLink(l.str("id")!)
         print("  confirmed the link as the person; asking Sophia to use it")
-        let s3 = run(session: "s-2", resume: store.claudeSession, messages: [("I confirmed that link. What does my Rayleigh quotient page say that bears on the Fiedler vector? One sentence.", "linked")])
+        let s3 = run(session: "s-2", resume: nil, messages: [("I confirmed that link. What does my Rayleigh quotient page say that bears on the Fiedler vector? One sentence.", "linked")])
         print("  reply: \(String((s3["linked"] ?? "").prefix(300)))")
     }
 
     print("Session 2: revising a page")
-    _ = run(session: "s-2", resume: store.claudeSession, messages: [
-        ("I worked it out: the bridge endpoints come out smaller in magnitude than the outer vertices. Please add that to the page.", nil)])
     store.reload()
-    let revision = store.pageWrites.last { $0["revised"] == .bool(true) }
-    if let r = revision, let file = r.str("file") {
-        print("  revised \(file); previous version kept: \(store.hasPreviousVersion(file)); pages: \(store.pages.count)")
-    } else {
-        print("FAIL: Sophia didn't revise the page in place (pages: \(store.pages.map(\.file).joined(separator: ", ")))")
+    let revisionFile = page.file
+    let beforeRevisionIDs = Set(store.pageWrites.compactMap { $0.str("id") })
+    let beforeRevisionPages = Set(store.pageFiles)
+    let beforeRevisionBytes = try! Data(contentsOf: store.pagesURL.appendingPathComponent(revisionFile))
+    // Generate the personal question only now: the initial page cannot already contain it.
+    let revisionMarker = "S1-NEW-QUESTION-" + UUID().uuidString
+    let newQuestion = "Personal question [\(revisionMarker)]: How would increasing the bridge weight change the endpoint magnitudes?"
+    guard !String(decoding: beforeRevisionBytes, as: UTF8.self).contains(revisionMarker) else {
+        print("FAIL: the new revision marker was already present before the turn."); exit(1)
     }
+    _ = run(session: "s-2", resume: nil, messages: [
+        ("Please add this new personal question at the end of my existing page \(revisionFile). Keep its title and all existing content exactly, and put the question on its own line:\n\n\(newQuestion)\n\nDo not answer the question yet, create another page, or search the web.", nil)])
+    store.reload()
+    let newRevisionWrites = store.pageWrites.filter { !beforeRevisionIDs.contains($0.str("id") ?? "") }
+    let revision = newRevisionWrites.last { $0["revised"] == .bool(true) && $0.str("file") == revisionFile }
+    guard let r = revision, let file = r.str("file"),
+          store.hasPreviousVersion(file), Set(store.pageFiles) == beforeRevisionPages,
+          newRevisionWrites.allSatisfy({ $0["revised"] == .bool(true) && $0.str("file") == revisionFile }),
+          let savedBytes = try? Data(contentsOf: store.pagesURL.appendingPathComponent(file)),
+          savedBytes.starts(with: beforeRevisionBytes),
+          String(decoding: savedBytes, as: UTF8.self).components(separatedBy: "\n").contains(newQuestion),
+          r.str("hash") == store.pageHash(file),
+          let previousBytes = try? Data(contentsOf: store.pagesURL.appendingPathComponent(String(file.dropLast(3)) + ".previous.md")),
+          previousBytes == beforeRevisionBytes else {
+        print("FAIL: Sophia didn't make a new in-place revision of \(revisionFile) preserving its content, requested question, previous bytes and page set (pages: \(store.pages.map(\.file).joined(separator: ", ")))"); exit(1)
+    }
+    print("  revised \(file); previous version kept: \(store.hasPreviousVersion(file)); pages: \(store.pages.count)")
+    print("  new question marker: \(revisionMarker); exact prior bytes retained and only the existing page revised")
+    print("Page-origin MCP: revise P and create R from P")
+    let p = page.file
+    _ = runner.run(session: "s-3", resume: nil, messages: [
+        ("Read \(p), then revise that same page with write_page, retaining everything and appending the exact standalone line S1-P-ORIGIN-REVISION. Then use write_page to create a new page titled S1 windowing R, whose body contains the exact line S1-P-ORIGIN-CREATION. Do not search the web.", nil)
+    ], page: p)
+    store.reload()
+    guard let revised = store.pageWrites.last(where: { $0.str("file") == p && $0["revised"] == .bool(true) }),
+          revised.str("page") == p, revised.str("hash") == store.pageHash(p),
+          store.readPage(p)?.body.contains("S1-P-ORIGIN-REVISION") == true,
+          let created = store.pageWrites.last(where: { $0.str("file") != p && $0.str("title") == "S1 windowing R" }),
+          let r = created.str("file"), created.str("page") == p, created.str("hash") == store.pageHash(r),
+          store.readPage(r)?.body.contains("S1-P-ORIGIN-CREATION") == true else {
+        print("FAIL: page-origin MCP revision/creation, ownership, saved bytes or hash."); exit(1)
+    }
+    print("  observed P-origin revision and R creation, exact marker bytes and full-page hashes verified")
+    print("  LiveRunner does not exercise NotebookSession selection, focus, or completion routing. Billing corroboration: inconclusive.")
     print("\nNotebook: \(store.url.path)")
 }

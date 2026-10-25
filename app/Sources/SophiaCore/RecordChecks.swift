@@ -115,7 +115,8 @@ public struct RecordChecks {
     public static func parseCheckpoint(_ text: String) -> (notes: [JSON], memory: [NotebookStore.MemoryLine]?, parsed: Bool) {
         guard let v = extractJSON(text) else { return ([], nil, false) }
         if let list = v.array { return (list, nil, true) }
-        let notes = v["notes"]?.array ?? []
+        guard v.object != nil, let notes = v["notes"]?.array else { return ([], nil, false) }
+        if let memory = v["memory"], memory.array == nil { return ([], nil, false) }
         let lines = (v["memory"]?.array ?? []).compactMap { l -> NotebookStore.MemoryLine? in
             guard let t = l["text"]?.string else { return nil }
             return .init(id: l["id"]?.string, text: t, refs: (l["refs"]?.array ?? []).compactMap(\.string))

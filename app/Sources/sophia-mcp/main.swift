@@ -11,6 +11,7 @@ import SophiaCore
 let args = CommandLine.arguments
 let notebook = URL(fileURLWithPath: args.count > 1 ? args[1] : ".")
 let session = args.count > 2 ? args[2] : "s-0"
+let thread = args.count > 3 ? args[3] : ""
 let store = try NotebookStore(url: notebook)
 let library = LibraryStore(root: notebook.deletingLastPathComponent())
 
@@ -193,7 +194,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             let page = (a["page"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             if let page, !store.pageFiles.contains(page) { return "Not saved: there is no page named \(page). Omit `page` to add a new page." }
             let e = try store.writePage(title: title, content: content, revising: page, session: session, toolUseID: toolUse,
-                                        why: a["why"] as? String)
+                                        why: a["why"] as? String, thread: thread)
             if e["refused"] == .bool(true) { return refusalText(e) }
             let file = e.str("file") ?? ""
             var filed = ""
@@ -201,6 +202,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
                store.chapter(of: file).map({ NotebookStore.splitNumber(chapter).rest.lowercased() != $0.title.lowercased() }) ?? true {
                 filed = " It is in \(try store.fileInChapter([file], chapter: chapter).heading)."
             }
+            if e["unchanged"] == .bool(true) { return "Unchanged \(file): the page already matches." + filed }
             return (page == nil ? "Saved as a new page, \(file). The person can see it and undo it." : "Revised \(file). The previous version is kept, and the person can undo it.") + filed
         case "set_chapter":
             let chapter = (a["chapter"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -209,7 +211,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             store.reload()
             if let missing = files.first(where: { !store.pageFiles.contains($0) }) { return "Not changed: there is no page named \(missing). Call read_page without a file name to list the pages." }
             let c = try store.fileInChapter(files, chapter: chapter)
-            try store.appendTranscript(["role": .string("tool"), "tool": .string("set_chapter"), "session": .string(session),
+            try store.appendTranscript(["role": .string("tool"), "tool": .string("set_chapter"), "session": .string(session), "page": .string(thread),
                                         "chapter": .string(c.heading), "files": .array(files.map { .string($0) })])
             return "\(c.heading) now has: " + c.pages.map(\.title).joined(separator: "; ") + "."
         case "note":
@@ -220,7 +222,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             let revising = (a["note"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             if revising == nil && fields["kind"] == nil { return "Not saved: give the note a kind." }
             store.reload()
-            let (saved, problems) = try store.writeNote(fields, quote: quote, revising: revising, session: session)
+            let (saved, problems) = try store.writeNote(fields, quote: quote, revising: revising, session: session, thread: thread)
             guard let saved else { return "Not saved. " + problems.joined(separator: " ") }
             return "Noted as \(saved.str("id") ?? ""). The person can see, correct, or delete it." + (problems.isEmpty ? "" : " " + problems.joined(separator: " "))
         case "set_memory":
@@ -251,7 +253,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             let (saved, problem) = try library.proposeAbout(text: a["text"] as? String ?? "", quote: a["quote"] as? String ?? "",
                                                            revising: (a["line"] as? String).flatMap { $0.isEmpty ? nil : $0 }, from: store)
             guard let saved else { return problem ?? "Not saved." }
-            try store.appendTranscript(["role": .string("tool"), "tool": .string("about_you"), "session": .string(session), "record": saved["id"]!])
+            try store.appendTranscript(["role": .string("tool"), "tool": .string("about_you"), "session": .string(session), "page": .string(thread), "record": saved["id"]!])
             return "Proposed \(saved.str("id") ?? "") for About you. It's provisional until the person confirms it."
         case "link":
             store.reload()
@@ -260,7 +262,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
                                                           toNotebook: a["notebook"] as? String ?? "", toPage: a["page"] as? String ?? "",
                                                           toSection: a["section"] as? String, reason: a["reason"] as? String ?? "")
             guard let saved else { return problem ?? "Not saved." }
-            try store.appendTranscript(["role": .string("tool"), "tool": .string("link"), "session": .string(session), "record": saved["id"]!])
+            try store.appendTranscript(["role": .string("tool"), "tool": .string("link"), "session": .string(session), "page": .string(thread), "record": saved["id"]!])
             return "Proposed link \(saved.str("id") ?? ""). The person can confirm or remove it; once confirmed you can read that page."
         case "set_goal":
             let text = (a["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -270,7 +272,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             if let goal, store.record(goal.split(separator: "#").first.map(String.init) ?? goal) == nil {
                 return "Not recorded: there is no goal \(goal). Omit `goal` to record a new one."
             }
-            let r = try store.writeGoal(text: text, criteria: criteria, revising: goal, quote: a["quote"] as? String, session: session)
+            let r = try store.writeGoal(text: text, criteria: criteria, revising: goal, quote: a["quote"] as? String, session: session, thread: thread)
             let root = store.rootID(of: r.str("id") ?? "")
             let quoteNote = (a["quote"] as? String).map { q in r["quote"] == nil && !q.isEmpty ? " The quote didn't match the person's words exactly, so it was left out." : "" } ?? ""
             return "Recorded \(goal == nil ? "goal" : "a revision of goal") \(root) as provisional; the person can confirm, change, or remove it.\(quoteNote)"

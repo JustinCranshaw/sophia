@@ -118,11 +118,12 @@ Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ...
 
   A file name never changes once used: a revision keeps its file whatever the title becomes, moving a page between chapters changes only notebook.json, and a new page never reuses a file name already in the transcript.
 - A page write is a `tool` entry: `{ "tool": "write_page", "file", "title", "revised"?: true, "tool_use", "hash", "page" }`. `file` is the page written. `page` is the thread the request came from, which may be another page. `hash` is the SHA-256 of the page's bytes as written.
-- **A recovered write** is `{ "role": "client", "tool": "write_page", "recovered": true, "file", "page": <file>, "hash", "revised"?: true }`. The app writes it on opening a notebook for a write that a crash cut off before its entry, in two cases:
+- A byte-identical revision records the same `write_page` shape with `unchanged: true`, without rewriting the page. It is the latest action and ends earlier Undo, but has no Undo of its own. Current and existing previous bytes are retained; unchanged requests do not establish authorship or hide unknown-provenance inspection.
+- **An unrecorded disk change** uses the compatibility shape `{ "role": "client", "tool": "write_page", "recovered": true, "file", "page": <file>, "hash", "revised"?: true }`. On opening, the app indexes two possible interruption states; neither hashes nor orphanhood establish who authored them:
   - a page whose bytes don't match the latest recorded hash while `.previous.md` does (the copy was made, then the crash came);
   - a page file listed in neither notebook.json nor the transcript.
 
-  A change made outside the app is not recorded, and offers no Undo. A recovered write counts only for Undo: it is never reported as Sophia's revision or as activity in a conversation. The author is unknown, so it is a client entry.
+  An outside edit or outside-added page can match these states too. The entry records unknown provenance, never an authored Sophia revision or conversation activity, and offers no destructive Undo. Current and previous bytes remain available for inspection and manual restoration through the page editor until a later content-changing recorded write or edit replaces the single previous slot.
 - An undo is a `client` entry: `{ "purpose": "undo_page", "entry": "t-0042", "file", "page", "hash"? }`. `hash` is the SHA-256 of the restored page; there is none when the undo removed a new page.
 - When Sophia records a goal, the app adds `{ "role": "client", "purpose": "goal_noted", "record": "g-3", "page" }` so the conversation shows it where it happened.
 - **Clearing a thread.** `{ "role": "client", "purpose": "clear", "page" }`. The app first runs a checkpoint and writes the entry only once the checkpoint has succeeded, so what mattered before a clear is in Sophia's notes. A fresh start is offered only between turns. If the checkpoint fails, no entry is written, the thread is unchanged, and the app says it couldn't start fresh. A message typed while the notes are being written is sent after the clear; if the clear fails, it stays unsent in the composer.
@@ -148,17 +149,17 @@ A page write saves in a fixed order. Each entry records the page's `hash`:
 - **A revision:** copy the current version to `.previous.md`, write the page file, then append the transcript entry.
 - **A new page:** write the page file, append the transcript entry, then add the page to notebook.json.
 
-**On opening a notebook,** the app, holding the notebook lock, first records a recovered write for any write a crash cut off before its entry (checking page files against notebook.json and the transcript as they were at launch), and only then lists any page file missing from notebook.json as unfiled. The order matters: a page listed as unfiled first would never be seen as unrecorded.
+**On opening a notebook,** the app, holding the notebook lock, first indexes matching unrecorded disk changes with unknown provenance (checking files against notebook.json and the transcript as they were at launch), and only then lists any missing page as unfiled. It preserves both versions and records a given observed state once. The order matters: a page listed as unfiled first would no longer be recognized as previously unrecorded.
 
-A crash part-way through a write therefore loses no text, and the write it cut off is recorded and can be undone. Changes made to a page outside the app are not recorded and can't be undone. Pages whose latest entry predates `hash` are left as they are.
+An interruption before the write's transcript entry can therefore leave inspectable current and previous versions, but cannot safely earn automatic Undo. Its author is unknown, even for a genuine crash-before-entry; the app offers read-only previous-version inspection and copy-into-editor guidance instead. Outside edits are never inferred to be authored Sophia writes or made destructively undoable. Pages whose latest entry predates `hash` are left as they are.
 
-**Undo.** Undo restores `.previous.md` for a revision or an edit, replacing the page in one step. For a new page, it removes the page from notebook.json and then deletes the file; anything said in that page's conversation stays in the transcript and is reachable through `recall`. One rule covers every action on a page, by either author: the latest of its writes, edits, releases and undos can be undone, until the next of these on that page, whatever is said in any thread. Undo is one way: an undo cannot itself be undone, because it consumes the previous version. Nothing records that an action is undoable; it is worked out from what is stored, so it survives relaunch.
+**Undo.** Undo restores `.previous.md` for a revision or an edit, replacing the page in one step. For a new page, it removes the page from notebook.json and then deletes the file; anything said in that page's conversation stays in the transcript and is reachable through `recall`. One rule covers recorded authored actions on a page: the latest of its writes, edits, releases and undos can be undone, until the next of these on that page, whatever is said in any thread. Undo is one way: an undo cannot itself be undone, because it consumes the previous version. Nothing records that an action is undoable; it is worked out from what is stored, so it survives relaunch.
 
 A write is undoable when all of these hold:
 - it is the latest non-refused write, edit, release or undo for its file;
 - the page's current bytes still match its `hash`;
 - for a revision or edit, `.previous.md` exists and differs from the page;
-- for a recovered revision, `.previous.md` also matches the last version recorded before it.
+- the entry is neither unchanged nor an unknown-provenance `recovered` entry (including markers written by earlier versions).
 
 The hash check stops a crash between a page write and its entry from making an earlier write look undoable. The `.previous.md` check stops a crash between the copy and the write from offering an Undo that would change nothing.
 
@@ -308,10 +309,10 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 - **The `replied` entry:** needed so a reply cut off by a crash shows as interrupted, while a turn that ends in a page write does not. Two simpler options were rejected:
   - Judging by the last entry's author fails both cases, and also when checkpoint entries follow a message.
   - Keeping it in memory loses it in exactly the crash.
-- **`hash` on page writes, edits and undos:** needed so Undo, now worked out from records and kept across relaunch, can't be offered for a write a crash has already overwritten, and so a cut-off write can be found. Cost: one SHA-256 per write. Rejected: file modification times, which have seconds resolution and are changed by other programs.
-- **Recovered writes:** needed so every page write is recorded and undoable even when a crash cut off its entry (AGENTS.md). It is a flag on the existing page-write entry, not a new kind. Two options were rejected:
-  - Stating an exception was rejected because the rule is a fixed boundary.
-  - Recording changes made outside the app was dropped, because no scenario needs it.
+- **`hash` on page writes, edits and undos:** needed so Undo, now worked out from records and kept across relaunch, can't be offered for a write a crash has already overwritten, and so unrecorded disk states can be found without inferring authorship. Cost: one SHA-256 per write. Rejected: file modification times, which have seconds resolution and are changed by other programs.
+- **Unrecorded disk states:** the existing `recovered` flag indexes unknown provenance without a new record kind. Hashes and orphanhood do not prove who wrote a file. Current and previous bytes are preserved until a later content-changing recorded write or edit replaces the single previous slot; unchanged requests retain both versions.
+  - Inferred destructive Undo was rejected because a copy-success/write-failure followed by an outside edit is indistinguishable from a genuine crash-before-entry.
+  - Automatic restoration would require additional durable intent evidence. A write-ahead journal is deferred; the current boundary is inspection and manual restoration, not automatic interrupted-write Undo.
 - **No stored provider session, cursor, or undo state:** Sophia's context is rebuilt from these records whenever a thread's conversation starts, so storage stays independent of provider sessions. A map from threads to provider sessions waits on the test in PLAN.md §4.
 
 ## Delivery sequence
@@ -335,7 +336,7 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 - Entries from two threads, interleaved, are shown each in their own thread. Entries with `page: ""` or no `page` show in Contents. An edit, a refusal and an undo show in the page they act on.
 - A message sent while notes are being written stays in its thread's word-for-word context, and the message being answered is not also in the context.
 - P's Undo is still offered after a message in Q and after reopening. In each of these cases the crashed state is handled correctly:
-  - **write cut off before its entry:** recorded as recovered and undoable, and the earlier write is not; a new page cut off before its entry is recorded, not only listed as unfiled; a page changed outside the app is not recorded and offers no Undo;
+  - **write cut off before its entry:** indexed with unknown provenance and not undoable; current and previous bytes are inspectable and preserved. A new unrecorded page is visible and unfiled without deletion Undo. Outside-added pages and copy-success/write-failure followed by outside edits receive the same non-destructive treatment, including old recovered markers on reopen;
   - **cut off after the copy to `.previous.md`:** no Undo;
   - **undo cut off:** the page is replaced in one step, so it never goes missing.
 - A turn ending in a page write is not interrupted; one cut off after Sophia's text but during a tool call is.

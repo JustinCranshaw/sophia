@@ -1,5 +1,6 @@
 import Foundation
 import CryptoKit
+import Darwin
 
 /// One notebook directory, as defined in DATA-MODEL.md:
 ///
@@ -37,7 +38,6 @@ public final class NotebookStore {
         }
         transcript = Self.readLines(transcriptURL)
         learning = Self.readLines(learningURL)
-        recoverOrphanPages()
     }
 
     /// Rereads the notebook files, for changes made by the other process.
@@ -53,7 +53,7 @@ public final class NotebookStore {
     /// Runs a write under an exclusive lock on the notebook, after rereading its files.
     func locked<T>(_ body: () throws -> T) rethrows -> T {
         if lockDepth == 0 {
-            lockFD = open(url.appendingPathComponent(".lock").path, O_CREAT | O_RDWR, 0o644)
+            lockFD = Darwin.open(url.appendingPathComponent(".lock").path, O_CREAT | O_RDWR, 0o644)
             if lockFD >= 0 { flock(lockFD, LOCK_EX) }
             reload()
         }
@@ -70,6 +70,102 @@ public final class NotebookStore {
         return text.split(separator: "\n").compactMap { JSON.parse(String($0))?.object }
     }
 
+    /// Only the application reconciles unrecorded disk changes. Hashes do not establish authorship;
+    /// these records preserve visibility, not permission to undo. Tool processes use the plain initializer.
+    public static func open(url: URL) throws -> NotebookStore {
+        let store = try NotebookStore(url: url)
+        try store.locked {
+            let launchFiles = Set(store.pageFiles)
+            let recordedFiles = Set(store.transcript.compactMap { $0.str("file") })
+            let files = try FileManager.default.contentsOfDirectory(atPath: store.pagesURL.path)
+            for file in files.sorted() where file.hasSuffix(".md") && !file.hasSuffix(".previous.md") {
+                guard let hash = store.pageHash(file) else { continue }
+                let latest = store.transcript.last { $0.str("file") == file && (($0.str("tool") == "write_page" && $0["refused"] != .bool(true)) || ["edit_page", "undo_page"].contains($0.str("purpose") ?? "")) }
+                let orphan = !launchFiles.contains(file) && !recordedFiles.contains(file)
+                let revision = latest?.str("hash").map { $0 != hash && store.pageHash(Self.previousName(file)) == $0 } ?? false
+                if orphan || revision {
+                    var e: JSONObject = ["role": .string("client"), "tool": .string("write_page"), "recovered": .bool(true),
+                                         "file": .string(file), "page": .string(file), "hash": .string(hash)]
+                    if revision { e["revised"] = .bool(true) }
+                    _ = try store.appendTranscriptLocked(e)
+                }
+            }
+            store.recoverOrphanPages()
+            store.fileUndecidedDrafts(session: store.newSessionID())
+        }
+        return store
+    }
+
+    public static func thread(of entry: JSONObject) -> String { entry.str("page") ?? "" }
+    public static func isMessage(_ e: JSONObject) -> Bool {
+        ["person", "sophia"].contains(e.str("role") ?? "") && e["purpose"] == nil
+    }
+    public func threadEntries(for thread: String) -> [JSONObject] {
+        transcript.filter { Self.thread(of: $0) == thread }
+    }
+    func clearPosition(for thread: String, before: String?) -> Int {
+        transcript.lastIndex { Self.thread(of: $0) == thread && $0.str("purpose") == "clear" } ?? -1
+    }
+    public func cursor(for thread: String, before: String? = nil) -> Int {
+        guard let checkpoint = transcript.last(where: { $0.str("purpose") == "checkpoint" }) else { return -1 }
+        if let through = checkpoint.str("through") { return transcript.firstIndex { $0.str("id") == through } ?? -1 }
+        return transcript.firstIndex { $0.str("id") == checkpoint.str("id") } ?? -1
+    }
+    public func window(for thread: String, before: String? = nil) -> [JSONObject] {
+        let start = max(clearPosition(for: thread, before: before), cursor(for: thread, before: before)) + 1
+        let end = transcript.count
+        guard start < end else { return [] }
+        return transcript[start..<end].filter { Self.thread(of: $0) == thread && $0["recovered"] != .bool(true) && $0.str("id") != before }
+    }
+    public func carried(for thread: String, before: String? = nil) -> [JSONObject] {
+        let start = clearPosition(for: thread, before: before) + 1
+        let end = min(transcript.count, cursor(for: thread, before: before) + 1)
+        guard start < end else { return [] }
+        return Array(transcript[start..<end].filter { Self.thread(of: $0) == thread && Self.isMessage($0) && $0.str("id") != before }.suffix(6))
+    }
+    public func creatingExchange(for file: String) -> [JSONObject] {
+        guard let creation = transcript.firstIndex(where: { $0.str("tool") == "write_page" && $0.str("file") == file
+                  && $0["refused"] != .bool(true) && $0["revised"] != .bool(true) && $0["recovered"] != .bool(true) }) else { return [] }
+        let origin = Self.thread(of: transcript[creation])
+        guard origin != file, let begin = transcript[..<creation].lastIndex(where: { Self.thread(of: $0) == origin && Self.isPersonMessage($0) }) else { return [] }
+        let end = transcript[(begin + 1)...].firstIndex { Self.thread(of: $0) == origin && Self.isPersonMessage($0) } ?? transcript.count
+        let turn = transcript[begin..<end].filter { Self.thread(of: $0) == origin && Self.isMessage($0) }
+        return [transcript[begin]] + Array(turn.filter { $0.str("role") == "sophia" }.prefix(1))
+    }
+    public func notes(for thread: String) -> [JSONObject] {
+        let messages = Set(threadEntries(for: thread).filter(Self.isMessage).compactMap { $0.str("id") })
+        return shownNotes.filter { note in
+            let refs = Set((note["refs"]?.array ?? []).compactMap(\.string))
+            return (!thread.isEmpty && refs.contains("p:" + thread)) || !refs.intersection(messages).isEmpty
+                || note["quote"]?["entry"]?.string.map(messages.contains) == true
+        }
+    }
+    public enum NextStep { case wait, reply }
+    public static func nextStep(thread: String, pending: Bool) -> NextStep { pending ? .wait : .reply }
+    public static func isPending(thread: String, running: String?, queued: [String]) -> Bool {
+        running == thread || queued.contains(thread)
+    }
+
+    public enum CheckpointResult: Equatable { case failed, saved }
+    /// Validate the whole reply before touching notes or memory. Rejection reasons stay private.
+    public func finishCheckpoint(_ text: String, failed: Bool, through: String, entries: Set<String>, session: String, catchUp: Bool) throws -> CheckpointResult {
+        try locked {
+            guard !failed, let value = RecordChecks.extractJSON(text),
+                  value.array != nil || value["notes"]?.array != nil else { return .failed }
+            let (items, memory, parsed) = RecordChecks.parseCheckpoint(text)
+            guard parsed else { return .failed }
+            let out = RecordChecks(store: self).check(items, allowedKinds: RecordChecks.checkpointKinds, quoteEntries: entries)
+            guard items.isEmpty || !out.kept.isEmpty else { return .failed }
+            var kept: [JSON] = []
+            for rec in out.kept { kept.append(try appendLearningLocked(rec, by: "sophia", session: session)["id"]!) }
+            if let memory { _ = try setMemory(memory, session: session) }
+            try appendTranscriptLocked(["role": .string("client"), "page": .string(""), "session": .string(session),
+                                        "purpose": .string("checkpoint"), "through": .string(through),
+                                        "catch_up": .bool(catchUp), "kept": .array(kept)])
+            return .saved
+        }
+    }
+
     // MARK: Writing
 
     static func now() -> String { ISO8601DateFormatter().string(from: Date()) }
@@ -82,7 +178,13 @@ public final class NotebookStore {
         let line = Data((obj.line + "\n").utf8)
         if let h = try? FileHandle(forWritingTo: url) {
             defer { try? h.close() }
-            try h.seekToEnd()
+            let end = try h.seekToEnd()
+            if end > 0, let read = try? FileHandle(forReadingFrom: url) {
+                try read.seek(toOffset: end - 1)
+                let last = try read.read(upToCount: 1)
+                try? read.close()
+                if last != Data([0x0a]) { try h.write(contentsOf: Data([0x0a])) }
+            }
             try h.write(contentsOf: line)
         } else {
             try line.write(to: url, options: .atomic)
@@ -105,6 +207,8 @@ public final class NotebookStore {
 
     func appendTranscriptLocked(_ fields: JSONObject) throws -> JSONObject {
         var obj = fields
+        if obj["page"] == nil { obj["page"] = .string("") }
+        if ["checkpoint", "briefing", "briefing_failed", "briefing_dropped"].contains(obj.str("purpose") ?? "") || obj.str("tool") == "memory" { obj["page"] = .string("") }
         obj["id"] = .string(nextID("t-", in: transcript, width: 4))
         obj["at"] = .string(Self.now())
         try append(obj, to: transcriptURL)
@@ -222,16 +326,6 @@ public final class NotebookStore {
     public func isReturn(after gap: TimeInterval, now: Date = Date()) -> Bool {
         guard let last = lastConversationAt else { return false }
         return now.timeIntervalSince(last) >= gap
-    }
-
-    public var claudeSession: String? {
-        get { meta.str("claude_session") }
-        set {
-            locked {
-                meta["claude_session"] = newValue.map { .string($0) } ?? .null
-                try? writeMeta()
-            }
-        }
     }
 
     // MARK: Pages
@@ -396,21 +490,21 @@ public final class NotebookStore {
 
     /// Sophia saves pages directly. A new page is added to the book; a revision keeps the
     /// page's file and saves the version it replaces as <file>.previous.md. Writes, in order:
-    /// the page file, then notebook.json, then the transcript entry.
+    /// the page file, then its transcript entry, then notebook.json.
     ///
     /// A revision that would change the section the person has open, drop or alter lines they
     /// wrote (unless they released that edit), or drop a quote of their words is not saved:
     /// the returned entry has `refused: true`, with Sophia's `why` if she gave one.
     @discardableResult
     public func writePage(title: String, content: String, revising file: String?, session: String, toolUseID: String,
-                          why: String? = nil) throws -> JSONObject {
+                          why: String? = nil, thread: String = "") throws -> JSONObject {
         try locked {
             let titleJSON = JSON.string(title).line
             let text = "---\ntitle: \(titleJSON)\n---\n" + content + "\n"
             if let file, pageFiles.contains(file), let refusal = refusal(revising: file, content: content) {
                 var entry: JSONObject = ["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
                                          "tool_use": .string(toolUseID), "file": .string(file), "title": .string(readPage(file)?.title ?? title),
-                                         "refused": .bool(true), "reason": .string(refusal.reason.rawValue),
+                                         "page": .string(file), "refused": .bool(true), "reason": .string(refusal.reason.rawValue),
                                          "section": .string(refusal.section), "current": .string(refusal.current),
                                          "edits": .array(refusal.edits.map { .string($0) })]
                 if let first = refusal.edits.first { entry["edit"] = .string(first) }
@@ -420,21 +514,31 @@ public final class NotebookStore {
             if let file, pageFiles.contains(file) {
                 let current = pagesURL.appendingPathComponent(file)
                 let previous = pagesURL.appendingPathComponent(Self.previousName(file))
-                try? FileManager.default.removeItem(at: previous)
-                try FileManager.default.copyItem(at: current, to: previous)
-                try Data(text.utf8).write(to: current, options: .atomic)
-                return try appendTranscriptLocked(["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
-                                                   "tool_use": .string(toolUseID), "file": .string(file), "title": .string(title),
-                                                   "revised": .bool(true)])
+                let bytes = Data(text.utf8)
+                let unchanged = try Data(contentsOf: current) == bytes
+                if !unchanged {
+                    if FileManager.default.fileExists(atPath: previous.path) {
+                        try FileManager.default.removeItem(at: previous)
+                    }
+                    try FileManager.default.copyItem(at: current, to: previous)
+                    try bytes.write(to: current, options: .atomic)
+                }
+                var entry: JSONObject = ["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
+                                         "tool_use": .string(toolUseID), "file": .string(file), "title": .string(title),
+                                         "revised": .bool(true), "page": .string(thread), "hash": .string(Self.hash(text))]
+                if unchanged { entry["unchanged"] = .bool(true) }
+                return try appendTranscriptLocked(entry)
             }
             let name = uniqueFile(for: title)
             try Data(text.utf8).write(to: pagesURL.appendingPathComponent(name), options: .atomic)
+            let entry = try appendTranscriptLocked(["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
+                                               "tool_use": .string(toolUseID), "file": .string(name), "title": .string(title),
+                                               "page": .string(thread), "hash": .string(Self.hash(text))])
             var unfiled = meta["unfiled"]?.array ?? []
             unfiled.append(.string(name))
             meta["unfiled"] = .array(unfiled)
             try writeMeta()
-            return try appendTranscriptLocked(["role": .string("tool"), "tool": .string("write_page"), "session": .string(session),
-                                               "tool_use": .string(toolUseID), "file": .string(name), "title": .string(title)])
+            return entry
         }
     }
 
@@ -448,16 +552,47 @@ public final class NotebookStore {
         readPage(Self.previousName(file))
     }
 
-    /// The transcript entry for each page Sophia wrote, oldest first. Refused writes changed nothing and aren't included.
+    /// Page-write outcomes and unknown-provenance reconciliation records, oldest first.
+    /// Refused writes changed nothing and aren't included; a client record does not establish authorship.
     public var pageWrites: [JSONObject] { transcript.filter { $0.str("tool") == "write_page" && $0["refused"] != .bool(true) } }
 
     /// A write that can still be undone: Sophia's page write or the person's edit, with nothing written to that page since.
     public func isLatestWrite(_ entryID: String) -> Bool {
-        guard let i = transcript.firstIndex(where: { $0.str("id") == entryID }), let file = transcript[i].str("file") else { return false }
-        return !transcript[(i + 1)...].contains { e in
-            e.str("file") == file && (e.str("purpose") == "edit_page" || e.str("purpose") == "undo_page"
-                || (e.str("tool") == "write_page" && e["refused"] != .bool(true)))
+        guard let e = transcript.first(where: { $0.str("id") == entryID }), let file = actionFile(e) else { return false }
+        return latestPageAction(for: file)?.str("id") == entryID
+    }
+
+    func actionFile(_ entry: JSONObject) -> String? {
+        if let file = entry.str("file") { return file }
+        if ["release_edit", "undo_release"].contains(entry.str("purpose") ?? ""),
+           let target = transcript.first(where: { $0.str("id") == entry.str("entry") }) { return actionFile(target) }
+        return nil
+    }
+
+    public func latestPageAction(for file: String) -> JSONObject? {
+        transcript.last { e in
+            actionFile(e) == file && ((e.str("tool") == "write_page" && e["refused"] != .bool(true))
+                || ["edit_page", "release_edit", "undo_page", "undo_release"].contains(e.str("purpose") ?? ""))
         }
+    }
+
+    public func pageHash(_ file: String) -> String? {
+        guard let bytes = try? Data(contentsOf: pagesURL.appendingPathComponent(file)) else { return nil }
+        return SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+    }
+
+    public func isUndoable(_ e: JSONObject) -> Bool {
+        guard e.str("tool") == "write_page" || e.str("purpose") == "edit_page",
+              e["refused"] != .bool(true), e["unchanged"] != .bool(true), e["recovered"] != .bool(true), let id = e.str("id"), let file = e.str("file"),
+              let hash = e.str("hash"), isLatestWrite(id), pageHash(file) == hash else { return false }
+        if e["revised"] == .bool(true) || e.str("purpose") == "edit_page" {
+            guard let previous = pageHash(Self.previousName(file)), previous != hash else { return false }
+        }
+        return true
+    }
+
+    public func isReleaseUndoable(_ e: JSONObject) -> Bool {
+        e.str("purpose") == "release_edit" && e.str("id").map(isLatestWrite) == true
     }
 
     public func pageWrite(toolUse id: String) -> JSONObject? { pageWrites.last { $0.str("tool_use") == id } }
@@ -472,15 +607,14 @@ public final class NotebookStore {
     public func undoPageWrite(_ entryID: String, session: String) throws {
         try locked {
             guard let e = transcript.first(where: { $0.str("id") == entryID }), let file = e.str("file"),
-                  e["refused"] != .bool(true), isLatestWrite(entryID) else { throw StoreError.notFound }
+                  isUndoable(e) else { throw StoreError.notFound }
             let url = pagesURL.appendingPathComponent(file)
             if e["revised"] == .bool(true) || e.str("purpose") == "edit_page" {
                 let previous = pagesURL.appendingPathComponent(Self.previousName(file))
                 guard FileManager.default.fileExists(atPath: previous.path) else { throw StoreError.notFound }
-                try? FileManager.default.removeItem(at: url)
-                try FileManager.default.moveItem(at: previous, to: url)
+                // POSIX rename atomically replaces the canonical file and consumes the copy.
+                guard rename(previous.path, url.path) == 0 else { throw StoreError.notFound }
             } else {
-                try? FileManager.default.removeItem(at: url)
                 meta["unfiled"] = .array((meta["unfiled"]?.array ?? []).filter { $0.string != file })
                 if let chapters = meta["chapters"]?.array {
                     meta["chapters"] = .array(chapters.map { ch in
@@ -490,9 +624,13 @@ public final class NotebookStore {
                     })
                 }
                 try writeMeta()
+                try FileManager.default.removeItem(at: url)
             }
-            try appendTranscriptLocked(["role": .string("client"), "session": .string(session), "purpose": .string("undo_page"),
-                                        "entry": .string(entryID), "file": .string(file)])
+            var undo: JSONObject = ["role": .string("client"), "session": .string(session), "purpose": .string("undo_page"),
+                                        "entry": .string(entryID), "file": .string(file),
+                                        "page": .string(e["revised"] == .bool(true) || e.str("purpose") == "edit_page" ? file : Self.thread(of: e))]
+            if let hash = pageHash(file) { undo["hash"] = .string(hash) }
+            try appendTranscriptLocked(undo)
         }
     }
 
@@ -527,7 +665,7 @@ public final class NotebookStore {
     /// until the person confirms them. She can't mark a goal met or dropped, and criteria only grow,
     /// because notes refer to criteria by position ("g-1#2").
     @discardableResult
-    public func writeGoal(text: String, criteria: [String], revising goalID: String?, quote: String?, session: String) throws -> JSONObject {
+    public func writeGoal(text: String, criteria: [String], revising goalID: String?, quote: String?, session: String, thread: String = "") throws -> JSONObject {
         try locked {
             var record: JSONObject = ["kind": .string("goal"), "text": .string(text)]
             var all = criteria
@@ -540,12 +678,15 @@ public final class NotebookStore {
                 record["status"] = .string("working")
             }
             record["criteria"] = .array(all.map { .string($0) })
-            let personMessages = transcript.filter(Self.isPersonMessage)
+            let personMessages = threadEntries(for: thread).filter(Self.isPersonMessage)
             if let q = quote, let entry = personMessages.last(where: { RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }), !q.isEmpty {
                 record["quote"] = .object(["entry": entry["id"]!, "text": .string(q)])
             }
             if let last = personMessages.last?.str("id") { record["refs"] = .array([.string(last)]) }
-            return try appendLearningLocked(record, by: "sophia", session: session)
+            let saved = try appendLearningLocked(record, by: "sophia", session: session)
+            try appendTranscriptLocked(["role": .string("client"), "purpose": .string("goal_noted"),
+                                        "record": saved["id"]!, "page": .string(thread), "session": .string(session)])
+            return saved
         }
     }
 
@@ -560,13 +701,13 @@ public final class NotebookStore {
     /// quotes must be the person's exact words from this session, and every note must rest on
     /// something they said or did. Sophia may revise her own notes (for example, to close a
     /// follow-up), never the person's corrections. Returns the saved record, or why it wasn't saved.
-    public func writeNote(_ fields: JSONObject, quote: String?, revising noteID: String?, session: String) throws -> (saved: JSONObject?, problems: [String]) {
+    public func writeNote(_ fields: JSONObject, quote: String?, revising noteID: String?, session: String, thread: String = "") throws -> (saved: JSONObject?, problems: [String]) {
         try locked {
             var obj = fields
             // Sophia gives the words; the store finds which of the person's messages this session they're from.
             if let q = quote, !q.isEmpty {
-                let entry = transcript.last { $0.str("session") == session && Self.isPersonMessage($0)
-                    && RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }
+                let matches: (JSONObject) -> Bool = { $0.str("session") == session && Self.isPersonMessage($0) && RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }
+                let entry = threadEntries(for: thread).last(where: matches) ?? transcript.last { $0.str("session") == session && matches($0) }
                 obj["quote"] = .object(["entry": entry?["id"] ?? .string(""), "text": .string(q)])
             }
             if let noteID {
@@ -583,12 +724,12 @@ public final class NotebookStore {
                     return (nil, ["You've written \(mine.count) notes this session. Revise one instead of adding another."])
                 }
             }
-            let out = RecordChecks(store: self).check([.object(obj)], allowedKinds: Self.liveNoteKinds, session: session)
+            let out = RecordChecks(store: self).check([.object(obj)], allowedKinds: Self.liveNoteKinds, quoteEntries: Set(transcript.filter { $0.str("session") == session }.compactMap { $0.str("id") }))
             guard var rec = out.kept.first else { return (nil, out.notes) }
             if let noteID { rec["replaces"] = .string(noteID) }
             let saved = try appendLearningLocked(rec, by: "sophia", session: session)
             _ = try appendTranscriptLocked(["role": .string("tool"), "tool": .string("note"), "session": .string(session),
-                                            "record": saved["id"]!, "revised": .bool(noteID != nil)])
+                                            "page": .string(thread), "record": saved["id"]!, "revised": .bool(noteID != nil)])
             return (saved, out.notes)
         }
     }
@@ -607,7 +748,7 @@ public final class NotebookStore {
             .split(separator: "-").prefix(8).joined(separator: "-")
         let stem = base.isEmpty ? "page" : base
         var name = stem + ".md", n = 2
-        while FileManager.default.fileExists(atPath: pagesURL.appendingPathComponent(name).path) || pageFiles.contains(name) {
+        while FileManager.default.fileExists(atPath: pagesURL.appendingPathComponent(name).path) || pageFiles.contains(name) || transcript.contains(where: { $0.str("file") == name }) {
             name = "\(stem)-\(n).md"; n += 1
         }
         return name

@@ -1,0 +1,144 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--1AB21518FC5DEDBE.txt
+[3/12] Compiling Sophia Snapshot.swift
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/Snapshot.swift:39:33: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+37 |                 }
+38 |                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+39 |                     if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+   |                                 `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+40 |                         let rep = NSBitmapImageRep(cgImage: cg)
+41 |                         try? rep.representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(places[i].0 + ".png"))
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[4/12] Compiling Sophia SophiaApp.swift
+[5/12] Compiling Sophia SidebarView.swift
+[6/12] Compiling Sophia NotebookSession.swift
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:137:13: warning: result of 'try?' is unused [#no-usage]
+135 |             defer { turnTexts.append(t) }
+136 |             if Prompts.isRestatement(t, of: turnTexts) { streaming = ""; changed(); return }
+137 |             try? store.appendTranscript(["role": .string("sophia"), "page": .string(thread), "session": .string(session), "text": .string(t)])
+    |             `- warning: result of 'try?' is unused [#no-usage]
+138 |             streaming = ""; changed()
+139 |         case .toolUse(let id, let name, let input):
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:145:17: warning: result of 'try?' is unused [#no-usage]
+143 |                 let q = input["query"]?.string ?? ""
+144 |                 activity = "Searching: \(q)"
+145 |                 try? store.appendTranscript(["role": .string("tool"), "page": .string(thread), "session": .string(session), "tool": .string("WebSearch"), "query": .string(q)])
+    |                 `- warning: result of 'try?' is unused [#no-usage]
+146 |             } else if name == "mcp__sophia__write_page" { activity = "Sophia is writing…" }
+147 |             changed()
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:155:21: warning: result of 'try?' is unused [#no-usage]
+153 |             if name == "mcp__sophia__set_goal" {
+154 |                 for g in store.learning where g.str("kind") == "goal" && !goalsBefore.contains(g.str("id") ?? "") {
+155 |                     try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("goal_noted"), "record": g["id"]!])
+    |                     `- warning: result of 'try?' is unused [#no-usage]
+156 |                 }
+157 |             }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:167:21: warning: result of 'try?' is unused [#no-usage]
+165 |             else {
+166 |                 if !isError && !source.stopRequested, running != nil {
+167 |                     try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("replied")])
+    |                     `- warning: result of 'try?' is unused [#no-usage]
+168 |                 }
+169 |                 running = nil
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:217:9: warning: result of 'try?' is unused [#no-usage]
+215 |         engines[turn.thread] = nil; engine?.cancel(); engine = nil
+216 |         isResponding = false; running = nil; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
+217 |         try? store.appendTranscript(["role": .string("client"), "page": .string(turn.thread), "session": .string(session), "purpose": .string("stopped")])
+    |         `- warning: result of 'try?' is unused [#no-usage]
+218 |         dispatchNext(); changed()
+219 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:259:21: warning: result of 'try?' is unused [#no-usage]
+257 |                 let out = RecordChecks(store: store).check([.object(obj)], allowedKinds: RecordChecks.briefingKinds, session: session)
+258 |                 if let rec = out.kept.first, let saved = try? store.appendLearning(rec, by: "sophia", session: session) {
+259 |                     try? store.appendTranscript(["role": .string("sophia"), "page": .string(""), "session": .string(session), "purpose": .string("briefing"), "record": saved["id"]!, "text": saved["text"]!, "refs": saved["refs"] ?? .array([])])
+    |                     `- warning: result of 'try?' is unused [#no-usage]
+260 |                 }
+261 |             }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:394:9: warning: result of 'try?' is unused [#no-usage]
+392 |         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+393 |         guard !t.isEmpty else { return }
+394 |         try? store.appendLearning(["kind": .string("goal"), "text": .string(t), "status": .string("working"), "criteria": .array([])], by: "person", session: session)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+395 |         changed()
+396 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:406:9: warning: result of 'try?' is unused [#no-usage]
+404 |         if let c = addCriterion?.trimmingCharacters(in: .whitespacesAndNewlines), !c.isEmpty { criteria.append(.string(c)) }
+405 |         next["criteria"] = .array(criteria)
+406 |         try? store.appendLearning(next, by: "person", session: session)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+407 |         changed()
+408 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:414:9: warning: result of 'try?' is unused [#no-usage]
+412 |         var next: JSONObject = ["kind": .string("goal"), "replaces": goal["id"]!]
+413 |         for k in ["text", "status", "criteria"] { if let v = goal[k] { next[k] = v } }
+414 |         try? store.appendLearning(next, by: "person", session: session)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+415 |         changed()
+416 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:425:13: warning: result of 'try?' is unused [#no-usage]
+423 |             var back: JSONObject = ["kind": .string("goal"), "replaces": .string(id)]
+424 |             for k in ["text", "status", "criteria"] { if let v = prev[k] { back[k] = v } }
+425 |             try? store.appendLearning(back, by: prev.str("by") ?? "person", session: session)
+    |             `- warning: result of 'try?' is unused [#no-usage]
+426 |         } else {
+427 |             if let removed = try? store.deleteLearning(id) { lastDeleted = removed }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:435:9: warning: result of 'try?' is unused [#no-usage]
+433 | 
+434 |     func confirmAbout(_ line: JSONObject) {
+435 |         try? library.setAbout(text: line.str("text") ?? "", replacing: line.str("id"), notebook: nil)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+436 |         changed()
+437 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:442:9: warning: result of 'try?' is unused [#no-usage]
+440 |         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+441 |         guard !t.isEmpty else { return }
+442 |         try? library.setAbout(text: t, replacing: line?.str("id"), notebook: line == nil ? store.name : nil)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+443 |         changed()
+444 |     }
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:447:38: warning: result of 'try?' is unused [#no-usage]
+445 | 
+446 |     func deleteAbout(_ id: String) { try? library.deleteAbout(id); changed() }
+447 |     func confirmLink(_ id: String) { try? library.confirmLink(id); changed() }
+    |                                      `- warning: result of 'try?' is unused [#no-usage]
+448 |     func removeLink(_ id: String) { try? library.deleteLink(id); changed() }
+449 | 
+
+/private/tmp/sophia-page-owned-conversations-20261020/app/Sources/Sophia/NotebookSession.swift:469:9: warning: result of 'try?' is unused [#no-usage]
+467 |         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+468 |         guard !t.isEmpty else { return }
+469 |         try? store.appendLearning(["kind": .string("correction"), "replaces": .string(recordID), "text": .string(t)], by: "person", session: session)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+470 |         changed()
+471 |     }
+[7/12] Compiling Sophia BookView.swift
+[8/12] Compiling Sophia MemoryViews.swift
+[9/12] Emitting module Sophia
+[10/12] Compiling Sophia ConversationView.swift
+[10/13] Write Objects.LinkFileList
+[11/13] Linking Sophia
+[12/13] Applying Sophia
+Build of product 'Sophia' complete! (2.88s)
+Building for debugging...
+[0/3] Write swift-version--1AB21518FC5DEDBE.txt
+[1/4] Write Objects.LinkFileList
+[2/4] Linking sophia-mcp
+[3/4] Applying sophia-mcp
+Build of product 'sophia-mcp' complete! (0.45s)
+build/Sophia.app: replacing existing signature
+Built build/Sophia.app
