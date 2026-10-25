@@ -13,6 +13,7 @@ public final class ClaudeEngine {
         case sourcePermission(SourcePermissionBridge.Request?)
         case sourceResult(id: String, input: JSON, content: JSON, metadata: JSON, isError: Bool)
         case turnDone(isError: Bool, message: String?, session: String?)
+        case routeBlocked(ClaudeReadiness)
         case exited(code: Int32, stderr: String, stopRequested: Bool)
     }
 
@@ -37,6 +38,9 @@ public final class ClaudeEngine {
     public private(set) var stopRequested = false
 
     let config: Config
+    let processConfiguration: ClaudeStatusConfiguration
+    private var outgoing: [Data] = []
+    private var checkID: UUID?
     var process: Process?
     var stdin: FileHandle?
     var buffer = Data()
@@ -56,7 +60,11 @@ public final class ClaudeEngine {
         sourceTimer?.cancel(); sourceTimer = nil; config.sourcePermissions?.close(); onEvent(.sourcePermission(nil))
     }
 
-    public init(config: Config) { self.config = config }
+    public init(config: Config) {
+        self.config = config
+        let settings = config.sourcePermissions == nil ? nil : JSON.object(["permissions": .object(["ask": .array([.string("WebFetch")])])]).line
+        processConfiguration = ClaudeStatusConfiguration(executable: config.claudePath, directory: config.notebookURL, settings: settings)
+    }
 
     /// Credentials and alternate routes that must never reach the child process,
     /// so usage can't silently move from the subscription to separately billed API usage.
@@ -77,9 +85,9 @@ public final class ClaudeEngine {
             servers["source_permissions"] = .object(["command": .string(config.toolServerPath), "args": .array([.string("--source-permissions"), .string(permissions.directory.path)])])
         }
         let mcp = JSON.object(["mcpServers": .object(servers)]).line
-        var args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+        var args = processConfiguration.isolationArguments + ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                     "--include-partial-messages",
-                    "--restricted", "--tools", config.readOnly ? "" : (config.sourcePermissions == nil ? "WebSearch" : "WebSearch,WebFetch"),
+                    "--tools", config.readOnly ? "" : (config.sourcePermissions == nil ? "WebSearch" : "WebSearch,WebFetch"),
                     "--strict-mcp-config", "--mcp-config", mcp,
                     "--allowedTools"]
         if config.readOnly {
@@ -89,38 +97,48 @@ public final class ClaudeEngine {
             args += ["mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch"]
         }
         if config.sourcePermissions != nil {
-            args += ["--permission-prompt-tool", "mcp__source_permissions__approve", "--permission-prompts", "host", "--permission-mode", "manual",
-                     "--settings", JSON.object(["permissions": .object(["ask": .array([.string("WebFetch")])])]).line]
+            args += ["--permission-prompt-tool", "mcp__source_permissions__approve", "--permission-prompts", "host", "--permission-mode", "manual"]
         }
         args += ["--system-prompt", config.systemPrompt, "--append-system-prompt", config.context]
         return args
     }
 
+    /// Preparing an engine launches nothing. Every send is checked before content delivery.
     public func start() throws {
+        guard !isRunning, process == nil else { return }
+        stopRequested = false
+        isRunning = true
+    }
+
+    private func launchProcess() throws {
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: config.claudePath)
+        p.executableURL = URL(fileURLWithPath: processConfiguration.executable)
         p.arguments = arguments
-        p.currentDirectoryURL = config.notebookURL
-        var env = ProcessInfo.processInfo.environment
-        for k in Self.droppedEnvironment { env.removeValue(forKey: k) }
-        env["PATH"] = (env["PATH"] ?? "") + ":/usr/bin:/bin:/usr/sbin:/sbin"
-        p.environment = env
+        p.currentDirectoryURL = processConfiguration.directory
+        p.environment = processConfiguration.environment
         let inPipe = Pipe(), outPipe = Pipe(), errPipe = Pipe()
         p.standardInput = inPipe; p.standardOutput = outPipe; p.standardError = errPipe
         outPipe.fileHandleForReading.readabilityHandler = { [weak self] h in
             let data = h.availableData
-            DispatchQueue.main.async { self?.consume(data) }
+            DispatchQueue.main.async { [weak self, weak p] in
+                guard let self, let p, self.process === p else { return }
+                self.consume(data)
+            }
         }
         errPipe.fileHandleForReading.readabilityHandler = { [weak self] h in
             let s = String(decoding: h.availableData, as: UTF8.self)
-            DispatchQueue.main.async { self?.stderrText += s }
+            DispatchQueue.main.async { [weak self, weak p] in
+                guard let self, let p, self.process === p else { return }
+                self.stderrText += s
+            }
         }
         p.terminationHandler = { [weak self] proc in
             DispatchQueue.main.async {
-                guard let self else { return }
                 outPipe.fileHandleForReading.readabilityHandler = nil
                 errPipe.fileHandleForReading.readabilityHandler = nil
-                self.isRunning = false
+                guard let self, self.process === proc else { return }
+                self.isRunning = false; self.process = nil; self.stdin = nil
+                self.checkID = nil; self.outgoing.removeAll()
                 self.closeSources()
                 self.onEvent(.exited(code: proc.terminationStatus, stderr: self.stderrText, stopRequested: self.stopRequested))
             }
@@ -143,27 +161,71 @@ public final class ClaudeEngine {
     }
 
     public func send(_ text: String) {
+        guard isRunning, !stopRequested else { return }
         let msg = JSON.object(["type": .string("user"), "message": .object(["role": .string("user"), "content": .string(text)])]).line
-        try? stdin?.write(contentsOf: Data((msg + "\n").utf8))
+        outgoing.append(Data((msg + "\n").utf8))
+        checkNextMessage()
+    }
+
+    private func checkNextMessage() {
+        guard isRunning, !stopRequested, checkID == nil, !outgoing.isEmpty else { return }
+        let id = UUID(), configuration = processConfiguration
+        checkID = id
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let status = ClaudeStatusCheck.run(configuration)
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.isRunning, !self.stopRequested, self.checkID == id else { return }
+                self.checkID = nil
+                guard status == .readyToAttempt else { self.fail(.routeBlocked(status)); return }
+                do {
+                    if self.process == nil { try self.launchProcess() }
+                    guard let input = self.stdin, self.process?.isRunning == true else {
+                        self.fail(.exited(code: 1, stderr: "Claude Code closed before this request could be delivered.", stopRequested: false)); return
+                    }
+                    try input.write(contentsOf: self.outgoing[0])
+                    self.outgoing.removeFirst()
+                    self.checkNextMessage()
+                } catch {
+                    self.fail(.exited(code: 1, stderr: "Couldn't start or deliver this request to Claude Code.", stopRequested: false))
+                }
+            }
+        }
+    }
+
+    private func fail(_ event: Event) {
+        checkID = nil; outgoing.removeAll(); isRunning = false
+        closeSources()
+        try? stdin?.close(); stdin = nil
+        let old = process; process = nil
+        if old?.isRunning == true { old?.terminate() }
+        onEvent(event)
     }
 
     /// Closes input so Claude Code can finish and save the session, then terminates it if it hasn't exited.
     public func stop() {
-        stopRequested = true
+        let wasRunning = isRunning
+        stopRequested = true; isRunning = false
+        checkID = nil; outgoing.removeAll()
         closeSources()
         try? stdin?.close()
         stdin = nil
-        guard let p = process, p.isRunning else { return }
+        guard let p = process, p.isRunning else {
+            if wasRunning { onEvent(.exited(code: 0, stderr: "", stopRequested: true)) }
+            return
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { if p.isRunning { p.terminate() } }
     }
 
     /// Ends the current reply immediately.
     public func cancel() {
-        stopRequested = true
+        let wasRunning = isRunning
+        stopRequested = true; isRunning = false
+        checkID = nil; outgoing.removeAll()
         closeSources()
         try? stdin?.close()
         stdin = nil
         if process?.isRunning == true { process?.terminate() }
+        else if wasRunning { onEvent(.exited(code: 0, stderr: "", stopRequested: true)) }
     }
 
     func consume(_ data: Data) {

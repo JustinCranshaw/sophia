@@ -187,6 +187,18 @@ final class NotebookSession: ObservableObject {
                 dispatchNext()
             }
             changed()
+        case .routeBlocked(let status):
+            if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
+            guard current else { return }
+            engine = nil; isResponding = false; streaming = ""; activity = nil
+            if internalRequest { finishRequest(failed: true) }
+            else {
+                problem = status == .signedOut
+                    ? "Sign in to Claude Code with your claude.ai account, then choose Retry. This request was not sent."
+                    : "Sophia couldn't verify the intended claude.ai connection. Check Connection & Data, then choose Retry. This request was not sent."
+                running = nil; dispatchNext()
+            }
+            changed()
         case .exited(let code, let stderr, let stopRequested):
             if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
             guard current else { return }
