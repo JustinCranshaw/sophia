@@ -1044,6 +1044,7 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("checkpointFailuresPreserveTheQuestionAndExposePartialNotes", checkpointFailuresPreserveTheQuestionAndExposePartialNotes),
     ("pageRecoveryRetainsExactRepeatedEditsAndDismissesOnlyOne", pageRecoveryRetainsExactRepeatedEditsAndDismissesOnlyOne),
     ("sectionTargetsUseVisibleRangesAndDistinctDuplicateHeadings", sectionTargetsUseVisibleRangesAndDistinctDuplicateHeadings),
     ("staleSectionTargetsCannotMoveToRenamedDeletedOrDifferentNotebookContent", staleSectionTargetsCannotMoveToRenamedDeletedOrDifferentNotebookContent),

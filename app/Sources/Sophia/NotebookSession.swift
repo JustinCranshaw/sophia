@@ -334,7 +334,13 @@ final class NotebookSession: ObservableObject {
     @discardableResult
     private func writeNotes(catchUp: Bool) -> Bool {
         let messages = store.unnotedMessages
-        guard !isResponding, let last = messages.last?.str("id"), ensureEngine(thread: "", internalRequest: true) else { return false }
+        guard !shuttingDown, !isResponding, let last = messages.last?.str("id") else { return false }
+        // Only Finish for now uses catchUp:false; automatic return work stays quiet.
+        if !catchUp { problem = nil }
+        guard ensureEngine(thread: "", internalRequest: true) else {
+            if !catchUp { problem = "Couldn't finish for now: the notes connection couldn't start. Open Connection & Data, then try Finish for now again." }
+            return false
+        }
         request = .checkpoint(through: last, entries: Set(messages.compactMap { $0.str("id") }), catchUp: catchUp)
         requestText = ""; isResponding = true; activity = nil
         engine?.send(Prompts.checkpoint(store, messages: messages, catchUp: catchUp))
@@ -355,9 +361,24 @@ final class NotebookSession: ObservableObject {
         let finished = checkpointEngine; checkpointEngine = nil; engine = nil; finished?.stop()
         switch r {
         case .checkpoint(let through, let entries, let catchUp):
-            let result = try? store.finishCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
-            if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
-            else { briefAfterNotes = false }
+            do {
+                let result = try store.finishCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
+                if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
+                else {
+                    briefAfterNotes = false
+                    if !catchUp && !shuttingDown {
+                        problem = failed
+                            ? "Couldn't finish for now: the notes request failed. Your conversation is still here. Try Finish for now again."
+                            : "Couldn't finish for now: the notes reply couldn't be used. Your conversation is still here. Try Finish for now again."
+                    }
+                }
+            } catch {
+                briefAfterNotes = false
+                store.reload() // Some learning records may precede the failed completion marker.
+                if !catchUp && !shuttingDown {
+                    problem = "Couldn't confirm Finish for now. Some notes may already have been kept. Review Sophia's notes before trying Finish for now again."
+                }
+            }
         case .briefing:
             if !failed && !dropBriefing, var obj = RecordChecks.extractJSON(text)?.object {
                 obj["kind"] = .string("briefing")
