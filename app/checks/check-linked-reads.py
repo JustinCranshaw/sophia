@@ -82,15 +82,37 @@ target_meta.write_bytes(b'{')
 unchanged_read(args, 'no longer available')
 target_meta.write_bytes(saved_target)
 
+links.write_text(json.dumps(link) + '\n' + json.dumps(dict(link, id='l-2', to={'notebook': 'Target', 'page': 'outside.md'})) + '\n')
+
 # No outside bytes through notebook, pages-directory, page or metadata symlinks.
 canary = root / 'canary'; (canary / 'pages').mkdir(parents=True)
-(canary / 'notebook.json').write_bytes(saved_target)
+(canary / 'notebook.json').write_text(json.dumps({'chapters': [], 'unfiled': ['outside.md']}))
+(target / 'pages' / 'outside.md').write_text('---\ntitle: OUTSIDE_CANARY\n---\nOUTSIDE_CANARY')
 (canary / 'pages' / 'target.md').write_text('---\ntitle: OUTSIDE_CANARY\n---\nOUTSIDE_CANARY')
 for path, outside in ((target, canary), (target / 'pages', canary / 'pages'), (target / 'pages' / 'target.md', canary / 'pages' / 'target.md'), (target_meta, canary / 'notebook.json')):
     held = path.with_name(path.name + '-held')
     path.rename(held); path.symlink_to(outside, target_is_directory=outside.is_dir())
     unchanged_read(args)
+    if path == target_meta:
+        # Following outside metadata would list/read this distinct local canary.
+        unchanged_read({'notebook': 'Target', 'file': 'outside.md'})
+        assert 'TARGET_BODY' not in unchanged_read(args)
     path.unlink(); held.rename(path)
+
+# Historical duplicate references remain readable without rewriting metadata.
+saved_meta = target_meta.read_bytes()
+dup = json.loads(saved_meta); dup['unfiled'] = ['target.md', 'target.md']
+target_meta.write_text(json.dumps(dup))
+unchanged_read(args, 'TARGET_BODY')
+target_meta.write_bytes(saved_meta)
+
+# Duplicate chapter arguments must remain readable through the strict reader.
+tool(source, 'set_chapter', chapter='Evidence', pages=['source.md', 'source.md'])
+assert json.loads((source / 'notebook.json').read_text())['chapters'][0]['pages'] == ['source.md']
+unchanged_read({'file': 'source.md'}, '# Source')
+legal = library / 'C\\C++ notes'
+tool(legal, 'write_page', title='Legal filename', content='LEGAL_BODY')
+assert 'LEGAL_BODY' in tool(legal, 'read_page', file='legal-filename.md')
 
 # A single tool process must retain ordinary mutations and see their result on next read.
 messages = [request('read_page', {'file': 'source.md'}), request('write_page', {'title': 'Fresh', 'content': 'FRESH_WRITE'}), request('read_page', {'file': 'fresh.md'})]

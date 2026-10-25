@@ -38,7 +38,29 @@ private func readTree(_ root: URL) throws -> [String: Data] {
 
 func existingNotebookReadsKeepFormatAndNeverRepair() throws {
     let f = try LinkedReadFixture()
-    _ = try f.target.fileInChapter([f.targetFile], chapter: "Chapter 2: Evidence")
+    _ = try f.target.fileInChapter([f.targetFile, f.targetFile], chapter: "Chapter 2: Evidence")
+    expect(f.target.pageFiles == [f.targetFile])
+    let plain = try f.target.writePage(title: "Unnumbered", content: "Plain body", revising: nil, session: "s-1", toolUseID: "plain").str("file")!
+    _ = try f.target.fileInChapter([plain, plain], chapter: "More evidence")
+    _ = try f.target.writePage(title: "Loose", content: "Loose body", revising: nil, session: "s-1", toolUseID: "loose")
+    let legal = try Library(root: f.library.root).create(named: "C\\C++ notes")
+    let legalStore = try NotebookStore(url: legal)
+    let legalFile = try legalStore.writePage(title: "Backslash notebook", content: "Legal body", revising: nil, session: "s-1", toolUseID: "legal").str("file")!
+    expect(ExistingNotebook(root: f.library.root, name: legal.lastPathComponent)?.readPage(legalFile)?.body == "Legal body")
+    let meta = f.target.url.appendingPathComponent("notebook.json")
+    let originalMeta = try Data(contentsOf: meta)
+    var duplicated = try JSONSerialization.jsonObject(with: originalMeta) as! [String: Any]
+    var chapters = duplicated["chapters"] as! [[String: Any]]
+    chapters[0]["pages"] = [f.targetFile, f.targetFile]
+    duplicated["chapters"] = chapters
+    duplicated["unfiled"] = [f.targetFile, "loose.md", "loose.md"]
+    try JSONSerialization.data(withJSONObject: duplicated).write(to: meta)
+    let beforeDuplicates = try readTree(f.library.root)
+    let projected = ExistingNotebook(root: f.library.root, name: f.target.name)!
+    expect(projected.pageFiles == [f.targetFile, plain, "loose.md"])
+    expect(projected.readPage(f.targetFile) != nil)
+    expect(try readTree(f.library.root) == beforeDuplicates)
+    try originalMeta.write(to: meta)
     let orphan = f.target.pagesURL.appendingPathComponent("unlisted.md")
     try "---\ntitle: Unlisted private body\n---\nNOT_LISTED".write(to: orphan, atomically: true, encoding: .utf8)
     let before = try readTree(f.library.root)
@@ -50,7 +72,7 @@ func existingNotebookReadsKeepFormatAndNeverRepair() throws {
     expect(existing.readPage(f.targetFile)?.sectionText(named: "evidence SECTION")?.contains("OTHER_BODY_KEEP") == false)
     expect(existing.readPage(f.targetFile)?.sectionText(named: "Not a heading") == nil)
     expect(existing.readPage(f.targetFile)?.sectionText(named: "Renamed section") == nil)
-    expect(f.library.otherNotebooks(than: f.source.name).count == 1)
+    expect(f.library.otherNotebooks(than: f.source.name).count == 2)
     expect(try readTree(f.library.root) == before)
 }
 
@@ -95,7 +117,7 @@ func existingNotebookRejectsEscapesAndSpecialFiles() throws {
     _ = try canary.writePage(title: "OUTSIDE_CANARY_SECRET", content: "OUTSIDE_CANARY_SECRET", revising: nil, session: "s-1", toolUseID: "canary")
     let canaryFile = canary.pagesURL.appendingPathComponent("outside-canary-secret.md")
     let originalCanary = try readTree(outside)
-    for invalid in ["", ".", "..", "../Other", "/tmp/Other", "Other\\page", "bad\0name"] { expect(ExistingNotebook(root: f.library.root, name: invalid) == nil) }
+    for invalid in ["", ".", "..", "../Other", "/tmp/Other", "bad\0name"] { expect(ExistingNotebook(root: f.library.root, name: invalid) == nil) }
     let heldReader = ExistingNotebook(root: f.library.root, name: f.target.name)!
     let originalBody = heldReader.readPage(f.targetFile)!.body
     let held = f.target.url.appendingPathExtension("held")
@@ -112,11 +134,11 @@ func existingNotebookRejectsEscapesAndSpecialFiles() throws {
     try fm.removeItem(at: pages); try fm.moveItem(at: heldPages, to: pages)
     let page = pages.appendingPathComponent(f.targetFile), heldPage = pages.appendingPathComponent("held-page")
     try fm.moveItem(at: page, to: heldPage); try fm.createSymbolicLink(at: page, withDestinationURL: canaryFile)
-    expect(ExistingNotebook(root: f.library.root, name: f.target.name)?.readPage(f.targetFile) == nil)
+    expect(ExistingNotebook(root: f.library.root, name: f.target.name)!.readPage(f.targetFile) == nil)
     expect(!f.library.otherNotebooks(than: f.source.name).map(\.pages).joined().contains("OUTSIDE_CANARY_SECRET"))
     try fm.removeItem(at: page)
     expect(mkfifo(page.path, 0o600) == 0)
-    expect(ExistingNotebook(root: f.library.root, name: f.target.name)?.readPage(f.targetFile) == nil)
+    expect(ExistingNotebook(root: f.library.root, name: f.target.name)!.readPage(f.targetFile) == nil)
     try fm.removeItem(at: page); try fm.moveItem(at: heldPage, to: page)
     let meta = f.target.url.appendingPathComponent("notebook.json"), heldMeta = meta.appendingPathExtension("held")
     try fm.moveItem(at: meta, to: heldMeta); try fm.createSymbolicLink(at: meta, withDestinationURL: canary.url.appendingPathComponent("notebook.json"))

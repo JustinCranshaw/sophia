@@ -15,3 +15,5 @@ Verification:
 - App build verifies the narrow MemoryViews title-lookup substitution; no new layout or interaction was introduced. Existing SOP-28 native link-title/navigation evidence is separate from these new filesystem/protocol checks.
 
 No provider call, authentication change, notebook writer redesign or repair of existing corrupt data is part of this change.
+
+Review follow-up preserves legal macOS backslash names, projects historical duplicate page references once in stored order without rewriting metadata, and prevents new duplicate chapter assignments. The direct metadata-symlink canary has a distinct listed page with a confirmed link, so following it would disclose the canary; denial is not explained by missing permission.

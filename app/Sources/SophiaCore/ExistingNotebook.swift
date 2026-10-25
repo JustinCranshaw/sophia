@@ -26,7 +26,7 @@ public final class ExistingNotebook {
     private let loose: [String]
 
     static func validComponent(_ name: String) -> Bool {
-        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\\") && !name.contains("\0")
+        !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\0")
     }
 
     public init?(root: URL, name: String) {
@@ -47,11 +47,15 @@ public final class ExistingNotebook {
                   let pages = files(values), c["number"] == nil || c["number"] == .null || c.str("number") != nil else { return nil }
             groups.append((c.str("number"), title, pages))
         }
-        let all = groups.flatMap(\.files) + loose
-        guard Set(all).count == all.count else { return nil }
+        // Existing writers allowed repeated page references. Project each once in
+        // stored order, without repairing metadata or confusing duplicates with privacy.
+        var seen = Set<String>()
+        groups = groups.map { ($0.number, $0.title, $0.files.filter { seen.insert($0).inserted }) }
+        let looseFiles = loose.filter { seen.insert($0).inserted }
+        let all = groups.flatMap(\.files) + looseFiles
         // Absence is the supported legacy optional flag; a malformed flag is not permission.
         guard meta["separate"] == nil || meta["separate"]?.bool != nil else { return nil }
-        self.name = name; self.pages = pages; self.groups = groups; self.loose = loose
+        self.name = name; self.pages = pages; self.groups = groups; self.loose = looseFiles
         self.pageFiles = all; self.isSeparate = meta["separate"]?.bool == true
     }
 
