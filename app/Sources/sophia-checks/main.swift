@@ -2,6 +2,10 @@
 // (Swift's test frameworks ship with Xcode; this runs with the Command Line Tools alone.)
 import Foundation
 
+if let i = CommandLine.arguments.firstIndex(of: "--attribution"), i + 1 < CommandLine.arguments.count {
+    runAttributionProbe(dir: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
+    exit(0)
+}
 if let i = CommandLine.arguments.firstIndex(of: "--probes"), i + 1 < CommandLine.arguments.count {
     runProbes(dir: URL(fileURLWithPath: CommandLine.arguments[i + 1]))
     exit(0)
@@ -1028,6 +1032,7 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("personCorrectionsReachFreshAndOngoingThreadContext", personCorrectionsReachFreshAndOngoingThreadContext),
     ("verificationInterleavedThreadOwnership", verificationInterleavedThreadOwnership),
     ("verificationUndoAcrossScopesAndReopen", verificationUndoAcrossScopesAndReopen),
     ("verificationLatestReleaseAndOneWayUndo", verificationLatestReleaseAndOneWayUndo),

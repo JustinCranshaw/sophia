@@ -53,3 +53,71 @@ func runProbes(dir: URL) {
     print("\n\(flagged) of \(probes.count) probes flagged by the mechanical checks. Read the replies; the checks only catch the obvious.")
     print("Notebook: \(store.url.path)")
 }
+
+/// Directed, nonhuman regression fixture for SOP-21. The earlier exchange and erroneous page
+/// are explicit setup, taken from the October 24 simulation; all subsequent model/tool output is real.
+/// Usage: swift run sophia-checks --attribution <empty-disposable-library>
+/// Inspect the printed reply AND notes/memory; lexical checks cannot judge correct attribution.
+func runAttributionProbe(dir: URL) {
+    let store = try! NotebookStore(url: dir.appendingPathComponent("Mode attribution"))
+    guard store.transcript.isEmpty, store.learning.isEmpty, store.pages.isEmpty else {
+        print("Use an empty disposable library; the attribution probe never resets existing material.")
+        exit(2)
+    }
+    let initial = "I am a structural engineer coming back to vibration analysis after several years. I can calculate eigenvectors, but I do not understand why they matter. When people say a vibration mode is an eigenvector, what actually stays the same? Could we start with a tiny numerical example?"
+    let erroneous = "What stays the same is the **shape**: the ratios between the displacements. In a mode, every point moves in phase at one frequency, and the only thing that changes in time is a single scalar amplitude multiplying a fixed vector."
+    let challenge = "I had thought an eigenvector was a vector whose length does not change. In your example its length seems to change all the time. Also, you said every point moves in phase, but the (1,-1) mode moves oppositely. What exactly does fixed shape mean when the masses pass through zero? Please keep this answer short; the page is a lot to absorb."
+    try! store.appendTranscript(["role": .string("person"), "session": .string("fixture"), "text": .string(initial)])
+    try! store.appendTranscript(["role": .string("sophia"), "session": .string("fixture"), "text": .string(erroneous)])
+    let fixtureBody = erroneous + "\n\nFor two identical masses between three identical springs, the mode shapes are (1,1) and (1,-1)."
+    let page = try! store.writePage(title: "Two-mass modes", content: fixtureBody, revising: nil, session: "fixture", toolUseID: "synthetic-attribution-fixture").str("file")!
+    print("SYNTHETIC SETUP: prior exchange/page seeded; next replies and notebook tools are real. No human evidence.")
+    let runner = LiveRunner(store: store)
+    let first = runner.run(session: "s-1", resume: nil, messages: [
+        (challenge, nil),
+        ("Please retain a short account for next time, separating my earlier fixed-length belief from my valid objection to your wording. Keep your notes and memory accurate, and revise an existing note rather than duplicating it.", nil)
+    ])
+    store.reload()
+    print("Provider model: \(first["model"] ?? "unknown"); API key source: \(first["apiKeySource"] ?? "unknown")")
+    print("First challenge: spontaneous reply/tools; retention request afterward was directed.")
+    for t in store.transcript where t.str("role") == "sophia" && t.str("session") == "s-1" { print("REPLY: " + (t.str("text") ?? "")) }
+    func records(_ label: String) {
+        print(label)
+        for n in store.shownNotes { print("NOTE \(n.str("id") ?? ""): " + (n.str("text") ?? "")) }
+        for m in store.memory { print("MEMORY \(m.str("id") ?? ""): " + (m.str("text") ?? "")) }
+    }
+    records("ACTUAL MODEL RECORDS BEFORE PERSON CORRECTION")
+    let pageAfter = store.readPage(page)?.body ?? ""
+    print("ACTUAL PAGE AFTER CHALLENGE: " + pageAfter)
+    let revised = store.pageWrites.contains { $0.str("file") == page && $0["revised"] == .bool(true) && $0.str("session") == "s-1" }
+    guard revised, pageAfter != fixtureBody, !pageAfter.hasPrefix(erroneous) else {
+        print("FAIL: the known erroneous fixture passage was not repaired. Inspect the actual reply and records above.")
+        exit(1)
+    }
+    guard let note = store.shownNotes.first else {
+        print("FAIL: the directed retention request produced no note to inspect.")
+        exit(1)
+    }
+    // Diagnostic equivalent of Notes' correction API, not a native UI interaction.
+    // This is an actual subsequent evaluation input, not attributed to the original simulated learner.
+    let correction = "My opposite-sign objection was valid and corrected Sophia's wording. Keep that separate from my earlier fixed-length belief. Next time, start with the (1,0) non-mode counterexample: the second mass has zero displacement but gets a positive acceleration, so the displacements cannot keep their 1:0 ratio."
+    try! store.appendLearning(["kind": .string("correction"), "replaces": note["id"]!, "text": .string(correction)], by: "person", session: "s-2")
+    let context = Prompts.context(store)
+    let briefing = Prompts.briefing(store)
+    guard context.contains(correction), briefing.contains(correction) else {
+        print("FAIL: the person's correction is absent from the next context or briefing input.")
+        exit(1)
+    }
+    print("PERSON CORRECTION to \(note.str("id") ?? "unknown"): direct-store diagnostic, same API as Notes; present in next context and briefing input.")
+    // A fresh provider context explicitly exercises the corrected durable records, without a CLI
+    // resume snapshot of the old instructions. This does not prove live Notes UI propagation.
+    let returned = runner.run(session: "s-2", resume: nil, messages: [
+        (briefing, "briefing"),
+        ("Before we continue, whose wording needed correction, what separate belief did I say I had, and what should we pick up next? Keep it short.", "return")
+    ])
+    print("ACTUAL RETURN REPLY: " + (returned["return"] ?? ""))
+    print("ACTUAL BRIEFING: " + (returned["briefing"] ?? ""))
+    records("ACTUAL RECORDS AFTER RETURN")
+    print("Inspect attribution, page repair, and correction influence above. Model behavior is not mechanically graded.")
+    print("Notebook: \(store.url.path)")
+}
