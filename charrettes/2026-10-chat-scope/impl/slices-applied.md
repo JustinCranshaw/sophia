@@ -1,6 +1,6 @@
 # Page-owned conversations: applied implementation slices
 
-Gate A deliverable · 2026-10-19 · awaiting Justin's approval. No implementation is authorized by silence.
+Gate A deliverable · 2026-10-19. On 2026-10-20, Justin's “can you proceed?” was taken as approval to continue. Gate B remains an explicit stop after S1; no later continuation is authorized by silence. S1 has now reached that gate after the explicitly authorized additional live-check correction: build/core/live verification passed; native observations and explicit continuation remain pending (impl/qc/S1.md).
 
 This replaces S1–S7 of `charrettes/2026-10-chat-scope/C4/slices.md` for implementation. The operator decisions and applied review govern older material (`qc/gate2.md:5–16,42–51`; `qc/review.md:20–30`). The specification is DATA-MODEL.md, PLAN.md §4–5, SOPHIA.md and EDITING.md. AGENTS.md is locked. All line citations below refer to the files read on this date, relative to the project root; `qc/`, `briefs/` and `impl/` abbreviate paths under `charrettes/2026-10-chat-scope/`.
 
@@ -8,8 +8,8 @@ The eleven scenarios use the disposable Fourier fixture in `charrettes/2026-10-c
 
 ## Shared implementation and evidence contract
 
-- The orchestrator writes briefs, reads diffs and checks, runs verification, and records QC; it does not implement code. After Gate A, launch one Opus implementer for each slice, followed by a fresh independent Opus reviewer at its boundary. Give the reviewer the brief, specification and actual diff, not the implementer's summary. Require findings with file/line citations and a concrete failure scenario. Send confirmed findings to the implementer; allow at most two fix rounds, then stop if unresolved. Do not silently substitute another model or execution route.
-- **Execution prerequisite:** the current collaboration tool exposes GPT models, not `model: "opus"` or `subagent_type: "gk"`. No implementation agent has been launched. The requested Opus Agent facility must be available before S1 can begin; Gate A approval alone does not supply that capability.
+- The orchestrator writes briefs, reads diffs and checks, runs verification, and records QC; it does not implement code. Justin amended the implementer requirement on 2026-10-20 to permit a GPT-6.1-sol agent. Launch one implementer per slice, followed by a fresh independent Opus reviewer at its boundary. Give the reviewer the brief, specification and actual diff, not the implementer's summary. Require findings with file/line citations and a concrete failure scenario. Send confirmed findings to the implementer; allow at most two fix rounds, then stop if unresolved. Do not silently substitute another model or execution route.
+- **Execution:** use the available collaboration tool for the approved GPT-6.1-sol implementer. Justin approved the installed Claude CLI with `--model opus` for the independent reviewer. No further launch-method approval is needed. Full access subsequently resolved the parent Swift execution block; the original Opus reviewer completed after the operator updated the limit. Results and remaining native acceptance checks are recorded in S1 QC.
 - Before each slice, snapshot `app/Sources` and `app/Package.swift` under `charrettes/2026-10-chat-scope/snapshots/app-before-S<n>/`, preserving the `Sources/` tree and package file. Source inspection on this date confirmed that `git rev-parse --show-toplevel` fails because the project is not a repository. Justin subsequently offered to initialize it. Recheck before implementation; if it becomes a repository, use an isolated branch and per-slice commits instead, preserving any pre-existing work.
 - Write `impl/briefs/S<n>.md` before launching its implementer: exact slice scope, current doc lines, allowed files, commands, checks, observables and evidence categories. Write `impl/qc/S<n>.md` after review: orchestrator-observed commands/output and source inspection, separately attributed implementer/reviewer reports, remaining risks, untested behavior and by-hand checks for Justin.
 - All new deterministic cases are named functions in the existing `app/Sources/sophia-checks/main.swift`, invoked by its normal executable. Each case below names its specification bullet or scenario and must call the production function it claims to verify. `sophia-checks` depends only on SophiaCore (`app/Package.swift:15–16`); its passing result cannot establish NotebookSession wiring. Reader cases stay in the existing reader-check executable. No framework, separate harness or new command-line mode.
@@ -222,7 +222,7 @@ The orchestrator must read the mathematical response and retrieval evidence; an 
 
 ## Gates and completion report
 
-Gate A stops here with this file. No source edit, build, test, model run or slice snapshot has been performed in this reconciliation pass.
+The 2026-10-19 reconciliation stopped at Gate A with this file; that pass performed no source edit, build, test, model run or slice snapshot. The 2026-10-20 preparation and its actual check outcomes are recorded separately in S1 QC; they do not establish S1 completion.
 
 After explicit Gate A approval and availability of the requested Opus facility, do S1 and stop at Gate B for Justin's by-hand results and explicit continuation. After Gate B, run S2–S7 sequentially with the same implementer/reviewer/read/run/QC cycle, without another routine approval stop. Stop if a slice remains wrong after two fix rounds, a locked constraint would change, a required capability/check is unavailable, or a storage extension appears necessary.
 

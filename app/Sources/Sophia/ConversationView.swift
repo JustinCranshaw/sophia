@@ -15,9 +15,10 @@ struct ConversationView: View {
         VStack(spacing: 0) {
             HStack {
                 Spacer()
-                Button("End session") { session.endSession() }
+                Text(session.conversationName).font(.caption).foregroundStyle(.secondary)
+                Button("Finish for now") { session.endSession() }
                     .disabled(session.isResponding || !session.hasUncheckpointedMessages)
-                    .help("Sophia writes notes on your attempts in this session")
+                    .help("Finish for now")
             }
             .padding(.horizontal, 14).padding(.vertical, 9)
             Divider()
@@ -27,17 +28,17 @@ struct ConversationView: View {
                         ForEach(items, id: \.id) { item in
                             EntryView(session: session, entry: item.entry).id(item.id)
                         }
-                        if !session.streaming.isEmpty {
+                        if !session.visibleStreaming.isEmpty {
                             VStack(alignment: .leading, spacing: 6) {
                                 Who(text: "Sophia", sophia: true)
-                                MarkdownView(text: session.streaming, style: .chat) {
+                                MarkdownView(text: session.visibleStreaming, style: .chat) {
                                     proxy.scrollTo("bottom", anchor: .bottom)
                                 }
                             }.id("streaming")
                         }
-                        if let a = session.activity {
+                        if let a = session.visibleActivity {
                             HStack(spacing: 8) { ProgressView().controlSize(.small); Text(a).font(.caption).foregroundStyle(.secondary) }.id("activity")
-                        } else if session.isResponding && session.streaming.isEmpty {
+                        } else if session.visibleThinking && session.visibleStreaming.isEmpty {
                             HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Sophia is thinking…").font(.caption).foregroundStyle(.secondary) }.id("activity")
                         }
                         Color.clear.frame(height: 1).id("bottom")
@@ -46,8 +47,8 @@ struct ConversationView: View {
                     .padding(.horizontal, 24).padding(.vertical, 20)
                     .frame(maxWidth: .infinity)
                 }
-                .onChange(of: session.store.transcript.count) { _, _ in withAnimation { proxy.scrollTo("bottom") } }
-                .onChange(of: session.streaming) { _, _ in proxy.scrollTo("bottom") }
+                .onChange(of: items.map(\.id)) { _, _ in withAnimation { proxy.scrollTo("bottom") } }
+                .onChange(of: session.visibleStreaming) { _, _ in proxy.scrollTo("bottom") }
                 .onAppear { DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) } }
                 .onReceive(NotificationCenter.default.publisher(for: .scrollConversationToEnd)) { _ in
                     DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
@@ -97,10 +98,11 @@ struct ConversationView: View {
     struct Item { let id: String; let entry: JSONObject }
 
     var items: [Item] {
-        session.store.transcript.compactMap { e in
+        session.store.threadEntries(for: session.activeThread).compactMap { e in
+            if e["recovered"] == .bool(true) { return nil }
             guard let id = e.str("id") else { return nil }
             let role = e.str("role") ?? ""
-            if role == "client", e["decision"] == nil, !["checkpoint", "briefing_failed", "stopped", "undo_page", "goal_noted", "filed_draft"].contains(e.str("purpose") ?? "") { return nil }
+            if role == "client", e["decision"] == nil, !["stopped", "undo_page", "goal_noted", "filed_draft"].contains(e.str("purpose") ?? "") { return nil }
             // A release shows on the card it answers.
             if role == "person", e.str("purpose") == "release_edit" { return nil }
             return Item(id: id, entry: e)
@@ -250,7 +252,7 @@ struct NoteLine: View {
     }
 }
 
-/// A page Sophia saved, with a way to open it and, until the person's next message, to undo it.
+/// A page Sophia saved, with Open and durable latest-action Undo.
 struct PageWriteCard: View {
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
@@ -264,7 +266,7 @@ struct PageWriteCard: View {
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: revised ? "doc.text.magnifyingglass" : "doc.text").foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text(undone ? (revised ? "CHANGE UNDONE" : "PAGE REMOVED") : (revised ? "REVISED A PAGE" : "ADDED A PAGE"))
+                Text(entry["unchanged"] == .bool(true) ? "PAGE UNCHANGED" : undone ? (revised ? "CHANGE UNDONE" : "PAGE REMOVED") : (revised ? "REVISED A PAGE" : "ADDED A PAGE"))
                     .font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(.secondary)
                 Text(entry.str("title") ?? file).font(.system(size: 15, design: .serif))
                     .strikethrough(undone && !revised).foregroundStyle(undone ? .secondary : .primary)
@@ -272,7 +274,7 @@ struct PageWriteCard: View {
             Spacer(minLength: 8)
             if !undone && exists {
                 Button("Open") { session.show(.page(file)) }
-                if session.lastWrites.contains(id) { Button("Undo") { session.undoWrite(id) } }
+                if store.isUndoable(entry) { Button("Undo") { session.undoWrite(id) } }
             }
         }
         .controlSize(.small)
@@ -322,7 +324,7 @@ func editLabel(_ edit: JSONObject?) -> String {
     return edit?.str("section") == "(opening)" ? "the opening" : "the page"
 }
 
-/// The person's edit to a page: one line, with Undo until their next message.
+/// The person's edit to a page, with the same latest-action Undo as a page write.
 struct EditLine: View {
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
@@ -334,7 +336,7 @@ struct EditLine: View {
             (Text("You edited \(editLabel(entry)) of ").foregroundColor(.secondary) + Text(verbatim: entry.str("title") ?? "").italic())
             Spacer(minLength: 4)
             if let file = entry.str("file"), store.pageFiles.contains(file) { Button("Open") { session.show(.page(file)) }.buttonStyle(.link) }
-            if session.lastWrites.contains(id), !store.isUndone(id), store.isLatestWrite(id) {
+            if store.isUndoable(entry) {
                 Button("Undo") { session.undoWrite(id) }.buttonStyle(.link)
             }
         }
@@ -364,28 +366,30 @@ struct RefusalCard: View {
             let edits = ids.compactMap { id in store.transcript.first { $0.str("id") == id } }
             let file = entry.str("file") ?? ""
             let protected = Set(store.protectedLines(of: file).compactMap { $0.edit.str("id") })
-            let released = !ids.isEmpty && ids.allSatisfy(store.isReleased)
             VStack(alignment: .leading, spacing: 6) {
                 Text("SOPHIA WANTS TO CHANGE YOUR TEXT").font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(.secondary)
                 ForEach(edits, id: \.self.line) { e in
+                    let editID = e.str("id") ?? ""
                     let mine = (e["hunks"]?.array ?? []).compactMap { $0["after"]?.string }.filter { !$0.isEmpty }.joined(separator: " … ")
-                    (Text("Your edit in \(editLabel(e)): ").foregroundColor(.secondary) + Text(verbatim: "“\(mine.count > 200 ? String(mine.prefix(200)) + "…" : mine)”"))
-                        .font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 6) {
+                        (Text("Your edit in \(editLabel(e)): ").foregroundColor(.secondary) + Text(verbatim: "“\(mine.count > 200 ? String(mine.prefix(200)) + "…" : mine)”"))
+                            .font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            if store.isReleased(editID) {
+                                Text("Sophia may change this edit on your next message.").font(.caption).foregroundStyle(.secondary)
+                                if let release = store.transcript.last(where: { $0.str("entry") == editID && store.isReleaseUndoable($0) }), let id = release.str("id") {
+                                    Button("Undo permission to change this edit") { session.undoRelease(id) }
+                                }
+                            } else if protected.contains(editID) {
+                                Button("Let Sophia change this edit") { session.release(editID) }
+                            } else {
+                                Text("Your text there has changed since.").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
                 if let why = entry.str("why") {
                     Text(verbatim: "Sophia: \(why)").font(.system(size: 13)).fixedSize(horizontal: false, vertical: true)
-                }
-                HStack {
-                    if released {
-                        Text("You let Sophia change this.").font(.caption).foregroundStyle(.secondary)
-                        if ids.contains(where: { id in session.lastReleases.contains { r in store.transcript.first { $0.str("id") == r }?.str("entry") == id } }) {
-                            Button("Undo") { session.undoRelease(entry) }
-                        }
-                    } else if ids.contains(where: protected.contains) {
-                        Button("Let Sophia change this") { session.release(entry) }
-                    } else {
-                        Text("Your text there has changed since.").font(.caption).foregroundStyle(.secondary)
-                    }
                 }
             }
             .controlSize(.small)

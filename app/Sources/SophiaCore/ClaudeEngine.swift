@@ -11,7 +11,7 @@ public final class ClaudeEngine {
         case toolUse(id: String, name: String, input: JSON)
         case toolResult(id: String)
         case turnDone(isError: Bool, message: String?, session: String?)
-        case exited(code: Int32, stderr: String)
+        case exited(code: Int32, stderr: String, stopRequested: Bool)
     }
 
     public struct Config {
@@ -20,16 +20,18 @@ public final class ClaudeEngine {
         public var notebookURL: URL
         public var systemPrompt: String
         public var context: String
-        public var resume: String?
+        public var page: String
         public var session: String
-        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, resume: String?, session: String) {
+        public var readOnly: Bool
+        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false) {
             self.claudePath = claudePath; self.toolServerPath = toolServerPath; self.notebookURL = notebookURL
-            self.systemPrompt = systemPrompt; self.context = context; self.resume = resume; self.session = session
+            self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly
         }
     }
 
     public var onEvent: (Event) -> Void = { _ in }
     public private(set) var isRunning = false
+    public private(set) var stopRequested = false
 
     let config: Config
     var process: Process?
@@ -45,19 +47,27 @@ public final class ClaudeEngine {
                                      "CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_OAUTH_TOKEN",
                                      "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "OPENAI_API_KEY", "CODEX_API_KEY"]
 
+    /// Internal requests may read evidence, but cannot mutate it before validation finishes.
+    static let readingTools = ["mcp__sophia__read_page", "mcp__sophia__recall"]
+    static let writingTools = ["mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__about_you", "mcp__sophia__link"]
+
     public var arguments: [String] {
         let mcp = JSON.object(["mcpServers": .object(["sophia": .object([
             "command": .string(config.toolServerPath),
-            "args": .array([.string(config.notebookURL.path), .string(config.session)])
+            "args": .array([.string(config.notebookURL.path), .string(config.session), .string(config.page)])
         ])])]).line
         var args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                     "--include-partial-messages",
-                    "--restricted", "--tools", "WebSearch",
+                    "--restricted", "--tools", config.readOnly ? "" : "WebSearch",
                     "--strict-mcp-config", "--mcp-config", mcp,
-                    "--allowedTools", "mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch",
-                    "--system-prompt", config.systemPrompt,
-                    "--append-system-prompt", config.context]
-        if let r = config.resume { args += ["--resume", r] }
+                    "--allowedTools"]
+        if config.readOnly {
+            args += Self.readingTools + ["--disallowedTools"] + Self.writingTools
+        } else {
+            // Preserve the user-turn allowlist and its order.
+            args += ["mcp__sophia__read_page", "mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__recall", "mcp__sophia__about_you", "mcp__sophia__link", "WebSearch"]
+        }
+        args += ["--system-prompt", config.systemPrompt, "--append-system-prompt", config.context]
         return args
     }
 
@@ -86,7 +96,7 @@ public final class ClaudeEngine {
                 outPipe.fileHandleForReading.readabilityHandler = nil
                 errPipe.fileHandleForReading.readabilityHandler = nil
                 self.isRunning = false
-                self.onEvent(.exited(code: proc.terminationStatus, stderr: self.stderrText))
+                self.onEvent(.exited(code: proc.terminationStatus, stderr: self.stderrText, stopRequested: self.stopRequested))
             }
         }
         try p.run()
@@ -102,6 +112,7 @@ public final class ClaudeEngine {
 
     /// Closes input so Claude Code can finish and save the session, then terminates it if it hasn't exited.
     public func stop() {
+        stopRequested = true
         try? stdin?.close()
         stdin = nil
         guard let p = process, p.isRunning else { return }
@@ -110,6 +121,7 @@ public final class ClaudeEngine {
 
     /// Ends the current reply immediately.
     public func cancel() {
+        stopRequested = true
         try? stdin?.close()
         stdin = nil
         if process?.isRunning == true { process?.terminate() }
