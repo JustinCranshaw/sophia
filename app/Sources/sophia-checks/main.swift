@@ -958,6 +958,7 @@ let all: [(String, () throws -> Void)] = [
     ("scenario10TornTranscriptAppend", scenario10TornTranscriptAppend),
     ("scenario10IntentionalEngineExit", scenario10IntentionalEngineExit),
 
+    ("createdAndEnumeratedNotebooksHaveTheSameURL", createdAndEnumeratedNotebooksHaveTheSameURL),
     ("keepsVerifiedQuoteAndStampsNothingFromSophia", keepsVerifiedQuoteAndStampsNothingFromSophia),
     ("misquoteBecomesParaphrase", misquoteBecomesParaphrase),
     ("quoteFromAnEarlierSessionIsRemoved", quoteFromAnEarlierSessionIsRemoved),
