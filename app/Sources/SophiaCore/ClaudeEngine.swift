@@ -42,6 +42,7 @@ public final class ClaudeEngine {
     private var outgoing: [Data] = []
     private var checkID: UUID?
     var process: Process?
+    private var ownedProcess: OwnedClaudeProcess?
     var stdin: FileHandle?
     var buffer = Data()
     var stderrText = ""
@@ -152,7 +153,7 @@ public final class ClaudeEngine {
                 self.onEvent(.exited(code: proc.terminationStatus, stderr: self.stderrText, stopRequested: self.stopRequested))
             }
         }
-        try p.run()
+        ownedProcess = try OwnedClaudeProcess.launch(p)
         process = p
         stdin = inPipe.fileHandleForWriting
         isRunning = true
@@ -204,9 +205,9 @@ public final class ClaudeEngine {
     private func fail(_ event: Event) {
         checkID = nil; outgoing.removeAll(); isRunning = false
         closeSources()
+        ownedProcess?.stop(grace: 0)
         try? stdin?.close(); stdin = nil
-        let old = process; process = nil
-        if old?.isRunning == true { old?.terminate() }
+        process = nil
         onEvent(event)
     }
 
@@ -216,13 +217,13 @@ public final class ClaudeEngine {
         stopRequested = true; isRunning = false
         checkID = nil; outgoing.removeAll()
         closeSources()
+        ownedProcess?.stop()
         try? stdin?.close()
         stdin = nil
         guard let p = process, p.isRunning else {
             if wasRunning { onEvent(.exited(code: 0, stderr: "", stopRequested: true)) }
             return
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { if p.isRunning { p.terminate() } }
     }
 
     /// Ends the current reply immediately.
@@ -231,13 +232,14 @@ public final class ClaudeEngine {
         stopRequested = true; isRunning = false
         checkID = nil; outgoing.removeAll()
         closeSources()
+        ownedProcess?.stop(grace: 0)
         try? stdin?.close()
         stdin = nil
-        if process?.isRunning == true { process?.terminate() }
-        else if wasRunning { onEvent(.exited(code: 0, stderr: "", stopRequested: true)) }
+        if process?.isRunning != true && wasRunning { onEvent(.exited(code: 0, stderr: "", stopRequested: true)) }
     }
 
     func consume(_ data: Data) {
+        guard !stopRequested else { return }
         buffer.append(data)
         while let nl = buffer.firstIndex(of: 0x0A) {
             let line = buffer[buffer.startIndex..<nl]

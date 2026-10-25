@@ -65,6 +65,7 @@ final class NotebookSession: ObservableObject {
     private var toldMusic: Set<MusicWarnings> = []                // those Sophia has been told about this session
     private var editDraft: String?          // the editor's live text; not published, so typing doesn't redraw the window
     private var terminating: Any?
+    private var shuttingDown = false
 
     init(url: URL, allowAutomaticReturn: Bool = true) throws {
         store = try NotebookStore.open(url: url)
@@ -76,7 +77,7 @@ final class NotebookSession: ObservableObject {
         if allowAutomaticReturn, Snapshot.outDir == nil, store.isReturn(after: Self.returnGap) {
             DispatchQueue.main.async { [weak self] in self?.pickUp() }
         }
-        terminating = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+        terminating = NotificationCenter.default.addObserver(forName: .prepareToTerminate, object: nil, queue: .main) { [weak self] _ in
             self?.shutdown()
         }
     }
@@ -104,6 +105,7 @@ final class NotebookSession: ObservableObject {
     }
 
     private func ensureEngine(thread: String, before: String? = nil, internalRequest: Bool = false) -> Bool {
+        guard !shuttingDown else { return false }
         if !internalRequest, let e = engines[thread], e.isRunning { engine = e; return true }
         guard let claude = ClaudeEngine.locateClaude() else { if !internalRequest { problem = "Claude Code isn’t installed. Open the setup guide, install it and sign in from Terminal, then choose Retry on your saved question." }; return false }
         guard let prompt = Self.sophiaPrompt() else { if !internalRequest { problem = "SOPHIA.md is missing from the app." }; return false }
@@ -121,7 +123,19 @@ final class NotebookSession: ObservableObject {
         return true
     }
 
-    func shutdown() { pendingSource = nil; commitEdit(); engines.values.forEach { $0.stop() }; checkpointEngine?.stop(); engines = [:]; engine = nil }
+    func shutdown() {
+        guard !shuttingDown else { return }
+        shuttingDown = true
+        pendingSource = nil; commitEdit()
+        if let turn = running {
+            try? store.appendTranscript(["role": .string("client"), "page": .string(turn.thread), "session": .string(session), "purpose": .string("interrupted")])
+        }
+        running = nil; briefAfterNotes = false
+        if request != nil { finishRequest(failed: true) }
+        engines.values.forEach { $0.stop() }; checkpointEngine?.stop()
+        engines = [:]; checkpointEngine = nil; engine = nil
+        queue = []; isResponding = false; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
+    }
 
     private func handle(_ event: ClaudeEngine.Event, identity: ObjectIdentifier, thread: String, internalRequest: Bool) {
         // A terminating process may report its exit after a replacement has started.
@@ -252,6 +266,7 @@ final class NotebookSession: ObservableObject {
     }
 
     private func dispatchNext() {
+        guard !shuttingDown else { return }
         while !queue.isEmpty, NotebookStore.nextStep(thread: queue[0].thread, pending: isResponding || request != nil) == .reply {
             let turn = queue.removeFirst()
             // A failed startup leaves its saved message incomplete; it cannot block other threads.
@@ -356,7 +371,7 @@ final class NotebookSession: ObservableObject {
 
     /// Opens a range for editing. The store records it, so Sophia can't change it until the commit.
     func beginEdit(file: String, key: String, atVisibleTop: Bool = false) {
-        guard editing == nil else { return }
+        guard !shuttingDown, editing == nil else { return }
         do {
             guard let range = try store.beginEdit(file: file, key: key, session: session) else { return }
             editDraft = nil
