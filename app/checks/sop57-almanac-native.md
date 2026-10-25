@@ -7,6 +7,7 @@ Scope: [SOP57](https://linear.app/decomposer/issue/SOP-57), on landed SOP56 Core
 - Initial UI prototype used unmerged Core `37b813a` only in an authorized disposable integration worktree. Its setup/initial layout observations are historical, not verification of the final Core.
 - Final implementation integrated landed Core `cea64dc`. Reading revision `f5da9ab` and subsequent owned UI commits were built against that dependency. Representative keyboard/editor/automatic checks exercised that landed Core with precommit UI refinements. The later sidebar/status changes do not alter preparation, editor or navigation logic.
 - `d8afa71c48fe584448492781c21c446488a10497` contains the final Options focus/queued debug-event handling and compact failure presentation. The first actual entry used this exact source.
+- `3f7a5c0` adds explicit conditional cancellation labels and a visible settings-save warning after independent review; Core run semantics are unchanged. A wide protected-editor native follow-up below closes the earlier narrow-only coverage gap.
 - `afcdc27` adds only the authorized generic model-assumptions/self-check sentence in `AlmanacPrompt.system`. The second actual entry used that source. Original generated evidence was retained unmodified.
 
 ## Build and checks
@@ -70,7 +71,7 @@ Captured owned real CLI PIDs 84167 and 88327 exited after completion; native app
 ## Selected originals
 
 - [Setup/collision](sop57-almanac-native/setup.png) — historical prototype Core37b epoch.
-- [Before reading revision](sop57-almanac-native/prototype-read-900.png) and [revised 900](sop57-almanac-native/revised-read-900.png).
+- [Before reading revision](sop57-almanac-native/prototype-read-900.png) and [revised 900](sop57-almanac-native/revised-read-900.png) and [1440](sop57-almanac-native/revised-read-1440.png).
 - [Unsaved edit after background save](sop57-almanac-native/editor-background.png), [focused Options Escape preserves edit](sop57-almanac-native/options-escape-preserves-editor.png).
 - [Hidden automatic ready after unhide](sop57-almanac-native/automatic-hidden-ready.png).
 - [Final failed-new-attempt sidebar](sop57-almanac-native/failed-attempt-sidebar.png) and [full Options reason](sop57-almanac-native/failed-attempt-options.png).
@@ -82,3 +83,15 @@ The identical titles in repeated controlled fixtures are deliberate test output,
 `./scripts/make-app.sh release` passed for targeted Sophia and sophia-mcp products at afcdc27; `codesign --verify --deep --strict` passed for the ad-hoc bundle. Release executable contains no debug harness marker. An earlier packaging invocation was interrupted by my source edit during compilation and failed honestly; it is superseded by this completed final build, not counted as a pass. No release GUI, clean-Mac, distribution signature/notarization or OS notification delivery is claimed.
 
 Retained local release app: `/tmp/sophia-sop57-cbckmqb9/Sophia.app`; debug verification app: `/tmp/sophia-sop57-cbckmqb9/Sophia-Debug.app`; actual generated notebooks: `/tmp/sophia-sop57-cbckmqb9/actual/library`. `Open Almanac Demo.command` in that same root sets SOPHIA_LIBRARY to only this disposable Library before launching the release executable. It was prepared, not launched during these checks; it neither installs/replaces an app nor opens the personal Library. Automatic preparation and notification intent remain off in this demonstration. Both original generated pages remain available.
+
+## Independent-review follow-up
+
+Initial frozen review e1a017c identified one unresolved protected-area check and one low FIX NOW cancellation-copy issue. Exactly three read-only adaptive Plan scopes covered notification consent/privacy, setup/scheduling and protected reading/editor integration; the separate review lead centrally inspected their candidates and passed owned scratch debug product builds plus the injected notification checks. Final exact-head disposition is in the PR comment, not inferred from this initial review.
+
+- **Wide editor/first question:** [before](sop57-almanac-native/wide-edit-before.png), [after first question](sop57-almanac-native/wide-edit-after-question.png), [committed](sop57-almanac-native/wide-edit-committed.png). At 1600×900 (about 1332pt detail width), a unique typed unsaved marker remained visible as the reader switched from stacked to side-by-side. Editor marker remained and page bytes stayed exact before explicit commit. A native click on the page title (the documented commit-outside-editor path) then saved the marker exactly once and closed editing. Keyboard Done did not establish the editor focus in the driver; it is not counted as a successful Done assertion. This actual persistence check resolves the suspected subtree-recreation/data-loss path without adding a layout guard or new state.
+- **Cancellation clarity:** the root product decision keeps configuration-invalidates-run behavior; the final UI names it rather than disabling the supported action. [Options during a controlled manual run](sop57-almanac-native/pause-cancels-active-entry.png) says “Pause daily & cancel preparation” (Resume likewise names cancellation during a run); the actual action cancelled and kept the previous entry. The [settings warning](sop57-almanac-native/settings-cancel-warning.png) stays visibly above Save rather than below a scroll fold. No Core lifecycle/semantics change or confirmation dialog.
+- Accepted low residuals: cold-launch OS notification navigation may miss an early event (actual OS click/delivery unverified); a rare failure after unique folder creation can leave an empty unmarked folder; transient status/open-attach failures can need retry/reopen. Existing pages are not deleted or overwritten. Revisit on actual notification use or a reproducible affected workflow; no speculative pending-event queue, cleanup framework or persistence layer was added.
+
+No additional product/provider request followed the two actual evaluations.
+
+Final retained package was rebuilt after the review copy fix at code commit `3f7a5c08dee114b83c30ebf0da8d441e1419601b` (`/tmp/sophia-sop57-reviewed-release-build.log`). Both targeted release products passed, strict/deep signature verification passed after copying the retained bundle, and the debug harness marker remains absent. Later evidence-only commits do not change this runtime code. The launcher still targets only the disposable actual Library.
