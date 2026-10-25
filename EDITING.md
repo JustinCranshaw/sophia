@@ -36,7 +36,7 @@ Sections are already the unit of links and of Sophia's reads, so diffs stay smal
 
 The Cursor lesson: a prompt asking the agent to keep manual edits is a guideline, and edits still get overwritten. So:
 
-- A person's commit is saved by the store like any page write: the previous version is kept, a transcript entry records it (with the page's hash), and it can be undone until the next change to that page by either author, whatever is said in any conversation.
+- A person's commit is saved by the store like any page write: the previous version is kept, a transcript entry records it (with the page's hash), and it can be undone until the next action that ends its Undo eligibility, whatever is said in any conversation. A subsequent unchanged Sophia write also ends the older Undo; it preserves any previous bytes for inspection.
 - The entry records the changed lines: `{role: "person", purpose: "edit_page", file, section, hunks: [{before, after}]}`. Hunks are whole lines, so a sign flip protects its whole line, not one character. A Markdown paragraph is usually one line, so this is coarse; narrow it to the changed words only if real use shows Sophia's own revisions refused more than about twice a week (count refusals in the transcript).
 - **Protected lines** of a page are the `after` lines of its `edit_page` entries that still appear in the current page. Nothing is stored beyond the transcript; if the person later deletes the line or releases it (below), it stops being protected.
 - `write_page` refuses a revision that drops or alters any protected line. The refusal names the section and returns the person's current text. Block quotes of the person's words (`<!-- quote: t-… -->`) get the same store check.
