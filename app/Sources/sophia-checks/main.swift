@@ -1032,6 +1032,7 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("personCorrectionsReachFreshAndOngoingThreadContext", personCorrectionsReachFreshAndOngoingThreadContext),
     ("verificationInterleavedThreadOwnership", verificationInterleavedThreadOwnership),
     ("verificationUndoAcrossScopesAndReopen", verificationUndoAcrossScopesAndReopen),
     ("verificationLatestReleaseAndOneWayUndo", verificationLatestReleaseAndOneWayUndo),

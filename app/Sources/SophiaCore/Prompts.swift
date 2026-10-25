@@ -87,6 +87,12 @@ public enum Prompts {
         }.joined(separator: "\n")
     }
 
+    /// Keep Sophia's record and the person's authoritative correction distinguishable.
+    static func recordWithCorrection(_ record: JSONObject, in store: NotebookStore) -> String {
+        guard let correction = store.correction(of: record.str("id") ?? "") else { return record.line }
+        return record.line + "\nThe person's correction (use this over Sophia's interpretation): " + correction.line
+    }
+
     /// Added to the system prompt when the conversation process starts.
     public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil) -> String {
         let pages = pageList(store)
@@ -130,7 +136,7 @@ public enum Prompts {
         Current conversation: \(thread.isEmpty ? "Contents" : thread).
         \(thread.isEmpty ? "" : "Page in hand:\n" + (store.readPage(thread)?.body ?? "(page unavailable)"))
         Relevant notes:
-        \(store.notes(for: thread).map { $0.line }.joined(separator: "\n"))
+        \(store.notes(for: thread).map { recordWithCorrection($0, in: store) }.joined(separator: "\n"))
         Creating exchange (from the conversation that made this page):
         \((store.threadEntries(for: thread).contains { $0.str("purpose") == "clear" } ? [] : store.creatingExchange(for: thread)).map { $0.line }.joined(separator: "\n"))
         Conversation in hand:
@@ -162,6 +168,13 @@ public enum Prompts {
         let previous = max(clear, priorTurn ?? store.cursor(for: thread, before: before))
         let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
         var out = bookChanges(store, since: previous + 1)
+        // Engines stay open across turns, so a Notes edit must reach the next request too.
+        // Notes stay scoped to this conversation; working memory is already notebook-wide.
+        let corrected = (store.notes(for: thread) + store.memory).filter { store.correction(of: $0.str("id") ?? "") != nil }
+        if !corrected.isEmpty {
+            out += "[Sophia app] Current corrections from the person to your relevant records. Use these instead of your earlier interpretation; acknowledge them only when relevant to the question.\n"
+                + corrected.map { recordWithCorrection($0, in: store) }.joined(separator: "\n") + "\n"
+        }
         for e in changes where e["recovered"] != .bool(true) && e["unchanged"] != .bool(true) {
             if e.str("file") == thread && ((e.str("tool") == "write_page" && NotebookStore.thread(of: e) != thread) || e.str("purpose") == "undo_page") {
                 out += "[Sophia app] This page changed: \(contextLine(e) ?? e.line)\n"
