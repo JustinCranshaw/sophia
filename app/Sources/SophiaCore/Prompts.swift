@@ -87,6 +87,12 @@ public enum Prompts {
         }.joined(separator: "\n")
     }
 
+    /// Keep Sophia's record and the person's authoritative correction distinguishable.
+    static func recordWithCorrection(_ record: JSONObject, in store: NotebookStore) -> String {
+        guard let correction = store.correction(of: record.str("id") ?? "") else { return record.line }
+        return record.line + "\nThe person's correction (use this over Sophia's interpretation): " + correction.line
+    }
+
     /// Added to the system prompt when the conversation process starts.
     public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil) -> String {
         let pages = pageList(store)
@@ -99,7 +105,7 @@ public enum Prompts {
 
         You are running inside Sophia, a Mac app. The notebook is "\(store.name)".
         - Answer every part of the person's question in this conversation, including when the same turn writes or revises a page. Give the requested explanation before optional notes or memory updates; a saved page or note is not a conversational answer. If a tool is needed first, return to the unanswered question after it.
-        - The person sees your text as you write it. Successful page writes and record updates already appear as cards in the conversation. After a tool, end the turn silently if the question is already answered; do not add a closing “Done,” “Noted,” or “Nothing more to add,” and do not repeat the answer. Add text only for an unanswered part, new substance, or a necessary outcome such as a refused write.
+        - The person sees your text as it arrives. Keep the conversation concise and useful, with the requested explanation and any important tool outcome.
         - `write_page` saves a page to the book right away; the person can open it from its conversation card; their selection and conversation stay where they are. To change an existing page, pass its file name as `page`: the new text replaces it, and the previous version is kept. Read the page first and keep what the person still wants. The person can undo any page you write.
         - Pages can be grouped into chapters. `set_chapter` puts existing pages in a chapter (created if needed) without changing them, and `write_page` takes an optional `chapter` for a new page. Number pages within a numbered chapter in their titles ("0.1 Entropy" in "Chapter 0: Foundations"); the app styles the numbers. Don't repeat the title or chapter at the top of the page body. Group pages when the person asks or when the book's structure has become clear, not on every page.
         - `note` writes one of your notes, which you'll have when the person comes back. Write one when something comes up that you'd want to check on later ("follow_up": whether the cross-entropy idea has landed), or when you learn something about the person in relation to this topic ("background": what they already know, what's rusty, how they like to work on it), or when they make a real attempt or leave a question open. Base it on their exact words (`quote`) or on ids in `refs`. A few notes a session at most: most turns need none, and if a note exists, revise it (pass `note`) rather than adding another, for example to close a follow-up once it's checked. Stay with the topic; no judgments of their ability or character.
@@ -130,7 +136,7 @@ public enum Prompts {
         Current conversation: \(thread.isEmpty ? "Contents" : thread).
         \(thread.isEmpty ? "" : "Page in hand:\n" + (store.readPage(thread)?.body ?? "(page unavailable)"))
         Relevant notes:
-        \(store.notes(for: thread).map { $0.line }.joined(separator: "\n"))
+        \(store.notes(for: thread).map { recordWithCorrection($0, in: store) }.joined(separator: "\n"))
         Creating exchange (from the conversation that made this page):
         \((store.threadEntries(for: thread).contains { $0.str("purpose") == "clear" } ? [] : store.creatingExchange(for: thread)).map { $0.line }.joined(separator: "\n"))
         Conversation in hand:
@@ -162,6 +168,13 @@ public enum Prompts {
         let previous = max(clear, priorTurn ?? store.cursor(for: thread, before: before))
         let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
         var out = bookChanges(store, since: previous + 1)
+        // Engines stay open across turns, so a Notes edit must reach the next request too.
+        // Notes stay scoped to this conversation; working memory is already notebook-wide.
+        let corrected = (store.notes(for: thread) + store.memory).filter { store.correction(of: $0.str("id") ?? "") != nil }
+        if !corrected.isEmpty {
+            out += "[Sophia app] Current corrections from the person to your relevant records. Use these instead of your earlier interpretation; acknowledge them only when relevant to the question.\n"
+                + corrected.map { recordWithCorrection($0, in: store) }.joined(separator: "\n") + "\n"
+        }
         for e in changes where e["recovered"] != .bool(true) && e["unchanged"] != .bool(true) {
             if e.str("file") == thread && ((e.str("tool") == "write_page" && NotebookStore.thread(of: e) != thread) || e.str("purpose") == "undo_page") {
                 out += "[Sophia app] This page changed: \(contextLine(e) ?? e.line)\n"
