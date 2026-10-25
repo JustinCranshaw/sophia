@@ -61,11 +61,18 @@ enum UXHarness {
         return rows
     }
 
+    static var activeWindow: NSWindow? {
+        let base = NSApp.keyWindow ?? NSApp.orderedWindows.first(where: { $0.isVisible })
+        return base?.attachedSheet ?? base
+    }
+
     static func poll() {
         guard let root, let files = try? FileManager.default.contentsOfDirectory(at: root.appendingPathComponent("commands"), includingPropertiesForKeys: nil),
               let file = files.filter({ $0.pathExtension == "json" }).sorted(by: { $0.lastPathComponent < $1.lastPathComponent }).first,
-              let data = try? Data(contentsOf: file), let cmd = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+              file.isFileURL else { return }
+        let data = try? Data(contentsOf: file)
         try? FileManager.default.removeItem(at: file)
+        guard let data, let cmd = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
         var result: [String: Any] = [:]
         let action = cmd["action"] as? String ?? "inspect"
         if elements.isEmpty { _ = tree() }
@@ -102,8 +109,7 @@ enum UXHarness {
                 } else { result["error"] = "UI target is not an editable native text control" }
             } else { result["error"] = "Missing UI element or text" }
         case "key":
-            guard let base = NSApp.windows.first(where: { $0.isVisible }) else { break }
-            let window = base.attachedSheet ?? base
+            guard let window = activeWindow else { break }
             var flags: NSEvent.ModifierFlags = []
             for m in cmd["modifiers"] as? [String] ?? [] {
                 switch m { case "command": flags.insert(.command); case "shift": flags.insert(.shift); case "option": flags.insert(.option); default: break }
@@ -116,16 +122,14 @@ enum UXHarness {
                 else { window.sendEvent(event); result["performed"] = true }
             }
         case "type":
-            if let base = NSApp.windows.first(where: { $0.isVisible }), let text = cmd["text"] as? String {
-                let window = base.attachedSheet ?? base
+            if let window = activeWindow, let text = cmd["text"] as? String {
                 if let input = window.firstResponder as? NSTextInputClient {
                     input.insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
                     result["performed"] = true
                 } else { result["error"] = "Focus a text editor first" }
             }
         case "click", "hover":
-            if let base = NSApp.windows.first(where: { $0.isVisible }), let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
-                let window = base.attachedSheet ?? base
+            if let window = activeWindow, let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
                 let point = NSPoint(x: x, y: window.frame.height - y)
                 window.makeKeyAndOrderFront(nil)
                 let kinds: [NSEvent.EventType] = action == "hover" ? [.mouseMoved] : [.leftMouseDown, .leftMouseUp]
@@ -145,7 +149,7 @@ enum UXHarness {
                 result["performed"] = true
             } else { result["error"] = "Choose a native AXScrollArea and provide dy in points" }
         case "resize":
-            if let w = NSApp.windows.first(where: { $0.isVisible }), let width = cmd["width"] as? Double, let height = cmd["height"] as? Double {
+            if let w = activeWindow, let width = cmd["width"] as? Double, let height = cmd["height"] as? Double {
                 w.setContentSize(NSSize(width: width, height: height)); result["performed"] = true
             }
         default: result["error"] = "Unknown UI action"
@@ -155,8 +159,7 @@ enum UXHarness {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             result["tree"] = tree()
             result["at"] = ISO8601DateFormatter().string(from: Date())
-            if let base = NSApp.windows.first(where: { $0.isVisible }),
-               let w = Optional(base.attachedSheet ?? base),
+            if let w = activeWindow,
                let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(w.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
                 let shot = root.appendingPathComponent("results").appendingPathComponent(file.deletingPathExtension().lastPathComponent + ".png")
                 try? NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:])?.write(to: shot)

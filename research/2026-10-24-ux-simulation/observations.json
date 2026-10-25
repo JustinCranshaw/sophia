@@ -5,7 +5,7 @@
     "macOS": "26.2 (25C56)",
     "swift": "6.2.3",
     "nodeInstalled": "26.0.0 (not required by harness)",
-    "claudeInstalledAndLaunchedPath": "/Users/justincranshaw/.local/bin/claude",
+    "claudeInstalledAndLaunchedPath": "~/.local/bin/claude",
     "claudeResolvedVersion": "2.1.304",
     "adapter": "none",
     "sdk": "none; app launches installed unmodified CLI",

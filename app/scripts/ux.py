@@ -29,7 +29,23 @@ root = args.directory.resolve()
 root.mkdir(parents=True, exist_ok=True)
 if args.action == "launch":
     binary = Path(__file__).resolve().parents[1] / "build/Sophia.app/Contents/MacOS/Sophia"
+    if not binary.is_file() or b"SOPHIA_UX_HARNESS" not in binary.read_bytes():
+        raise SystemExit("Build the debug bundle first: app/scripts/make-app.sh debug")
+    pid_file = root / "pid"
+    if pid_file.exists():
+        try:
+            os.kill(int(pid_file.read_text()), 0)
+        except (ValueError, ProcessLookupError):
+            pass
+        else:
+            raise SystemExit("This UX directory already has a running app; quit it before relaunching.")
+    # Commands use transient accessibility IDs and must never survive a relaunch.
+    for pending in (root / "commands").glob("*.json"):
+        pending.unlink()
     env = os.environ.copy()
+    for key in list(env):
+        if key.startswith("SOPHIA_SNAPSHOT"):
+            env.pop(key)
     env.update(SOPHIA_UX_HARNESS=str(root), SOPHIA_LIBRARY=str(root / "library"))
     env["SOPHIA_RETURN_GAP"] = str(args.return_gap)
     if args.without_claude:
@@ -69,4 +85,5 @@ while time.monotonic() < deadline:
         break
     time.sleep(0.1)
 else:
+    (folder / name).unlink(missing_ok=True)
     raise SystemExit("No UX response within 25 seconds; inspect app.log, do not bypass the UI.")
