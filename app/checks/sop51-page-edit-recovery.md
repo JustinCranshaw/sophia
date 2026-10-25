@@ -12,14 +12,14 @@ A compact banner identifies temporarily kept unsaved edits. It does not open a m
 
 ## Verification
 
-Integrated base `df8ed98727ce140ec03688b1d616bb575e856235` includes SOP50. The mechanical check registration union retains its one-way pending-status Quit gate **last**. All **96 core checks** pass (95 base plus one recovery-value check); current debug app/MCP builds. Commands from repository root:
+Final integrated base `5feabba311c93eb72fa307305f92883405bc0108` includes SOP50 and SOP28. The mechanical check registration union retains its one-way pending-status Quit gate **last**. All **98 core checks** pass (97 base plus one recovery-value check); current debug app/MCP builds. Commands from repository root:
 
 ```
 swift run --package-path app sophia-checks
 app/scripts/make-app.sh debug
 ```
 
-Logs `/tmp/sophia-sop51-integrated-checks.log` and `/tmp/sophia-sop51-integrated-build.log`. The focused check retains two canonically equivalent but byte-distinct Unicode edits to the same source, leading/trailing newlines, source labels and ordering; dismissing one or reusing its stale UUID cannot remove the other. No global fixture-directory cleanup is performed.
+Logs `/tmp/sophia-sop51-final-integrated-checks.log` and `/tmp/sophia-sop51-final-integrated-build.log`. Earlier integrated SOP50 checks passed96; final registration union preserves both new navigation checks and the recovery check. The focused check retains two canonically equivalent but byte-distinct Unicode edits to the same source, leading/trailing newlines, source labels and ordering; dismissing one or reusing its stale UUID cannot remove the other. No global fixture-directory cleanup is performed.
 
 ### Native controlled proof
 

@@ -1,0 +1,23 @@
+{
+  "before": {
+    ".lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transcript.jsonl": "a45b24eb3533584169596dd90f8da608d1e101aa9b1af08b09b92c85708d26bf",
+    "notebook.json": "09567c8cf88677e8a77c6eb4aa74e5814b95707730bc5f89d91e61e7e0930262",
+    "learning.jsonl": "30a5082092f42ddc70f6216145097ae2c14831e68b8ad34cacade5b33e31ca39",
+    "pages/practice-card-two-bars-count-the-empty-beat.md": "6f41a8ffb6f2a50484520622b2d89b2e6b6956a413d278dfb333789b6e819d65",
+    "pages/a-two-bar-phrase-counting-quarter-and-half.previous.md": "b562165cc24b6035cdec27288cc380301f6ec2de6c3a6799dab3461748810ef6",
+    "pages/a-two-bar-phrase-counting-quarter-and-half.md": "7259e1947cc73d0aee796a05c00edc1798c4d11702833dd8dc8ead6222475a73"
+  },
+  "after": {
+    ".lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "transcript.jsonl": "4517446bee55da57b5492e7aa74f2f007a29e9403de4c71632657c4582a746a2",
+    "notebook.json": "09567c8cf88677e8a77c6eb4aa74e5814b95707730bc5f89d91e61e7e0930262",
+    "learning.jsonl": "30a5082092f42ddc70f6216145097ae2c14831e68b8ad34cacade5b33e31ca39",
+    "pages/practice-card-two-bars-count-the-empty-beat.md": "6f41a8ffb6f2a50484520622b2d89b2e6b6956a413d278dfb333789b6e819d65",
+    "pages/a-two-bar-phrase-counting-quarter-and-half.previous.md": "b562165cc24b6035cdec27288cc380301f6ec2de6c3a6799dab3461748810ef6",
+    "pages/a-two-bar-phrase-counting-quarter-and-half.md": "7259e1947cc73d0aee796a05c00edc1798c4d11702833dd8dc8ead6222475a73"
+  },
+  "changed": [
+    "transcript.jsonl"
+  ]
+}

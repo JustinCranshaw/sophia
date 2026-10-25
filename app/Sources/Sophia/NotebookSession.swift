@@ -22,7 +22,7 @@ final class NotebookSession: ObservableObject {
 
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
-        if oldValue != place { pendingSection = nil }
+        if oldValue != place { pendingSection = nil; navigationProblem = nil }
         switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
         pendingSource = engines[activeThread]?.pendingSource
@@ -46,8 +46,43 @@ final class NotebookSession: ObservableObject {
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
     @Published var lastDeleted: [JSONObject]?        // records; Undo lasts until the next message
-    @Published var pendingSection: String? { didSet { pendingSectionID = UUID() } }
-    private(set) var pendingSectionID = UUID() // distinguishes repeated same-title requests
+    struct SectionNavigation {
+        let id = UUID()
+        let target: SectionTarget?
+    }
+    @Published private(set) var sectionNavigation = SectionNavigation(target: nil)
+    struct NavigationProblem {
+        let file: String
+        let text: String
+    }
+    @Published var navigationProblem: NavigationProblem?
+    // Snapshot and confirmed cross-notebook links still use title-based requests.
+    var pendingSection: String? {
+        get { if case .title(let title) = sectionNavigation.target?.selector { return title }; return nil }
+        set {
+            let target: SectionTarget?
+            if let title = newValue, case .page(let file) = place {
+                target = SectionTarget(notebook: store.url, file: file, selector: .title(title))
+            } else { target = nil }
+            sectionNavigation = SectionNavigation(target: target)
+        }
+    }
+    var pendingSectionID: UUID { sectionNavigation.id }
+    @discardableResult
+    func openSection(_ target: SectionTarget) -> Bool {
+        if editing?.file == target.file {
+            navigationProblem = NavigationProblem(file: target.file, text: "Finish editing, then choose the section again.")
+            pendingSection = nil
+            return false
+        }
+        switch target.resolve(in: store) {
+        case .failure(let error): navigationProblem = NavigationProblem(file: target.file, text: error.localizedDescription); return false
+        case .success:
+            show(.page(target.file))
+            sectionNavigation = SectionNavigation(target: target)
+            return true
+        }
+    }
 
     private var engine: ClaudeEngine?
     private var engines: [String: ClaudeEngine] = [:]
@@ -340,10 +375,12 @@ final class NotebookSession: ObservableObject {
     // MARK: Pages Sophia writes
 
     /// Shows a place in the book, opening the book if it is hidden.
-    func show(_ p: Place) { pendingSection = nil; place = p; bookShown = true }
+    func show(_ p: Place) { pendingSection = nil; navigationProblem = nil; place = p; bookShown = true }
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
     func undoWrite(_ entryID: String) {
+        pendingSection = nil
+        navigationProblem = nil
         do {
             if let e = store.transcript.first(where: { $0.str("id") == entryID }), store.isReleaseUndoable(e) { try store.undoRelease(entryID, session: session) }
             else { try store.undoPageWrite(entryID, session: session) }
@@ -376,6 +413,7 @@ final class NotebookSession: ObservableObject {
         guard !shuttingDown, editing == nil else { return }
         do {
             guard let range = try store.beginEdit(file: file, key: key, session: session) else { return }
+            pendingSection = nil
             editDraft = nil
             editing = PageEditing(file: file, title: store.readPage(file)?.title ?? file, range: range, atVisibleTop: atVisibleTop)
         } catch { problem = error.localizedDescription }

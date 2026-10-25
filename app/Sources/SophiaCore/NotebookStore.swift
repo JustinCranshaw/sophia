@@ -468,7 +468,7 @@ public final class NotebookStore {
         return Self.splitFrontmatter(text)
     }
 
-    static func splitFrontmatter(_ text: String) -> (title: String, body: String) {
+    public static func splitFrontmatter(_ text: String) -> (title: String, body: String) {
         guard text.hasPrefix("---\n"), let end = text.range(of: "\n---\n", range: text.index(text.startIndex, offsetBy: 4)..<text.endIndex) else {
             return ("Untitled", text)
         }
