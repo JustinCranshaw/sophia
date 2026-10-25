@@ -119,7 +119,7 @@ final class NotebookSession: ObservableObject {
             if request == nil { streaming += t }
         case .assistantText(let t):
             if request != nil { requestText += t; return }
-            // The person already read the first version; a second full version after a tool call is noise.
+            // Suppress only verbatim repeats; a similar block may answer an outstanding question.
             defer { turnTexts.append(t) }
             if Prompts.isRestatement(t, of: turnTexts) { streaming = ""; changed(); return }
             try? store.appendTranscript(["role": .string("sophia"), "session": .string(session), "text": .string(t)])
@@ -221,6 +221,7 @@ final class NotebookSession: ObservableObject {
             return
         }
         guard ensureEngine() else { return }
+        turnTexts = []
         isResponding = true
         engine?.send(outgoing)
     }

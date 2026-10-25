@@ -330,7 +330,12 @@ func aReplyWrittenTwiceIsRecognized() throws {
     let first = "That's not true in general. It holds for symmetric matrices, and more generally for normal matrices. That's the spectral theorem. It fails for arbitrary square matrices. Counterexample: the matrix with rows one one and zero two has eigenvectors one zero and one one, whose dot product is one, so they are not orthogonal. Rescaling an eigenvector doesn't change its direction."
     let again = "Your notes are wrong on this one. Only symmetric matrices, or more generally normal ones, are guaranteed orthogonal eigenvectors. That's the spectral theorem. For other square matrices the eigenvectors may not be orthogonal: the matrix with rows one one and zero two has eigenvectors one zero and one one, whose dot product is one. Rescaling doesn't change their direction."
     let different = "Next, the singular value decomposition writes every matrix as a rotation, a diagonal scaling, and another rotation. Unlike eigenvectors, input and output directions differ, which is why it always exists and why least squares, low rank approximation, and principal components analysis all depend on it in practice."
-    expect(Prompts.isRestatement(again, of: [first]))
+    expect(Prompts.isRestatement(first, of: [first]))
+    expect(Prompts.isRestatement("  " + first + "\n", of: [first]))
+    expect(!Prompts.isRestatement(again, of: [first]))
+    expect(!Prompts.isRestatement(first + " A one-mass kick adds another mode because its velocity is not proportional to the mode shape.", of: [first]))
+    expect(!Prompts.isRestatement("The velocities must follow (1,-1).", of: ["The velocities must not follow (1,-1). "]))
+    expect(!Prompts.isRestatement("", of: [" "]))
     expect(!Prompts.isRestatement(different, of: [first]))
     expect(!Prompts.isRestatement("I added a page with this.", of: [first]))
 }
