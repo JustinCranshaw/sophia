@@ -45,12 +45,14 @@ final class AppModel: ObservableObject {
         open?.pendingSection = section
     }
 
-    func create(_ name: String) {
+    @discardableResult
+    func create(_ name: String) -> Bool {
         do {
             let url = try library.create(named: name)
             notebooks = library.notebooks
             openNotebook(url)
-        } catch { problem = error.localizedDescription }
+            return open?.store.url.path == url.path
+        } catch { problem = error.localizedDescription; return false }
     }
 }
 
@@ -90,13 +92,16 @@ struct RootView: View {
     @EnvironmentObject var model: AppModel
     @State private var naming = false
     @State private var newName = ""
+    @State private var startingText = ""
+    @State private var openingDraft = ""
+    @State private var entryID = UUID()
 
     var body: some View {
         NavigationSplitView {
             SidebarView()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 420)
         } detail: {
-            if let s = model.open { NotebookView(session: s) } else { EmptyLibraryView(naming: $naming) }
+            if let s = model.open { NotebookView(session: s, initialDraft: openingDraft).id(entryID) } else { EmptyLibraryView(naming: $naming) }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -106,13 +111,25 @@ struct RootView: View {
         }
         .sheet(isPresented: $naming) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("New notebook").font(.headline)
-                Text("Name it after what you want to understand. You can start with a question instead and rename it later.")
+                Text("What would you like to explore?").font(.headline)
+                Text("Bring a question, an interest, a passage, or something you tried.")
                     .font(.callout).foregroundStyle(.secondary)
-                TextField("e.g. Graph Clustering", text: $newName).onSubmit(createNotebook)
-                HStack { Spacer(); Button("Cancel") { naming = false }; Button("Create", action: createNotebook).keyboardShortcut(.defaultAction) }
+                TextEditor(text: $startingText)
+                    .font(.body).frame(minHeight: 110, maxHeight: 180)
+                    .padding(6).overlay(RoundedRectangle(cornerRadius: 6).stroke(.quaternary))
+                    .accessibilityLabel("Starting question or material")
+                TextField("Notebook name (optional)", text: $newName)
+                Text("Notebook: “\(suggestedName)”").font(.caption).foregroundStyle(.secondary)
+                Text("Continue opens your conversation with this text ready to send. Nothing is sent yet.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("Cancel") { naming = false }
+                    Button("Continue", action: createNotebook).keyboardShortcut(.defaultAction)
+                        .disabled(startingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
-            .padding(20).frame(width: 380)
+            .padding(20).frame(width: 480)
         }
         .onReceive(NotificationCenter.default.publisher(for: .newNotebook)) { _ in naming = true }
         .alert("Sophia", isPresented: Binding(get: { model.problem != nil }, set: { if !$0 { model.problem = nil } })) {
@@ -120,11 +137,28 @@ struct RootView: View {
         } message: { Text(model.problem ?? "") }
     }
 
+    var suggestedName: String {
+        let supplied = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let firstLine = startingText.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+        var base = String((supplied.isEmpty ? firstLine : supplied).prefix(64))
+        for separator in ["/", "\\", ":", "\n", "\r"] { base = base.replacingOccurrences(of: separator, with: " ") }
+        base = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        if base.isEmpty || base == "." || base == ".." { base = "New inquiry" }
+        var candidate = base, number = 2
+        while FileManager.default.fileExists(atPath: model.library.root.appendingPathComponent(candidate, isDirectory: true).path)
+            || (try? FileManager.default.destinationOfSymbolicLink(atPath: model.library.root.appendingPathComponent(candidate, isDirectory: true).path)) != nil {
+            candidate = "\(base) (\(number))"; number += 1
+        }
+        return candidate
+    }
+
     func createNotebook() {
-        let n = newName
+        guard model.create(suggestedName) else { return }
+        openingDraft = startingText
+        entryID = UUID()
         naming = false
+        startingText = ""
         newName = ""
-        model.create(n)
     }
 }
 
@@ -132,6 +166,7 @@ struct RootView: View {
 /// when Sophia proposes a draft or the person picks something in the sidebar.
 struct NotebookView: View {
     @ObservedObject var session: NotebookSession
+    var initialDraft = ""
 
     /// The book takes about 60% of the space, within a comfortable range for a 660pt text column;
     /// the conversation takes the rest and never drops below 360.
@@ -141,7 +176,7 @@ struct NotebookView: View {
     var body: some View {
         GeometryReader { geo in
             HStack(spacing: 0) {
-                ConversationView(session: session)
+                ConversationView(session: session, initialDraft: initialDraft)
                     .frame(maxWidth: .infinity)
                 if session.bookShown {
                     Divider()

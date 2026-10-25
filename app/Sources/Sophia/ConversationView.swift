@@ -6,6 +6,11 @@ struct ConversationView: View {
     @State private var message = ""
     @FocusState private var focused: Bool
 
+    init(session: NotebookSession, initialDraft: String = "") {
+        self.session = session
+        _message = State(initialValue: initialDraft)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
