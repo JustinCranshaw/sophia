@@ -1,0 +1,18 @@
+{
+  "packaged": {
+    "uuid": "5200eeea89e73fa8b4847e55c4f7a828",
+    "rawHash": "7b4d12b9552b5f3ad3b5b9e03b9522ed9255e191301184797ddd3ab290351fbc",
+    "strippedHash": "2b69df8710ef4feb6816a2e49756a10e8a21e52c6cb8e98d08317ea6b3adfd1f",
+    "linkeditVMSize": 491520,
+    "normalizedHash": "4125c10ff0be6eee81c3ed82690bccc67b367780a4e4bf2e286a360b6ad38b2f"
+  },
+  "releaseProduct": {
+    "uuid": "5200eeea89e73fa8b4847e55c4f7a828",
+    "rawHash": "31974b80c406b2e1cf3178fad73790205190972d6c684916530a04c0f666e518",
+    "strippedHash": "351e1c4c3ccbac8d609e7bac2a18804323242e81fbefcc42c663880f9f9929c8",
+    "linkeditVMSize": 475136,
+    "normalizedHash": "4125c10ff0be6eee81c3ed82690bccc67b367780a4e4bf2e286a360b6ad38b2f"
+  },
+  "normalization": "signature removed on owned copies; only LINKEDIT VM allocation zeroed; remaining bytes exact",
+  "packagedSignatureVerified": true
+}
