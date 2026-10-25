@@ -396,6 +396,7 @@ final class NotebookSession: ObservableObject {
         guard editing == nil else { return }
         do {
             guard let range = try store.beginEdit(file: file, key: key, session: session) else { return }
+            pendingSection = nil
             editDraft = nil
             editing = PageEditing(file: file, range: range, atVisibleTop: atVisibleTop)
         } catch { problem = error.localizedDescription }
