@@ -36,7 +36,7 @@ struct NotebookCopyView: View {
             Text("Copy & restore a notebook").font(.headline)
             Text(url.lastPathComponent).font(.title3)
             Text(url.path).font(.caption).textSelection(.enabled)
-            Text("1. Finish any edits, close this help, and quit Sophia. In Finder, copy this entire notebook folder to your backup location. Copying while Sophia is writing can leave an incomplete backup.")
+            Text("1. Let any reply finish, finish your edits, close this help, and quit Sophia. In Finder, copy this entire notebook folder to your backup location. Copying while Sophia is writing can leave an incomplete backup.")
             Text("2. To restore, quit Sophia and copy the complete folder into your Library. Use its original folder name and an empty destination; do not merge with or replace an existing notebook. Reopen Sophia and select the restored notebook.")
             Text("The whole folder keeps pages, the single previous page versions, ordering, conversations, goals, notes, corrections and record identities. Provider credentials are not stored in it. Unsaved composer drafts and pending in-memory Undo for deleted notes are not backups; save what you need before quitting.")
             Text("About you and links between notebooks live separately in the Library’s hidden .sophia folder. To move everything, copy the whole Library, including .sophia, while Sophia is quit. Keep notebook names together so links still resolve.")
