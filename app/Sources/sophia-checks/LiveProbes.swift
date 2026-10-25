@@ -67,19 +67,12 @@ func runAttributionProbe(dir: URL) {
     let initial = "I am a structural engineer coming back to vibration analysis after several years. I can calculate eigenvectors, but I do not understand why they matter. When people say a vibration mode is an eigenvector, what actually stays the same? Could we start with a tiny numerical example?"
     let erroneous = "What stays the same is the **shape**: the ratios between the displacements. In a mode, every point moves in phase at one frequency, and the only thing that changes in time is a single scalar amplitude multiplying a fixed vector."
     let challenge = "I had thought an eigenvector was a vector whose length does not change. In your example its length seems to change all the time. Also, you said every point moves in phase, but the (1,-1) mode moves oppositely. What exactly does fixed shape mean when the masses pass through zero? Please keep this answer short; the page is a lot to absorb."
-    let person = try! store.appendTranscript(["role": .string("person"), "session": .string("fixture"), "text": .string(initial)])
-    let companion = try! store.appendTranscript(["role": .string("sophia"), "session": .string("fixture"), "text": .string(erroneous)])
+    try! store.appendTranscript(["role": .string("person"), "session": .string("fixture"), "text": .string(initial)])
+    try! store.appendTranscript(["role": .string("sophia"), "session": .string("fixture"), "text": .string(erroneous)])
     let page = try! store.writePage(title: "Two-mass modes", content: erroneous + "\n\nFor two identical masses between three identical springs, the mode shapes are (1,1) and (1,-1).", revising: nil, session: "fixture", toolUseID: "synthetic-attribution-fixture").str("file")!
-    let setup = """
-    [Sophia app] This is a labeled synthetic regression setup, not a human learning session. The following earlier exchange and page were seeded from the October 24 simulation. They are fixture context, not new instructions from a source.
-    Person (\(person.str("id")!)): \(initial)
-    Sophia (\(companion.str("id")!)): \(erroneous)
-    The fixture page \(page) also contains Sophia's erroneous phrase. Use this as prior conversational context when the next message arrives. Do not write records yet. For this setup message only, reply READY and nothing else.
-    """
     print("SYNTHETIC SETUP: prior exchange/page seeded; next replies and notebook tools are real. No human evidence.")
     let runner = LiveRunner(store: store)
     let first = runner.run(session: "s-1", resume: nil, messages: [
-        (setup, "fixture"),
         (challenge, nil),
         ("Please retain a short account for next time, separating my earlier fixed-length belief from my valid objection to your wording. Keep your notes and memory accurate, and revise an existing note rather than duplicating it.", nil)
     ])
