@@ -15,6 +15,8 @@ The current implementation is in [app/](app/README.md). It launches the installe
 
 Pages are saved/revised directly, with recorded authored actions and one previous version for durable one-way Undo. Goals recorded by Sophia are provisional until the person confirms. The person can edit a section, and store checks protect those lines. Unknown-provenance disk changes are preserved for inspection, not inferred to be Sophia's undoable writes. Chapters remain optional. Entry carries a question, interest or material into an unsent draft; there is no required page-creation sequence, intake questionnaire or universal canvas.
 
+Proposed separately in [SOP55](https://linear.app/decomposer/issue/SOP-55/shape-an-optional-daily-discovery-notebook-and-its-invitation-to): an optional agent-authored daily discovery notebook, with explicit thematic inclusion and existing cross-notebook access boundaries. Ordinary inquiry-led notebooks keep their current principles. The charrette has not selected a name, delivery shape or scheduling policy; notifications and activation/return benefits are not implemented or validated.
+
 | Recorded evidence | What was actually observed | Limits |
 |---|---|---|
 | [Original headless spike](spikes/claude-headless/README.md) | Real model tool delivery/resume with Claude Code 2.1.299 and Node 26.0.0 | Historical spike, not the current release configuration |

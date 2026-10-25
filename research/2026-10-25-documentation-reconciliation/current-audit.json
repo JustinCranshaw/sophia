@@ -1,0 +1,13 @@
+{
+  "base": "d8092b6a67a9e6816a1327afe6c1ffe9ecfd01b9",
+  "missingMarkdownLinks": [],
+  "missingMockAnchors": [],
+  "inlineScriptsUnchanged": true,
+  "inlineStylesUnchanged": true,
+  "runtimePromptUnchanged": true,
+  "assetsDependenciesUnchanged": true,
+  "unexpectedChangedPaths": [],
+  "mockSHA256": "90fc43b17ab4d707682604f41387dd238be1ec2627035d4eacd7faf1d8c98d64",
+  "commandsAuditedBySourceNotExecuted": true,
+  "priorMockRenderStillExactHTML": true
+}
