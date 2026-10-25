@@ -181,4 +181,4 @@ swiftc app/Sources/Sophia/AlmanacNotifications.swift app/checks/almanac-notifica
 /tmp/sophia-almanac-notifications
 ```
 
-Core/worker and native build observations remain separate from these adapter checks; see the issue-specific verification record when available.
+Core/worker and native build observations remain separate from these adapter checks; see [SOP57 native verification](checks/sop57-almanac-native.md). Two bounded actual entries establish delivery, not factual certification: the first exposed a physical-model error; a narrow assumptions instruction improved the second sample without establishing general accuracy.
