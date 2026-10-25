@@ -124,6 +124,33 @@ func almanacRecordedRunsReconcileWithoutDuplicatePagesOrInferredSuccess() throws
     try recovered.reconcileAlmanac(interrupted: true)
     expect(recovered.almanacSnapshot.phase == .failed && recovered.almanacSnapshot.latestEntry?.runID != interrupted.id)
     expect(recovered.pageWrites.contains { $0["recovered"] == .bool(true) })
+    // Fault state: page and transcript made it to disk, final listing metadata did not.
+    let (partial, _, _) = try almanacFixture()
+    let pending = try partial.reserveAlmanac(manual: true, acknowledged: true)!
+    let metaURL = partial.url.appendingPathComponent("notebook.json")
+    let beforeListing = try Data(contentsOf: metaURL)
+    let action = try partial.writePage(title: "Recorded before listing failure", content: "Keep these bytes", revising: nil, session: "s-1", toolUseID: "almanac:" + pending.id)
+    let pageURL = partial.pagesURL.appendingPathComponent(action.str("file")!)
+    let bytes = try Data(contentsOf: pageURL)
+    try beforeListing.write(to: metaURL)
+    partial.reload()
+    do { _ = try partial.reserveAlmanac(manual: true, acknowledged: true); expect(false) } catch AlmanacError.uncertainSave {}
+    do { try partial.configureAlmanac(.init(enabled: true, topics: "Changed")); expect(false) } catch AlmanacError.uncertainSave {}
+    expect(try Data(contentsOf: metaURL) == beforeListing && Data(contentsOf: pageURL) == bytes)
+    try partial.reconcileAlmanac(interrupted: true)
+    do { _ = try partial.reserveAlmanac(manual: true, acknowledged: true); expect(false) } catch AlmanacError.uncertainSave {}
+    let indexed = try NotebookStore.open(url: partial.url)
+    expect(try indexed.reserveAlmanac(manual: true, acknowledged: true) == nil)
+    expect(indexed.pages.count == 1 && indexed.almanacSnapshot.latestEntry?.runID == pending.id)
+    let (origin, _, _) = try almanacFixture()
+    _ = try origin.appendTranscript(["role": .string("person"), "session": .string("s-1"), "page": .string(""), "text": .string("Unrelated prior question, developer fixture")])
+    let automatic = try origin.reserveAlmanac(manual: true, acknowledged: true)!
+    let prepared = try origin.saveAlmanac(almanacDraft(), evidence: [], run: automatic, session: "s-1")
+    expect(origin.creatingExchange(for: prepared.file).isEmpty)
+    let ordinary = try origin.writePage(title: "Ordinary conversation page", content: "Ordinary answer", revising: nil, session: "s-1", toolUseID: "ordinary")
+    expect(!origin.creatingExchange(for: ordinary.str("file")!).isEmpty)
+    expect(Almanac.entry(id: prepared.id, url: origin.url)?.writeID == prepared.writeID)
+
 }
 
 func almanacSearchEvidenceIsActualAndNeverAnOpenedPassage() throws {
@@ -136,13 +163,27 @@ func almanacSearchEvidenceIsActualAndNeverAnOpenedPassage() throws {
     let content: JSON = .string("Provider search summary https://example.com/evidence and javascript:alert(1) and file:///private/canary and https://user:secret@example.com/private")
     engine.handle(.object(["type": .string("user"), "message": .object(["content": .array([.object(["type": .string("tool_result"), "tool_use_id": .string("search-1"), "content": content])])]), "tool_use_result": .object(["url": .string("https://example.org/candidate")])]))
     expect(received.count == 1 && received[0].content == content)
-    expect(Set(received[0].candidateURLs) == ["https://example.com/evidence", "https://example.org/candidate"])
+    expect(received[0].hasReturnedText)
     try target.recordAlmanacSearch(received[0], run: run, session: "s-1")
     try target.recordAlmanacSearch(received[0], run: run, session: "s-1")
     expect(target.transcript.filter { $0.str("purpose") == "almanac_source" }.count == 1)
     let entry = try target.saveAlmanac(almanacDraft(basis: "search_summaries"), evidence: received, run: run, session: "s-1")
     let body = target.readPage(entry.file)!.body
-    expect(body.contains("not opened source passages") && body.contains("https://example.com/evidence") && !body.contains("javascript:") && !body.contains("user:secret"))
+    expect(body.contains("not opened source passages") && !body.contains("https://example.com/evidence") && !body.contains("javascript:") && !body.contains("user:secret"))
+    let queryOnly = AlmanacSearchEvidence(id: "empty", input: .object(["query": .string("https://query.invalid site:evil.example")]), content: .null, metadata: .object(["query": .string("https://query.invalid"), "url": .string("https://query.invalid")]), isError: false)
+    let summary = AlmanacSearchEvidence(id: "summary", input: .null, content: .array([.object(["type": .string("text"), "text": .string("An actual returned summary without a URL.")])]), metadata: .null, isError: false)
+    expect(!queryOnly.hasReturnedText && summary.hasReturnedText)
+    expect(try almanacDraft(basis: "search_summaries").pageBody(evidence: [summary]).contains("WebSearch returned result text"))
+    for empty in [JSON.null, .string("  "), .array([]), .array([.object(["type": .string("text"), "text": .string("")])])] {
+        let result = AlmanacSearchEvidence(id: "empty", input: queryOnly.input, content: empty, metadata: queryOnly.metadata, isError: false)
+        do { _ = try almanacDraft(basis: "search_summaries").pageBody(evidence: [result]); expect(false) } catch {}
+    }
+    let failed = AlmanacSearchEvidence(id: "failed", input: .null, content: summary.content, metadata: .null, isError: true)
+    do { _ = try almanacDraft(basis: "search_summaries").pageBody(evidence: [failed]); expect(false) } catch {}
+    for linked in ["[claim][1]\n\n[1]: https\\://evil.example/x", "[claim][1]\n\n[1]: https&#58;//evil.example/x", "<name@example.com>", "https&#58;//evil.example/x", "https\\://evil.example/x"] {
+        do { _ = try almanacDraft(linked).pageBody(evidence: []); expect(false) } catch {}
+    }
+    expect(try almanacDraft("A useful **explanation** with $x^2$ and no source claim.").pageBody(evidence: []).contains("explanation"))
     for text in ["", "Not JSON", "{}"] { do { _ = try AlmanacDraft.parse(text); expect(false) } catch {} }
     for draft in [try almanacDraft("Fake https://invented.invalid"), try almanacDraft(needsSource: true), try almanacDraft(basis: "search_summaries")] {
         do { _ = try draft.pageBody(evidence: []); expect(false) } catch {}

@@ -45,7 +45,7 @@ final class AlmanacPreparation: ObservableObject {
         guard !closed else { return }
         store.reload()
         if let run, !store.almanacRunIsCurrent(run) { cancel() }
-        do { try store.reconcileAlmanac(); snapshot = store.almanacSnapshot }
+        do { try store.reconcileAlmanac(); snapshot = store.almanacSnapshot; problem = nil }
         catch { problem = "Could not refresh Almanac preparation state." }
     }
     func tick(acknowledged: Bool, now: Date = Date(), calendar: Calendar = .current) {

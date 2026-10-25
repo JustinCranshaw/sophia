@@ -56,7 +56,7 @@ public enum AlmanacError: Error, LocalizedError {
         case .noThemes: return "Choose an available notebook theme or type a topic first."
         case .invalidEntry: return "Sophia did not return a complete usable Almanac entry. Nothing new was marked ready."
         case .needsSource: return "This entry needs an opened source passage. Almanac preparation can search summaries but cannot open external sources. No entry was marked ready."
-        case .uncertainSave: return "Preparation could not be fully recorded. Inspect the Almanac before retrying; an unrecorded page may remain."
+        case .uncertainSave: return "Preparation could not be fully recorded. A page may already exist. Inspect the Almanac and reopen this notebook before retrying; an exact recorded save can be reconciled without replacing your edits."
         }
     }
 }
@@ -114,6 +114,10 @@ extension NotebookStore {
         try locked {
             guard (0..<1440).contains(settings.automaticMinute), Almanac.state(self) != nil || (pageFiles.isEmpty && transcript.isEmpty && learning.isEmpty) else { throw AlmanacError.notConfigured }
             var state = Almanac.state(self) ?? AlmanacState(settings: settings)
+            if let pending = state.run, pendingAlmanacAction(pending) != nil {
+                guard let entry = recordedAlmanacEntry(pending) else { throw AlmanacError.uncertainSave }
+                state.latestEntry = entry; state.waitingEntry = entry
+            }
             state.settings = settings; state.revision = UUID().uuidString
             state.run = nil; state.problem = nil; state.phase = state.waitingEntry == nil ? .idle : .ready
             try Almanac.save(state, in: self)
@@ -126,6 +130,8 @@ extension NotebookStore {
             let original = state
             if let run = state.run, let entry = recordedAlmanacEntry(run) {
                 state.latestEntry = entry; state.waitingEntry = entry; state.phase = .ready; state.problem = nil; state.run = nil
+            } else if let run = state.run, pendingAlmanacAction(run) != nil {
+                state.phase = .failed; state.problem = AlmanacError.uncertainSave.localizedDescription
             } else if interrupted && state.phase == .preparing {
                 state.phase = .failed; state.problem = "Preparation was interrupted. Choose Retry when you are ready."; state.run = nil
             }
@@ -136,7 +142,8 @@ extension NotebookStore {
     public func reserveAlmanac(manual: Bool, acknowledged: Bool, now: Date = Date(), calendar: Calendar = .current) throws -> AlmanacReservation? {
         try locked {
             guard var state = Almanac.existingState(url: url) else { throw AlmanacError.notConfigured }
-            if let pending = state.run, let entry = recordedAlmanacEntry(pending) {
+            if let pending = state.run, pendingAlmanacAction(pending) != nil {
+                guard let entry = recordedAlmanacEntry(pending) else { throw AlmanacError.uncertainSave }
                 state.latestEntry = entry; state.waitingEntry = entry; state.phase = .ready; state.problem = nil; state.run = nil
                 try Almanac.save(state, in: self)
                 return nil // A Retry reconciles this recorded run, it does not create a duplicate.
@@ -176,9 +183,14 @@ extension NotebookStore {
             try Almanac.save(state, in: self)
         }
     }
-    private func recordedAlmanacEntry(_ run: AlmanacReservation, verifyOriginalBody: Bool = false) -> AlmanacEntry? {
+    private func pendingAlmanacAction(_ run: AlmanacReservation) -> JSONObject? {
         guard let action = transcript.last(where: { $0.str("tool") == "write_page" && $0.str("tool_use") == "almanac:" + run.id && $0["refused"] != .bool(true) && $0["recovered"] != .bool(true) }),
-              let file = action.str("file"), pageFiles.contains(file), let title = action.str("title"), let id = action.str("id"), !isUndone(id), let current = readPage(file),
+              let id = action.str("id"), !isUndone(id) else { return nil }
+        return action
+    }
+    private func recordedAlmanacEntry(_ run: AlmanacReservation, verifyOriginalBody: Bool = false) -> AlmanacEntry? {
+        guard let action = pendingAlmanacAction(run), let file = action.str("file"), pageFiles.contains(file),
+              let title = action.str("title"), let id = action.str("id"), let current = readPage(file),
               !verifyOriginalBody || action.str("hash") == pageHash(file) else { return nil }
         return .init(file: file, title: current.title.isEmpty ? title : current.title, writeID: id, runID: run.id, preparedAt: action.str("at") ?? run.startedAt)
     }
