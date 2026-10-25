@@ -35,17 +35,20 @@ public enum Prompts {
     /// The book's pages by chapter, with file names, for Sophia. With `sections`, each page's
     /// section titles follow it (used for other notebooks, so Sophia can link into a section).
     public static func pageList(_ store: NotebookStore, sections: Bool = false) -> String {
+        pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
+            sections ? store.sections(of: file).map(\.title) : []
+        }
+    }
+
+    static func pageList(chapters: [NotebookStore.Chapter], loose: [NotebookStore.Page], sectionTitles: (String) -> [String]) -> String {
         var lines: [String] = []
         func page(_ p: NotebookStore.Page, indent: String) -> [String] {
-            var out = ["\(indent)- \(p.file) — \(p.title)"]
-            if sections { out += store.sections(of: p.file).prefix(15).map { "\(indent)    § \($0.title)" } }
-            return out
+            ["\(indent)- \(p.file) — \(p.title)"] + sectionTitles(p.file).prefix(15).map { "\(indent)    § \($0)" }
         }
-        for c in store.chapters {
+        for c in chapters {
             lines.append("\(c.heading):")
             lines += c.pages.flatMap { page($0, indent: "  ") }
         }
-        let loose = store.unfiledPages
         if !loose.isEmpty {
             let indent = lines.isEmpty ? "" : "  "
             if !lines.isEmpty { lines.append("Not in a chapter:") }

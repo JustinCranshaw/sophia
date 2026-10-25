@@ -27,6 +27,17 @@ public final class LibraryStore {
         reload()
     }
 
+    private init(existingRoot root: URL, links: [JSONObject]) {
+        self.root = root
+        self.links = links
+    }
+
+    /// A tool read must not bootstrap the writable shared store.
+    public static func readExistingLinkedPage(_ page: String, in other: String, from notebook: String, root: URL) -> Result<ExistingNotebook.Page, LinkedReadError> {
+        guard let links = ExistingNotebook.existingLinks(root: root) else { return .failure(.notAllowed) }
+        return LibraryStore(existingRoot: root, links: links).readLinkedPage(page, in: other, from: notebook)
+    }
+
     public func reload() {
         about = NotebookStore.readLines(aboutURL)
         links = NotebookStore.readLines(linksURL)
@@ -142,23 +153,25 @@ public final class LibraryStore {
     public func proposeLink(from store: NotebookStore, page: String?, section fromSection: String? = nil, toNotebook: String, toPage: String,
                             toSection: String? = nil, reason: String) throws -> (saved: JSONObject?, problem: String?) {
         try locked {
-            if NotebookStore.isSeparate(store.url) { return (nil, "This notebook is kept separate, so it isn't linked to others.") }
-            let target = root.appendingPathComponent(toNotebook)
-            guard toNotebook != store.name, FileManager.default.fileExists(atPath: target.appendingPathComponent("notebook.json").path),
-                  !NotebookStore.isSeparate(target) else { return (nil, "There is no other notebook named \(toNotebook) to link to.") }
-            guard let other = try? NotebookStore(url: target), other.pageFiles.contains(toPage) else {
+            guard let local = ExistingNotebook(root: root, name: store.name), !local.isSeparate else {
+                return (nil, "This notebook is unavailable or kept separate, so it isn't linked to others.")
+            }
+            guard toNotebook != store.name, let other = ExistingNotebook(root: root, name: toNotebook), !other.isSeparate else {
+                return (nil, "There is no other available notebook named \(toNotebook) to link to.")
+            }
+            guard let targetPage = other.readPage(toPage) else {
                 return (nil, "\(toNotebook) has no page \(toPage). Use a file name from the list of other notebooks.")
             }
             if let page, !store.pageFiles.contains(page) { return (nil, "This notebook has no page \(page).") }
             // Deep links name a section by its title, as written in the page.
             var targetSection: String?
             if let t = toSection, !t.isEmpty {
-                guard let sec = other.section(t, of: toPage) else { return (nil, "\(toPage) has no section “\(t)”. Use a title from the list.") }
+                guard let sec = targetPage.section(named: t) else { return (nil, "\(toPage) has no section “\(t)”. Use a title from the list.") }
                 targetSection = sec.title
             }
             var fromSectionTitle: String?
             if let f = fromSection, !f.isEmpty {
-                guard let page, let sec = store.section(f, of: page) else { return (nil, "There's no section “\(f)” on that page here.") }
+                guard let page, let sec = local.readPage(page)?.section(named: f) else { return (nil, "There's no section “\(f)” on that page here.") }
                 fromSectionTitle = sec.title
             }
             let r = reason.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -189,24 +202,51 @@ public final class LibraryStore {
 
     public func deleteLink(_ id: String) throws { try locked { try remove(id, from: &links, at: linksURL) } }
 
-    /// Can Sophia, working in `notebook`, read `page` in `other`? Only through a confirmed link.
-    public func mayRead(_ page: String, in other: String, from notebook: String) -> Bool {
-        if NotebookStore.isSeparate(root.appendingPathComponent(other)) || NotebookStore.isSeparate(root.appendingPathComponent(notebook)) { return false }
-        return links(touching: notebook).contains { l in
-            guard !Self.isProvisional(l) else { return false }
-            let to = l["to"]?.object, from = l["from"]?.object
-            return (to?.str("notebook") == other && to?.str("page") == page) || (from?.str("notebook") == other && from?.str("page") == page)
+    public enum LinkedReadError: Error {
+        case notAllowed, unavailable
+        public var message: String {
+            switch self {
+            case .notAllowed: return "You can read another notebook only through a confirmed link, when neither notebook is kept separate."
+            case .unavailable: return "That linked notebook or page is no longer available."
+            }
         }
     }
 
-    /// The other notebooks' chapter and page titles: all Sophia sees of them.
-    public func otherNotebooks(than notebook: String) -> [(name: String, pages: String)] {
-        guard !NotebookStore.isSeparate(root.appendingPathComponent(notebook)) else { return [] }
-        return Library(root: root).notebooks.filter { $0.lastPathComponent != notebook && !NotebookStore.isSeparate($0) }.compactMap { url in
-            guard let s = try? NotebookStore(url: url) else { return nil }
-            return (s.name, Prompts.pageList(s, sections: true))
+    private func linkedNotebook(_ page: String, in other: String, from notebook: String) -> Result<ExistingNotebook, LinkedReadError> {
+        guard ExistingNotebook.validComponent(page), ExistingNotebook.validComponent(other), ExistingNotebook.validComponent(notebook) else { return .failure(.unavailable) }
+        guard links(touching: notebook).contains(where: { l in
+            guard l.str("by") == "person" else { return false }
+            return (l["to"]?["notebook"]?.string == other && l["to"]?["page"]?.string == page)
+                || (l["from"]?["notebook"]?.string == other && l["from"]?["page"]?.string == page)
+        }) else { return .failure(.notAllowed) }
+        guard let local = ExistingNotebook(root: root, name: notebook), let target = ExistingNotebook(root: root, name: other) else { return .failure(.unavailable) }
+        guard !local.isSeparate, !target.isSeparate else { return .failure(.notAllowed) }
+        guard target.pageFiles.contains(page) else { return .failure(.unavailable) }
+        return .success(target)
+    }
+
+    /// Confirmed permission and readable existing metadata, without repairing either notebook.
+    public func mayRead(_ page: String, in other: String, from notebook: String) -> Bool {
+        if case .success = linkedNotebook(page, in: other, from: notebook) { return true }
+        return false
+    }
+
+    public func readLinkedPage(_ page: String, in other: String, from notebook: String) -> Result<ExistingNotebook.Page, LinkedReadError> {
+        linkedNotebook(page, in: other, from: notebook).flatMap { target in
+            target.readPage(page).map { .success($0) } ?? .failure(.unavailable)
         }
     }
+
+    /// Only titles/section titles cross without a confirmed page link. No Library/Store initializer.
+    public func otherNotebooks(than notebook: String) -> [(name: String, pages: String)] {
+        guard let local = ExistingNotebook(root: root, name: notebook), !local.isSeparate,
+              let urls = try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else { return [] }
+        return urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }.compactMap { url in
+            guard url.lastPathComponent != notebook, let other = ExistingNotebook(root: root, name: url.lastPathComponent), !other.isSeparate else { return nil }
+            return (other.name, other.pageList(sections: true))
+        }
+    }
+
 }
 
 extension NotebookStore {

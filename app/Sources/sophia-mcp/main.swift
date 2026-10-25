@@ -34,8 +34,7 @@ if args.count == 3, args[1] == "--source-permissions" {
 let notebook = URL(fileURLWithPath: args.count > 1 ? args[1] : ".")
 let session = args.count > 2 ? args[2] : "s-0"
 let thread = args.count > 3 ? args[3] : ""
-let store = try NotebookStore(url: notebook)
-let library = LibraryStore(root: notebook.deletingLastPathComponent())
+var writableStore: NotebookStore?
 
 func send(_ obj: [String: Any]) {
     guard let data = try? JSONSerialization.data(withJSONObject: obj) else { return }
@@ -164,26 +163,27 @@ let tools: [[String: Any]] = [
 ]
 
 func readPage(_ name: String?, notebook other: String?, section: String?) -> String {
-    store.reload()
-    if let other, !other.isEmpty, other != store.name {
-        library.reload()
-        let file = (name ?? "").replacingOccurrences(of: "/", with: "")
-        guard library.mayRead(file, in: other, from: store.name),
-              let o = try? NotebookStore(url: library.root.appendingPathComponent(other)), let page = o.readPage(file) else {
-            return "You can read a page in another notebook only through a link the person has confirmed."
+    let root = notebook.deletingLastPathComponent()
+    guard let local = ExistingNotebook(root: root, name: notebook.lastPathComponent) else { return "This notebook is unavailable." }
+    if let other, !other.isEmpty, other != local.name {
+        let file = name ?? ""
+        let page: ExistingNotebook.Page
+        switch LibraryStore.readExistingLinkedPage(file, in: other, from: local.name, root: root) {
+        case .success(let found): page = found
+        case .failure(let reason): return reason.message
         }
         if let section, !section.isEmpty {
-            guard let sec = o.section(section, of: file), let text = o.sectionText(sec, of: file) else { return "That page has no section “\(section)”." }
+            guard let text = page.sectionText(named: section) else { return "That linked page has no unique current section “\(section)”." }
             return "# \(page.title)\n(from the notebook \(other); this section only)\n\n\(text)"
         }
         return "# \(page.title)\n(from the notebook \(other))\n\n\(page.body)"
     }
     guard let name, !name.isEmpty else {
-        return store.pages.isEmpty ? "The book has no pages yet." : Prompts.pageList(store)
+        return local.pageFiles.isEmpty ? "The book has no pages yet." : local.pageList()
     }
-    let file = name.replacingOccurrences(of: "/", with: "").replacingOccurrences(of: "\\", with: "")
-    guard store.pageFiles.contains(file), let page = store.readPage(file) else { return "No page named \(name). Call read_page without a file name to list the pages." }
-    if let section, !section.isEmpty, let sec = store.section(section, of: file), let text = store.sectionText(sec, of: file) {
+    let file = name
+    guard let page = local.readPage(file) else { return "No page named \(name). Call read_page without a file name to list the pages." }
+    if let section, !section.isEmpty, let text = page.sectionText(named: section) {
         return "# \(page.title)\n(this section only)\n\n\(text)"
     }
     return "# \(page.title)\n\n\(page.body)"
@@ -205,10 +205,14 @@ func refusalText(_ e: JSONObject) -> String {
 }
 
 func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
+    if name == "read_page" {
+        return readPage(a["file"] as? String, notebook: a["notebook"] as? String, section: a["section"] as? String)
+    }
     do {
+        if writableStore == nil { writableStore = try NotebookStore(url: notebook) }
+        let store = writableStore!
+        let library = LibraryStore(root: notebook.deletingLastPathComponent())
         switch name {
-        case "read_page":
-            return readPage(a["file"] as? String, notebook: a["notebook"] as? String, section: a["section"] as? String)
         case "write_page":
             let title = (a["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let content = a["content"] as? String ?? ""
