@@ -73,7 +73,7 @@ final class NotebookSession: ObservableObject {
             DispatchQueue.main.async { [weak self] in self?.pickUp() }
         }
         terminating = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.commitEdit()
+            self?.shutdown()
         }
     }
 
