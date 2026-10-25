@@ -6,18 +6,27 @@ public struct AlmanacSearchEvidence: Equatable {
     public init(id: String, input: JSON, content: JSON, metadata: JSON, isError: Bool) {
         self.id = id; self.input = input; self.content = content; self.metadata = metadata; self.isError = isError
     }
-    /// Successful returned text is distinct from a query echo or a bare tool completion.
-    public var hasReturnedText: Bool {
-        guard !isError else { return false }
-        func text(_ value: JSON) -> Bool {
-            switch value {
-            case .string(let s): return !s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            case .array(let blocks): return blocks.contains(where: text)
-            case .object(let block): return block["type"]?.string == "text" && block["text"].map(text) == true
-            default: return false
+    /// Observed CLI result objects distinguish performed searches from budget refusals.
+    private var results: [JSON] { metadata["results"]?.array ?? [] }
+    private var returnedGroups: [JSON] { results.filter { !($0["tool_use_id"]?.string?.isEmpty ?? true) && $0["content"]?.array != nil } }
+    private var performed: Bool {
+        guard !isError, case .number(let count)? = metadata["searchCount"], count >= 1 else { return false }
+        return !returnedGroups.isEmpty
+    }
+    public var candidateURLs: [String] {
+        guard performed else { return [] }
+        var urls: [String] = []
+        for group in returnedGroups {
+            for item in group["content"]?.array ?? [] {
+                guard let raw = item["url"]?.string, let url = URL(string: raw),
+                      ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host != nil, url.user == nil, url.password == nil else { continue }
+                if !urls.contains(raw) { urls.append(raw) }
             }
         }
-        return text(content)
+        return urls
+    }
+    public var hasReturnedText: Bool {
+        performed && (!candidateURLs.isEmpty || results.contains { !($0.string?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true) })
     }
 
 }
@@ -33,15 +42,24 @@ public struct AlmanacDraft: Codable {
     }
     public func pageBody(evidence: [AlmanacSearchEvidence]) throws -> String {
         guard !needsOpenedSource else { throw AlmanacError.needsSource }
+        // CommonMark link syntax is rejected before parsing: Foundation and the
+        // vendored renderer differ in Unicode reference-label matching. This bounded
+        // guard also rejects rare prose/code containing these link delimiters.
+        guard !body.contains("]("), !body.contains("]:"),
+              body.range(of: #"<[A-Za-z][A-Za-z0-9+.-]{1,31}:|<[^<>\s]+@[^<>\s]+>"#, options: .regularExpression) == nil else { throw AlmanacError.invalidEntry }
         // Parse Markdown before detecting links: encoded/reference/autolinks must
         // not become model-authored citations through the reader's decoding rules.
         let parsed: AttributedString
-        do { parsed = try AttributedString(markdown: body) }
+        do { parsed = try AttributedString(markdown: body, options: .init(interpretedSyntax: .full, failurePolicy: .throwError)) }
         catch { throw AlmanacError.invalidEntry }
         let plain = String(parsed.characters)
         let detector = try NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
-        guard !parsed.runs.contains(where: { $0.link != nil }),
-              detector.matches(in: plain, range: NSRange(plain.startIndex..., in: plain)).isEmpty else { throw AlmanacError.invalidEntry }
+        guard !parsed.runs.contains(where: { $0.link != nil || $0.imageURL != nil }),
+              !detector.matches(in: plain, range: NSRange(plain.startIndex..., in: plain)).contains(where: { match in
+                  guard let range = Range(match.range, in: plain) else { return false }
+                  let text = plain[range].lowercased()
+                  return text.contains("://") || text.hasPrefix("mailto:") || text.hasPrefix("tel:")
+              }) else { throw AlmanacError.invalidEntry }
         let successes = evidence.filter(\.hasReturnedText)
         guard basis != "search_summaries" || !successes.isEmpty else { throw AlmanacError.invalidEntry }
         var footer = "\n\n---\n### Source basis\n\n"
@@ -49,10 +67,15 @@ public struct AlmanacDraft: Codable {
             footer += "Prepared from general knowledge and interpretation. No external source was opened or independently checked for this entry."
         } else {
             footer += "WebSearch returned result text during preparation. It may contain summaries and candidate links, not opened source passages or independently verified quotations. The explanation is Sophia’s synthesis, not factual certification."
-            footer += " Candidate URLs were not inferred from an unverified result format."
+            var seen = Set<String>()
+            for raw in successes.flatMap(\.candidateURLs) where seen.insert(raw).inserted {
+                // Preserve the observed destination, escaping Markdown destination delimiters.
+                let destination = raw.replacingOccurrences(of: "<", with: "%3C").replacingOccurrences(of: ">", with: "%3E").replacingOccurrences(of: "\n", with: "%0A").replacingOccurrences(of: "\r", with: "%0D")
+                footer += "\n- [Search candidate](<\(destination)>)"
+            }
 
         }
-        if evidence.contains(where: \.isError) { footer += "\n\nSome search requests failed; no opened source passage was obtained from them." }
+        if evidence.contains(where: { !$0.hasReturnedText }) { footer += "\n\nSome search requests failed, were not performed, or returned an unrecognised result. No opened source passage was obtained from them." }
         return body + footer
     }
 }

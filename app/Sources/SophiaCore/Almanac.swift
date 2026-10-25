@@ -114,12 +114,11 @@ extension NotebookStore {
         try locked {
             guard (0..<1440).contains(settings.automaticMinute), Almanac.state(self) != nil || (pageFiles.isEmpty && transcript.isEmpty && learning.isEmpty) else { throw AlmanacError.notConfigured }
             var state = Almanac.state(self) ?? AlmanacState(settings: settings)
-            if let pending = state.run, pendingAlmanacAction(pending) != nil {
-                guard let entry = recordedAlmanacEntry(pending) else { throw AlmanacError.uncertainSave }
-                state.latestEntry = entry; state.waitingEntry = entry
-            }
+            let unresolved = state.run.map { pendingAlmanacFileExists($0) && recordedAlmanacEntry($0) == nil } ?? false
+            if let pending = state.run, let entry = recordedAlmanacEntry(pending) { state.latestEntry = entry; state.waitingEntry = entry }
             state.settings = settings; state.revision = UUID().uuidString
-            state.run = nil; state.problem = nil; state.phase = state.waitingEntry == nil ? .idle : .ready
+            if unresolved { state.problem = AlmanacError.uncertainSave.localizedDescription; state.phase = .failed }
+            else { state.run = nil; state.problem = nil; state.phase = state.waitingEntry == nil ? .idle : .ready }
             try Almanac.save(state, in: self)
         }
     }
@@ -130,7 +129,7 @@ extension NotebookStore {
             let original = state
             if let run = state.run, let entry = recordedAlmanacEntry(run) {
                 state.latestEntry = entry; state.waitingEntry = entry; state.phase = .ready; state.problem = nil; state.run = nil
-            } else if let run = state.run, pendingAlmanacAction(run) != nil {
+            } else if let run = state.run, pendingAlmanacFileExists(run) {
                 state.phase = .failed; state.problem = AlmanacError.uncertainSave.localizedDescription
             } else if interrupted && state.phase == .preparing {
                 state.phase = .failed; state.problem = "Preparation was interrupted. Choose Retry when you are ready."; state.run = nil
@@ -142,8 +141,8 @@ extension NotebookStore {
     public func reserveAlmanac(manual: Bool, acknowledged: Bool, now: Date = Date(), calendar: Calendar = .current) throws -> AlmanacReservation? {
         try locked {
             guard var state = Almanac.existingState(url: url) else { throw AlmanacError.notConfigured }
-            if let pending = state.run, pendingAlmanacAction(pending) != nil {
-                guard let entry = recordedAlmanacEntry(pending) else { throw AlmanacError.uncertainSave }
+            if let pending = state.run, pendingAlmanacFileExists(pending) {
+                guard let entry = recordedAlmanacEntry(pending) else { if manual { throw AlmanacError.uncertainSave }; return nil }
                 state.latestEntry = entry; state.waitingEntry = entry; state.phase = .ready; state.problem = nil; state.run = nil
                 try Almanac.save(state, in: self)
                 return nil // A Retry reconciles this recorded run, it does not create a duplicate.
@@ -187,6 +186,10 @@ extension NotebookStore {
         guard let action = transcript.last(where: { $0.str("tool") == "write_page" && $0.str("tool_use") == "almanac:" + run.id && $0["refused"] != .bool(true) && $0["recovered"] != .bool(true) }),
               let id = action.str("id"), !isUndone(id) else { return nil }
         return action
+    }
+    private func pendingAlmanacFileExists(_ run: AlmanacReservation) -> Bool {
+        guard let file = pendingAlmanacAction(run)?.str("file"), ExistingNotebook.validComponent(file) else { return false }
+        return FileManager.default.fileExists(atPath: pagesURL.appendingPathComponent(file).path)
     }
     private func recordedAlmanacEntry(_ run: AlmanacReservation, verifyOriginalBody: Bool = false) -> AlmanacEntry? {
         guard let action = pendingAlmanacAction(run), let file = action.str("file"), pageFiles.contains(file),

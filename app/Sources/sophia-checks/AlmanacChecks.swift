@@ -135,18 +135,30 @@ func almanacRecordedRunsReconcileWithoutDuplicatePagesOrInferredSuccess() throws
     try beforeListing.write(to: metaURL)
     partial.reload()
     do { _ = try partial.reserveAlmanac(manual: true, acknowledged: true); expect(false) } catch AlmanacError.uncertainSave {}
-    do { try partial.configureAlmanac(.init(enabled: true, topics: "Changed")); expect(false) } catch AlmanacError.uncertainSave {}
     expect(try Data(contentsOf: metaURL) == beforeListing && Data(contentsOf: pageURL) == bytes)
+    try partial.configureAlmanac(.init(enabled: false, selectedNotebooks: [], topics: "Changed"))
+    expect(partial.almanacSnapshot.settings?.enabled == false && partial.almanacSnapshot.settings?.selectedNotebooks.isEmpty == true)
+    expect(try Data(contentsOf: pageURL) == bytes)
+    expect(try partial.reserveAlmanac(manual: false, acknowledged: true) == nil)
     try partial.reconcileAlmanac(interrupted: true)
     do { _ = try partial.reserveAlmanac(manual: true, acknowledged: true); expect(false) } catch AlmanacError.uncertainSave {}
     let indexed = try NotebookStore.open(url: partial.url)
     expect(try indexed.reserveAlmanac(manual: true, acknowledged: true) == nil)
     expect(indexed.pages.count == 1 && indexed.almanacSnapshot.latestEntry?.runID == pending.id)
+    // A genuinely deleted recorded file cannot cause a permanent preparation block.
+    let (deleted, _, _) = try almanacFixture()
+    let gone = try deleted.reserveAlmanac(manual: true, acknowledged: true)!
+    let removed = try deleted.writePage(title: "Gone", content: "Removed externally", revising: nil, session: "s-1", toolUseID: "almanac:" + gone.id)
+    try FileManager.default.removeItem(at: deleted.pagesURL.appendingPathComponent(removed.str("file")!))
+    try deleted.failAlmanac(gone, message: "Controlled missing file")
+    let afterDeletion = try deleted.reserveAlmanac(manual: true, acknowledged: true)!
+    expect(afterDeletion.id != gone.id)
     let (origin, _, _) = try almanacFixture()
     _ = try origin.appendTranscript(["role": .string("person"), "session": .string("s-1"), "page": .string(""), "text": .string("Unrelated prior question, developer fixture")])
     let automatic = try origin.reserveAlmanac(manual: true, acknowledged: true)!
     let prepared = try origin.saveAlmanac(almanacDraft(), evidence: [], run: automatic, session: "s-1")
     expect(origin.creatingExchange(for: prepared.file).isEmpty)
+    expect(!Prompts.context(origin, thread: prepared.file).contains("Unrelated prior question, developer fixture"))
     let ordinary = try origin.writePage(title: "Ordinary conversation page", content: "Ordinary answer", revising: nil, session: "s-1", toolUseID: "ordinary")
     expect(!origin.creatingExchange(for: ordinary.str("file")!).isEmpty)
     expect(Almanac.entry(id: prepared.id, url: origin.url)?.writeID == prepared.writeID)
@@ -161,29 +173,31 @@ func almanacSearchEvidenceIsActualAndNeverAnOpenedPassage() throws {
     engine.onEvent = { if case .searchResult(let result) = $0 { received.append(result) } }
     engine.handle(.object(["type": .string("assistant"), "message": .object(["content": .array([.object(["type": .string("tool_use"), "id": .string("search-1"), "name": .string("WebSearch"), "input": .object(["query": .string("A real query shape")])])])])]))
     let content: JSON = .string("Provider search summary https://example.com/evidence and javascript:alert(1) and file:///private/canary and https://user:secret@example.com/private")
-    engine.handle(.object(["type": .string("user"), "message": .object(["content": .array([.object(["type": .string("tool_result"), "tool_use_id": .string("search-1"), "content": content])])]), "tool_use_result": .object(["url": .string("https://example.org/candidate")])]))
+    engine.handle(.object(["type": .string("user"), "message": .object(["content": .array([.object(["type": .string("tool_result"), "tool_use_id": .string("search-1"), "content": content])])]), "tool_use_result": .object(["query": .string("https://query.invalid"), "results": .array([.object(["tool_use_id": .string("server-result"), "content": .array([.object(["title": .string("Candidate"), "url": .string("https://example.org/candidate")]), .object(["title": .string("HTTP candidate"), "url": .string("http://example.net/result")]), .object(["title": .string("Refused credentials"), "url": .string("https://user:secret@example.com/private")])])]), .string("A returned summary mentioning nature.com")]), "searchCount": .number(1)])]))
     expect(received.count == 1 && received[0].content == content)
-    expect(received[0].hasReturnedText)
+    expect(received[0].hasReturnedText && Set(received[0].candidateURLs) == ["https://example.org/candidate", "http://example.net/result"])
     try target.recordAlmanacSearch(received[0], run: run, session: "s-1")
     try target.recordAlmanacSearch(received[0], run: run, session: "s-1")
     expect(target.transcript.filter { $0.str("purpose") == "almanac_source" }.count == 1)
     let entry = try target.saveAlmanac(almanacDraft(basis: "search_summaries"), evidence: received, run: run, session: "s-1")
     let body = target.readPage(entry.file)!.body
-    expect(body.contains("not opened source passages") && !body.contains("https://example.com/evidence") && !body.contains("javascript:") && !body.contains("user:secret"))
+    expect(body.contains("not opened source passages") && !body.contains("https://example.com/evidence") && body.contains("https://example.org/candidate") && !body.contains("query.invalid") && !body.contains("nature.com") && !body.contains("javascript:") && !body.contains("user:secret"))
     let queryOnly = AlmanacSearchEvidence(id: "empty", input: .object(["query": .string("https://query.invalid site:evil.example")]), content: .null, metadata: .object(["query": .string("https://query.invalid"), "url": .string("https://query.invalid")]), isError: false)
-    let summary = AlmanacSearchEvidence(id: "summary", input: .null, content: .array([.object(["type": .string("text"), "text": .string("An actual returned summary without a URL.")])]), metadata: .null, isError: false)
+    let summary = AlmanacSearchEvidence(id: "summary", input: .null, content: .array([.object(["type": .string("text"), "text": .string("An actual returned summary without a URL.")])]), metadata: .object(["results": .array([.object(["tool_use_id": .string("summary-only"), "content": .array([])]), .string("A returned summary with no URL")]), "searchCount": .number(1)]), isError: false)
     expect(!queryOnly.hasReturnedText && summary.hasReturnedText)
     expect(try almanacDraft(basis: "search_summaries").pageBody(evidence: [summary]).contains("WebSearch returned result text"))
     for empty in [JSON.null, .string("  "), .array([]), .array([.object(["type": .string("text"), "text": .string("")])])] {
         let result = AlmanacSearchEvidence(id: "empty", input: queryOnly.input, content: empty, metadata: queryOnly.metadata, isError: false)
         do { _ = try almanacDraft(basis: "search_summaries").pageBody(evidence: [result]); expect(false) } catch {}
     }
-    let failed = AlmanacSearchEvidence(id: "failed", input: .null, content: summary.content, metadata: .null, isError: true)
+    let failed = AlmanacSearchEvidence(id: "failed", input: .null, content: summary.content, metadata: summary.metadata, isError: true)
     do { _ = try almanacDraft(basis: "search_summaries").pageBody(evidence: [failed]); expect(false) } catch {}
-    for linked in ["[claim][1]\n\n[1]: https\\://evil.example/x", "[claim][1]\n\n[1]: https&#58;//evil.example/x", "<name@example.com>", "https&#58;//evil.example/x", "https\\://evil.example/x"] {
+    for linked in ["[claim][1]\n\n[1]: https\\://evil.example/x", "[claim][1]\n\n[1]: https&#58;//evil.example/x", "<name@example.com>", "https&#58;//evil.example/x", "https\\://evil.example/x", "[label][a\u{00a0}b]\n\n[a b]: https\\://evil.example/x", "[label][ı]\n\n[I]: https://evil.example/x", "[inline](<https://evil.example>)", "<tel:12345>"] {
         do { _ = try almanacDraft(linked).pageBody(evidence: []); expect(false) } catch {}
     }
-    expect(try almanacDraft("A useful **explanation** with $x^2$ and no source claim.").pageBody(evidence: []).contains("explanation"))
+    expect(try almanacDraft("A useful **explanation** with $x^2$, ASP.NET, [0,1] (closed), and no source claim.").pageBody(evidence: []).contains("explanation"))
+    let budget = AlmanacSearchEvidence(id: "budget", input: .null, content: .string("A synthetic not-performed response"), metadata: .object(["query": .string("https://query.invalid"), "results": .array([.string("A synthetic budget refusal")]), "searchCount": .number(0)]), isError: false)
+    do { _ = try almanacDraft(basis: "search_summaries").pageBody(evidence: [budget]); expect(false) } catch {}
     for text in ["", "Not JSON", "{}"] { do { _ = try AlmanacDraft.parse(text); expect(false) } catch {} }
     for draft in [try almanacDraft("Fake https://invented.invalid"), try almanacDraft(needsSource: true), try almanacDraft(basis: "search_summaries")] {
         do { _ = try draft.pageBody(evidence: []); expect(false) } catch {}
@@ -210,7 +224,7 @@ func almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes() throws {
     for line in sys.stdin:
         with inputs.open('a') as f: f.write(line)
         print(json.dumps({'type':'assistant','message':{'content':[{'type':'tool_use','id':'controlled-search','name':'WebSearch','input':{'query':'geometry example'}}]}}),flush=True)
-        print(json.dumps({'type':'user','message':{'content':[{'type':'tool_result','tool_use_id':'controlled-search','content':'Summary candidate https://example.com/geometry'}]}}),flush=True)
+        print(json.dumps({'type':'user','message':{'content':[{'type':'tool_result','tool_use_id':'controlled-search','content':'Summary candidate https://example.com/geometry'}]},'tool_use_result':{'query':'geometry example','results':[{'tool_use_id':'server-controlled','content':[{'title':'Controlled candidate','url':'https://example.com/geometry'}]},'A synthetic returned summary'],'searchCount':1,'durationSeconds':0}}),flush=True)
         draft = {'title':'Controlled geometry entry','body':'A synthetic fixture explanation, not provider evidence.','basis':'search_summaries','needsOpenedSource':False}
         print(json.dumps({'type':'assistant','message':{'content':[{'type':'text','text':json.dumps(draft)}]}}),flush=True)
         print(json.dumps({'type':'result','is_error':False}),flush=True)
