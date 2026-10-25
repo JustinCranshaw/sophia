@@ -233,7 +233,7 @@ The book and the conversation are separate surfaces. Before a notebook has a pag
 
 **Reading history.** Date separators and loading older messages are reading affordances only; they never fold anything or start a new conversation. Only a fresh start folds history. A link to an older exchange reveals it and offers a way back. An empty conversation shows a plain composer for its page; nothing describes what Sophia has.
 
-Preserve focus, selection/copy, scroll position, and return to writing. Test long streamed mathematics, accessibility, page writes and undo, failures, and restoration on the actual Mac interface.
+Preserve focus, selection/copy, scroll position, and return to writing. Conversation following is local: follow at the end, retain the person’s position above it, and offer an explicit jump for new current-thread activity. Test long streamed mathematics, accessibility, page writes and undo, failures, and restoration on the actual Mac interface.
 
 Generated HTML/JavaScript can be proposed without executing it. Before running it, prove the viewer has no credentials, general desktop bridge, host file access, or unrestricted network access. Supply only explicit data and retain experiment parameters when accepted. Check a small graph experiment against a known example before relying on its output.
 
