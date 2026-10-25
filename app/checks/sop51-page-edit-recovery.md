@@ -44,3 +44,9 @@ These first component checks were run before SOP50 integration; the unchanged re
 - Source decisions and recovery together: `/private/tmp/sophia-sop51-source-layout-ui/results/1792934552560716000-2b66ed.png`.
 
 Images were inspected at original resolution. Exact copy/state evidence is separate from visual inspection. No durable recovery, human comprehension, real-provider reliability or billing/commercial claim. Parent SOP7 remains open for the separate malformed-checkpoint feedback audit.
+
+## Independent label fix
+
+The Opus5.5 review found that the internal zero-based range key (`§1`) was being presented for the second section, whose editor strip says `§2`. Recovery now uses the actual human label plus heading (`§2 · Second section`), retaining the special whole-page/opening labels. The focused check constructs a real page/edit range and verifies internal key versus one-based label and heading before retaining it. All98 checks and app/MCP build pass on the fixed sources (`/tmp/sophia-sop51-label-checks.log`, `/tmp/sophia-sop51-label-build.log`).
+
+A section-specific native edit was not reached: the HTML Edit affordance was absent from the harness accessibility tree, and bounded hover/click/Tab attempts did not open an editor. No more driver attempts or expansion. `/tmp/sophia-sop51-section-native-limit.json` confirms no open edit marker and page bytes still match the setup write. This does not claim native execution of the corrected section-label branch; the earlier native whole-page/repeated-recovery/copy proof remains separate. The source mapping, actual Core range check and compiled view verify the narrow label fix. The preexisting possibility of a newly failed edit being discovered only during notebook/session closure remains outside this transient recovery slice; no durable or unseen-close recovery claim is made.

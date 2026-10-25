@@ -455,7 +455,7 @@ final class NotebookSession: ObservableObject {
                 // The range is gone from the page (undone, or the page removed). Nothing is discarded:
                 // the person's text stays here, selectable, to put back where they want it.
                 endEditing()
-                editRecovery.keep(file: e.file, title: e.title, section: base.key, text: t)
+                editRecovery.keep(file: e.file, title: e.title, section: base.index == nil ? base.section : "\(base.label) · \(base.section)", text: t)
             case .conflict(let current?):
                 e.conflict = current
                 editDraft = t
