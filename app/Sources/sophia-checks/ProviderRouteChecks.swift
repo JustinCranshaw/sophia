@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 @testable import SophiaCore
 
 /// Disposable fake CLI: status and stream-json protocols only, never an actual provider.
@@ -123,7 +124,11 @@ func providerRouteGuardAllowsOnceWithIdenticalProcessContext() throws {
     let events = f.records(f.events)
     expect(events.map { $0.str("mode") } == ["status", "inference"])
     expect(Set(events.compactMap { $0.str("cwd") }).count == 1)
-    expect(events.allSatisfy { $0.str("cwd") == f.store.url.resolvingSymlinksInPath().path && $0["restricted"] == .bool(true) && $0["emptySources"] == .bool(true) && $0["webFetchAsk"] == .bool(true) && $0["credentialEnvironmentPresent"] == .bool(false) && $0["appEnvironmentPresent"] == .bool(false) })
+    // Darwin getcwd exposes /private/var while Foundation can retain the /var alias.
+    var expectedDirectory = stat(), actualDirectory = stat()
+    expect(stat(f.store.url.path, &expectedDirectory) == 0 && stat(events[0].str("cwd")!, &actualDirectory) == 0)
+    expect(expectedDirectory.st_dev == actualDirectory.st_dev && expectedDirectory.st_ino == actualDirectory.st_ino)
+    expect(events.allSatisfy { $0["restricted"] == .bool(true) && $0["emptySources"] == .bool(true) && $0["webFetchAsk"] == .bool(true) && $0["credentialEnvironmentPresent"] == .bool(false) && $0["appEnvironmentPresent"] == .bool(false) })
     expect(events[0]["contextSeen"] == .bool(false) && events[1]["contextSeen"] == .bool(true))
     e.cancel(); routeSettle(0.1)
     expect(!FileManager.default.fileExists(atPath: permissions.directory.path))
@@ -198,4 +203,29 @@ func providerRouteGuardDoesNotStrandBufferedRequestFailure() throws {
     expect(!e.isRunning && f.records(f.events).filter { $0.str("mode") == "status" }.count == 2)
     expect(f.records(f.inputs).count == 1 && f.records(f.inputs)[0]["message"]?["content"] == .string("First queued payload"))
     e.cancel(); routeSettle(0.1)
+}
+
+func providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages() throws {
+    let f = try RouteFixture(), e = f.engine()
+    let original = "Your unsaved page edit:\n\nRECOVERY_KEEP_48: e\u{301} 📝\n"
+    var problem: String? = original
+    var failed = false
+    try f.configure(["status": .object(["loggedIn": .bool(false)])])
+    e.onEvent = { event in
+        if case .routeBlocked(let status) = event {
+            problem = ClaudeEngine.routeFailureMessage(status, retaining: problem)
+            failed = true
+        }
+    }
+    try e.start(); e.send("Withheld recovery fixture request")
+    routeWait(until: { failed })
+    let once = problem!
+    expect(Data(once.utf8).prefix(original.utf8.count) == Data(original.utf8))
+    expect(once.contains("This request was not sent.") && f.records(f.inputs).isEmpty)
+    expect(ClaudeEngine.routeFailureMessage(.signedOut, retaining: once) == once)
+    let different = ClaudeEngine.routeFailureMessage(.unknown, retaining: once)
+    expect(Data(different.utf8).prefix(original.utf8.count) == Data(original.utf8))
+    expect(ClaudeEngine.routeFailureMessage(.signedOut, retaining: different) == different)
+    expect(ClaudeEngine.routeFailureMessage(.unknown, retaining: different) == different)
+    e.cancel()
 }

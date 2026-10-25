@@ -66,6 +66,15 @@ public final class ClaudeEngine {
         processConfiguration = ClaudeStatusConfiguration(executable: config.claudePath, directory: config.notebookURL, settings: settings)
     }
 
+    /// A connection failure must not overwrite the only copy of a page-edit recovery draft.
+    public static func routeFailureMessage(_ status: ClaudeReadiness, retaining prior: String?) -> String {
+        let message = status == .signedOut
+            ? "Sign in to Claude Code with your claude.ai account, then choose Retry. This request was not sent."
+            : "Sophia couldn't verify the intended claude.ai connection. Check Connection & Data, then choose Retry. This request was not sent."
+        guard let prior else { return message }
+        return prior.contains(message) ? prior : prior + "\n\n" + message
+    }
+
     /// Credentials and alternate routes that must never reach the child process,
     /// so usage can't silently move from the subscription to separately billed API usage.
     static let droppedEnvironment = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",

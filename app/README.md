@@ -5,7 +5,7 @@ A native SwiftUI app. Sophia runs on the person's own Claude Code installation: 
 ## Requirements
 
 - macOS 14 or later, and the Xcode Command Line Tools (Swift 6.2). Full Xcode is not required to build.
-- Claude Code installed and signed in: run `claude` once in Terminal. The app looks for the official binary at `~/.local/bin/claude` (or `SOPHIA_CLAUDE`), not a wrapper on PATH. If Claude Code reports an API key instead of a subscription login, the app stops rather than bill separately.
+- Claude Code installed and signed in: run `claude` once in Terminal. The app looks for the official binary at `~/.local/bin/claude` (or `SOPHIA_CLAUDE`), not a wrapper on PATH. Before each ordinary or internal request, the app runs a bounded local auth-status check in the notebook’s effective process context and permits only claude.ai / firstParty with no API-key source. Unverified, signed-out, alternate-provider and failed checks withhold the request before inference starts; runtime API-source checking remains in place. This is point-in-time route evidence, not independent billing proof or commercial permission.
 
 ## Build and run
 

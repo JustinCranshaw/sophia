@@ -193,9 +193,7 @@ final class NotebookSession: ObservableObject {
             engine = nil; isResponding = false; streaming = ""; activity = nil
             if internalRequest { finishRequest(failed: true) }
             else {
-                problem = status == .signedOut
-                    ? "Sign in to Claude Code with your claude.ai account, then choose Retry. This request was not sent."
-                    : "Sophia couldn't verify the intended claude.ai connection. Check Connection & Data, then choose Retry. This request was not sent."
+                problem = ClaudeEngine.routeFailureMessage(status, retaining: problem)
                 running = nil; dispatchNext()
             }
             changed()
