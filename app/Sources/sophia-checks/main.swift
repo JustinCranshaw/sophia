@@ -1016,7 +1016,7 @@ func scenario10IntentionalEngineExit() throws {
     let s = try tempStore()
     let fixture = s.url.appendingPathComponent("exit-fixture")
     let launched = s.url.appendingPathComponent("launched")
-    let script = "#!/bin/sh\ncase \" $* \" in *\" auth status \"*) printf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'; exit 0;; esac\nread -r line\nprintf launched > '" + launched.path + "'\nsleep 0.2\nexit 0\n"
+    let script = "#!/bin/sh\ncase \" $* \" in *\" auth status \"*) printf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'; exit 0;; esac\nread -r line\nprintf launched > '" + launched.path + "'\nsleep 1\nexit 0\n"
 
     try script.write(to: fixture, atomically: true, encoding: .utf8)
     try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: fixture.path)

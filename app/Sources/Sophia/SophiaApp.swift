@@ -45,9 +45,9 @@ final class AppModel: ObservableObject {
         if open?.store.url != url {
             // A page/Open action counts as choosing the book; an untouched empty default does not.
             if let current = open, current.bookShown { bookVisibility[current.store.url.path] = true }
-            open?.shutdown()
             do {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged)
+                open?.shutdown()
                 next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
                 open = next
             } catch { problem = error.localizedDescription; return }

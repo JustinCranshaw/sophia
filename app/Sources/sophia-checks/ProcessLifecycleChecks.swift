@@ -46,7 +46,7 @@ func ownedProcessCleanupPreservesGraceAndStopsKnownChildren() throws {
             expect(lifecycleWait { !p.isRunning && child?.alive != true })
             try input.fileHandleForWriting.close()
         } else {
-            owned?.stop(grace: 0.1)
+            owned?.stop(grace: mode == "graceful" ? 3 : 0.1)
             owned = nil // Session/engine may disappear before the cleanup deadline.
             try input.fileHandleForWriting.close()
             expect(lifecycleWait { !p.isRunning && child?.alive != true })
@@ -68,6 +68,7 @@ func ownedProcessSignalsRequireMatchingBirthIdentity() throws {
     guard let real = OwnedClaudeProcess.Identity.read(p.processIdentifier) else { expect(false); return }
     let stale = OwnedClaudeProcess.Identity(pid: real.pid, started: real.started + 1, microseconds: real.microseconds, uid: real.uid)
     stale.signal(SIGTERM)
+    _ = lifecycleWait(0.3) { false } // Allow a wrongly delivered SIGTERM to take effect.
     expect(real.alive && p.isRunning)
 }
 
@@ -78,10 +79,10 @@ func pendingStatusQuitCannotLaunchOrLeaveItsOwnedProcess() throws {
     let marker = fixture.url.appendingPathComponent("status-started"), inference = fixture.url.appendingPathComponent("inference-launched")
     try """
     #!/usr/bin/python3 -I
-    import sys,time,signal
+    import sys,time,signal,os
     from pathlib import Path
     if 'auth' in sys.argv:
-        Path(\(JSON.string(marker.path).line)).write_text('started')
+        Path(\(JSON.string(marker.path).line)).write_text(str(os.getpid()))
         signal.signal(signal.SIGTERM,signal.SIG_IGN)
         time.sleep(30)
         print('{"loggedIn":true,"authMethod":"claude.ai","apiProvider":"firstParty"}')
@@ -92,10 +93,15 @@ func pendingStatusQuitCannotLaunchOrLeaveItsOwnedProcess() throws {
     let e = ClaudeEngine(config: .init(claudePath: executable.path, toolServerPath: "/unused", notebookURL: store.url, systemPrompt: "PRIVATE_CONTEXT", context: "PRIVATE_CONTEXT", session: "s-1"))
     try e.start(); e.send("PRIVATE_QUESTION")
     expect(lifecycleWait { FileManager.default.fileExists(atPath: marker.path) })
+    let pid = pid_t(try String(contentsOf: marker, encoding: .utf8))
+    guard let pid, let identity = OwnedClaudeProcess.Identity.read(pid) else { expect(false); e.stop(); return }
+    defer { identity.signal(SIGKILL) }
+    let began = Date()
     e.stop()
     var finished = false
     OwnedClaudeProcess.finishForApplicationTermination { finished = true }
     expect(lifecycleWait(5.5) { finished })
+    expect(!identity.alive && Date().timeIntervalSince(began) < 4.8)
     expect(!FileManager.default.fileExists(atPath: inference.path))
     let denied = Process(); denied.executableURL = URL(fileURLWithPath: "/bin/true")
     expectThrows { try OwnedClaudeProcess.launch(denied) }

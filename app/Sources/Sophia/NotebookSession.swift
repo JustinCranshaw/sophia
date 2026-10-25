@@ -371,7 +371,7 @@ final class NotebookSession: ObservableObject {
 
     /// Opens a range for editing. The store records it, so Sophia can't change it until the commit.
     func beginEdit(file: String, key: String, atVisibleTop: Bool = false) {
-        guard editing == nil else { return }
+        guard !shuttingDown, editing == nil else { return }
         do {
             guard let range = try store.beginEdit(file: file, key: key, session: session) else { return }
             editDraft = nil
