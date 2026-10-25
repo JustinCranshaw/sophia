@@ -14,7 +14,7 @@ parser.add_argument("action", choices=["launch", "inspect", "menu", "press", "se
 parser.add_argument("--id", type=int)
 parser.add_argument("--text")
 parser.add_argument("--code", type=int)
-parser.add_argument("--modifiers", nargs="*", default=[])
+parser.add_argument("--modifiers", nargs="*", default=[], choices=["command", "shift", "option"])
 parser.add_argument("--width", type=float)
 parser.add_argument("--height", type=float)
 parser.add_argument("--x", type=float)
