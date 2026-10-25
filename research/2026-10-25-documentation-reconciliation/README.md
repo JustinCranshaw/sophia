@@ -1,0 +1,16 @@
+# Documentation reconciliation — SOP2
+
+This change reconciles current native direction with historical design material. It changes AGENTS, PLAN, DATA-MODEL, EDITING, app README and visible mock text. SOPHIA.md is audited but unchanged: it is the effective runtime prompt. No product source, persistence, dependency, locked asset, mock script or stylesheet changes are intended.
+
+Observed during this documentation pass, initially on main `1b106283e7160b2fd0e7498f650674240d0bc619` plus the documentation diff:
+
+- Source inspection checked actual ordinary MCP handlers, direct writes/previous versions/provisional goals, runtime context/return boundaries and the app's available controls. Proposed fresh-start, folded-history, sticky Continue-on and selection-to-question surfaces are labeled as design instead of shipped behavior.
+- Full `LiveRun.swift` inspection found nine requests on the normal successful path, and a tenth if the proposed cross-notebook link is confirmed/read. The README no longer calls this roughly four short turns. No live command was run to audit documentation.
+- Swift package products, executable packaging script and actual command flags were checked from source. Reader versions match `app/reader/assets.lock.json`; all packages and integrity pins remain unchanged. The source has no ACP/SDK app dependency. Historical CLI 2.1.299 observations remain separate from recorded CLI 2.1.304/model results in the package report.
+- Local Markdown link targets and mock fragment anchors resolve. [Initial audit](initial-audit.json) records the base and exact HTML hash, locked versions and unchanged inline scripts/styles/prompt. Final inherited behavior copy is checked again before freezing after the pending lifecycle/recovery work.
+
+The mock was actually rendered at 1280×1000 using a temporary WKWebView caller (`/tmp/sophia-docs-render/render.swift`), nonpersistent website data, a content rule blocking HTTP(S), and an unshown window with activation prohibited. No keyboard/mouse event or app GUI input was used; no external font/provider request was allowed. This is an HTML mock render, not native product/reader verification.
+
+[Current-direction overview](overview-final.png) and [historical Accept exploration](historical-first-final.png) were inspected at original resolution. The first render showed the added per-screen warning could sit behind the existing sticky bar, so the text was revised: the sticky header now explicitly labels all interactive mock screens historical, and the existing Try it row repeats that label. The actual Accept buttons, state attributes, scripts and CSS retain their historical behavior. They were not renamed Saved to imply a current native action.
+
+Existing engineering/reader/native reports remain attributed to their own sources and observations. This docs pass does not establish new provider behavior, billing/commercial eligibility, clean-Mac support, native packaged-release interaction, human preference, physical practice or delayed retention. No broad builds or new test framework were run for documentation-only changes. Final freeze/review remains pending the approved lifecycle and transient edit-recovery wording.

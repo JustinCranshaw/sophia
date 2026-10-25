@@ -1,17 +1,33 @@
 # Sophia personal research and learning notebook plan
 
-Status: Product launch scope proposed; implementation and evidence reconciled  
-Updated: October 14, 2026  
+Status: Native prototype implemented; paid launch and remaining validation proposed
+Updated: October 25, 2026
 Initial user and platform: Justin on macOS  
-Implementation: A native Mac prototype and a Claude headless spike exist. This planning pass inspected their source and recorded results; it did not rerun the app or live checks.
+Implementation: SwiftUI/AppKit, the local Markdown/math/music reader and editor, local stores, and the official Claude CLI with stdio MCP exist. This documentation reconciliation inspects code and previously recorded observations; it does not rerun provider or native checks.
 
 Sophia is your wise teacher, Socratic thought partner, and research assistant. It helps you investigate questions, develop understanding, and think clearly. A personal notebook emerges from the conversation as you and Sophia negotiate what is useful to preserve.
 
 The next milestone is a small paid local Mac release that tests repeat usefulness and willingness to pay. Keep notebook storage and orchestration on the Mac, use the person's own provider account, and defer Sophia-operated sync and inference. The exact provider access route must be established before selling that integration; successful local authentication does not resolve distribution rights.
 
-## Launch scope — October 14, 2026
+## Current implementation and evidence — October 25, 2026
 
-This section records the latest product direction and governs the next work. The original ACP/HTTP experiment below remains a fallback investigation, rather than a prerequisite to rebuild before using the existing native prototype. Current page behavior is direct writes with undo, as defined in SOPHIA.md and DATA-MODEL.md.
+The current implementation is in [app/](app/README.md). It launches the installed official Claude Code directly, without an ACP adapter, Agent SDK or HTTP proposal server. Ordinary native conversations expose WebSearch, permission-gated WebFetch and nine scoped notebook handlers: `read_page`, `write_page`, `set_chapter`, `set_goal`, `note`, `set_memory`, `recall`, `about_you`, and `link`. Internal checkpoint/briefing requests and CLI probes have narrower capabilities. The first-use disclosure and per-request local route guard are implemented; neither proves independent billing attribution or commercial eligibility.
+
+Pages are saved/revised directly, with recorded authored actions and one previous version for durable one-way Undo. Goals recorded by Sophia are provisional until the person confirms. The person can edit a section, and store checks protect those lines. Unknown-provenance disk changes are preserved for inspection, not inferred to be Sophia's undoable writes. Chapters remain optional. Entry carries a question, interest or material into an unsent draft; there is no required page-creation sequence, intake questionnaire or universal canvas.
+
+| Recorded evidence | What was actually observed | Limits |
+|---|---|---|
+| [Original headless spike](spikes/claude-headless/README.md) | Real model tool delivery/resume with Claude Code 2.1.299 and Node 26.0.0 | Historical spike, not the current release configuration |
+| [Entry comparison](research/2026-10-25-entry-charrette/README.md) | Native question/material carriage, drafts and responsive book layouts, with explicit source epochs | Internal/synthetic comparison, not human preference or delayed retention |
+| [Conversation following](research/2026-10-25-conversation-follow/README.md) | Native streaming/committed reader continuity and deliberate reading position | Recorded scenarios, not universal scroll correctness |
+| [Local package/reader/Core/MCP report](research/2026-10-25-packaged-release/README.md) | Targeted ad-hoc release packaging, actual release reader checks, and a bounded three-turn release-Core/MCP CLI sequence with actual handled reads, provisional goal, create/revise and exact previous bytes; official CLI 2.1.304, runtime claude-fable-5-1 | CLI caller has no native source bridge; current packaged native Send/edit/Undo, clean Mac, human usefulness and billing remain unproven |
+| [Native source-opening report](https://github.com/JustinCranshaw/sophia/pull/12) | Explicit URL approval/denial and actual provider-extracted content, separately attributed to debug-app source epochs | Extraction is potentially lossy; undirected discovery failures remain recorded and parent research acceptance is incomplete |
+
+A check executable's existence is source evidence, not a passing run. Follow each report's source/version, synthetic-vs-actual attribution and limits. New checks belong to the active issue. The paid offer, genuine delayed return, clean-Mac/release interaction, provider commercial route and customer demand below remain open; technical success does not close them.
+
+## Launch scope — founder proposals from October 14, 2026
+
+This section records the proposed paid-release scope, rather than claiming those launch conditions are met. The original ACP/HTTP experiment below remains a fallback investigation, rather than a prerequisite to rebuild before using the existing native prototype. Current page behavior is direct writes with undo, as defined in SOPHIA.md and DATA-MODEL.md.
 
 ### Who and what to validate
 
@@ -23,7 +39,7 @@ Test three assumptions separately: people get value beyond an ordinary chat; the
 
 - One Mac, one person, local notebook files, and one supported provider route. No Sophia account is required to use the notebook.
 - Create and reopen notebooks; converse beside the book; write and revise sourced Markdown/math pages through conversation; undo a write; inspect, correct, and remove Sophia's notes; confirm provisional goals; return with a grounded briefing.
-- Edit a page section directly, with Sophia unable to overwrite the edit unless the person lets her ([EDITING.md](EDITING.md), Phase 1; being built now).
+- Edit a page section directly, with Sophia unable to overwrite the edit unless the person lets her ([EDITING.md](EDITING.md), Phase 1; implemented, with remaining native/manual checks identified there).
 - Keep chapters optional. Do not hold launch for automated chapter organization, guided reading, document ingestion, semantic search, or executable artifacts.
 - Setup identifies the supported provider installation, sign-in, and billing route. Explain limits, expired login, cancellation, offline state, and recovery. Provider usage is billed directly to the person; never silently change the billing route.
 - Local means storage and orchestration, not offline AI. Prompts and relevant notebook context go to the chosen provider, and research may contact the web. State this before the first request. Existing pages remain readable without a working provider connection.
@@ -34,7 +50,7 @@ Proposed offer, owned by Justin: a one-time purchase for the current major versi
 
 ### Provider decision before committing to onboarding
 
-Prefer the existing Claude subscription route only if its exact paid-app arrangement is established as permitted. Anthropic's current [legal page](https://code.claude.com/docs/en/legal-and-compliance) both describes end-user sign-in to an unmodified Claude Code binary and restricts third-party apps routing subscription requests; the [SDK overview](https://code.claude.com/docs/en/agent-sdk/overview) also requires prior approval for third-party subscription access. Rechecked October 14, 2026. These sources do not establish Sophia's eligibility.
+Prefer the existing Claude subscription route only if its exact paid-app arrangement is established as permitted. The October 14 planning assessment cited Anthropic's [legal page](https://code.claude.com/docs/en/legal-and-compliance) both describes end-user sign-in to an unmodified Claude Code binary and restricts third-party apps routing subscription requests; the [SDK overview](https://code.claude.com/docs/en/agent-sdk/overview) also requires prior approval for third-party subscription access. That assessment was dated October 14, 2026; this documentation pass does not re-establish current commercial terms. Sophia's eligibility remains unproven.
 
 If subscription access is unavailable, a user-supplied API key remains compatible with local storage and no Sophia inference backend. This is an explicit product choice for Justin, not an authorized fallback. Decide whether its onboarding and separate usage charges still fit the initial audience. If chosen, implement and verify only that route, including secure credential handling and billing disclosure. Do not build both routes preemptively. No provider messages are authorized by this plan.
 
@@ -57,9 +73,9 @@ If subscription access is unavailable, a user-supplied API key remains compatibl
 
 Triggers open a discovery decision; they do not automatically authorize a build. Sync must account for conflicts, recovery, privacy, and migrations when needed. Managed inference must account for payment, metering, abuse, support, and margin when needed. No sync schema, account database, billing ledger, job queue, or backend platform is part of launch.
 
-### Current evidence and next-work groups
+### Evidence and next-work groups
 
-Source inspection confirms SwiftUI code, local notebook/store checks, a subprocess-based Claude engine, stdio notebook tools, and a bundled Markdown/math reader. The spike README records a real model tool call and resume with Claude Code 2.1.299 / Node 26.0.0. Its billing attribution is inconclusive; delayed return, clean-Mac distribution, and paid demand remain unproven. The app README's reader and tool descriptions also need reconciliation with current code. Do not count an existing check executable as a passing check.
+Use the current implementation/evidence section above for actual observations and their limits. The original spike version is historical; later runs record their exact launched CLI and model separately. Billing attribution, genuine delayed return, clean-Mac distribution and paid demand remain unproven.
 
 Organize next work into four projects: **Access and companion validation**, **Reliable local Mac beta**, **Paid launch and demand validation**, and **Later infrastructure — discovery only**. Keep the last project in backlog; sequence implementation around the first three. Each issue needs a concrete completion observation. Do not create duplicate feature-building issues for behavior already present in the prototype.
 
@@ -71,10 +87,10 @@ The user's latest instructions take precedence over earlier proposals:
 - Sophia combines teaching, thoughtful dialogue, and research. It should not turn every conversation into a lesson or examination.
 - Organize a Library into Notebooks, optional Chapters, and Pages. Structure and pages develop through conversation.
 - Each notebook is an emergent textbook. The person guides each step, and the book grows to their needs rather than following a curriculum Sophia generates in advance.
-- Each notebook has Goals: what the person wants from it, in their words, with what reaching each goal would look like. Progress is shown as evidence from actual attempts and accepted pages, never as a score. Sophia may propose a goal or a refinement; the person accepts it and alone marks a goal met.
+- Each notebook has Goals: what the person wants from it, in their words, with what reaching each goal would look like. Progress is shown as evidence from actual attempts and current pages, never as a score. Sophia records a provisional goal or refinement; the person confirms it and alone marks a goal met or dropped.
 - What becomes a durable page is a negotiation between the person and Sophia. The person can also edit a page directly, a section at a time; the store keeps Sophia from overwriting those edits ([EDITING.md](EDITING.md)).
 - Questions flow both ways. Sophia can challenge reasoning and examine understanding when useful, while the person directs the inquiry and challenges Sophia.
-- Use Claude Code and/or Codex as the engine. Prefer existing user subscriptions where supported and permitted; API billing is an explicit alternative, not a silent fallback.
+- The current engine is the official Claude CLI. Codex remains a deferred alternative; subscription access must be supported and permitted, and API billing is an explicit product decision, never a silent fallback.
 - Preserve the longer-term goal of a consistent Sophia experience across engines. Prove usefulness on one engine before investing in parity.
 
 The initial interests are LLM architectures, graph clustering, linear algebra, United States history, and scientifically grounded parenting for children almost three and five as of this plan. Justin has a PhD in computer science and wants to refresh technical knowledge, particularly to develop expertise in graph clustering. These interests exercise one product rather than define separate application modes.
@@ -97,7 +113,7 @@ These behaviors can coexist within one exchange. A direct question may deserve a
 
 When learning is the goal, Sophia can ask the person to predict, explain, derive, compare, or apply an idea to a changed example. Reading a page or agreeing with Sophia does not demonstrate understanding. Retain actual attempts separately from the agent's tentative assessment. Do not create a permanent ability score or assess the person in conversations that do not call for it.
 
-[SOPHIA.md](SOPHIA.md) is the initial explicit instruction artifact. It defines the companion's judgment, teaching, research, negotiation, tool boundaries, and return behavior. The first experiment must test its effective delivery and usefulness, not just the agent connection.
+[SOPHIA.md](SOPHIA.md) is the effective runtime instruction artifact. It defines the companion's judgment, teaching, research, negotiation, tool boundaries, and return behavior. Changes to it need behavior verification; documentation-only work must not silently change the effective prompt.
 
 ### A first inquiry
 
@@ -109,26 +125,26 @@ On return, Sophia gives a brief account grounded in saved evidence: the open que
 
 The product hypothesis is that this companionship improves inquiry and makes returning useful. Its deciding observation is a delayed return: can Justin recover context without rereading the whole chat and make meaningful progress, whether through explanation, a fresh example, or a better-supported argument?
 
-## 3. The next experiment
+## 3. Historical ACP/HTTP experiment design (not the current launch prerequisite)
 
 Historical experiment design: the prototype now uses the unmodified Claude CLI and stdio MCP directly (see app/README.md and spikes/claude-headless/README.md). Retain the pinned ACP alternatives below if the direct route has a demonstrated failure. An HTTP proposal experiment is not a remaining launch requirement; test actual `write_page` delivery and undo on the selected route.
 
-### What has already been established
+### October 2026 review-reported connection observations
 
 The supplied independent review reports successful no-prompt checks on this Mac: Claude authentication as `claude.ai`, Codex authentication as ChatGPT with a Pro plan, App Server `initialize`/`account/read`, and `initialize` plus `session/new` with both current adapter packages. These supersede the earlier restricted-environment failures for connection feasibility. They do not establish request billing, model-visible tools, companion quality, or commercial permission.
 
 | Component | Pinned baseline | Status |
 |---|---|---|
 | Initial Claude adapter | `@agentclientprotocol/claude-agent-acp@0.90.0` | Reviewer reports clean session creation |
-| Installed Claude Code | `2.1.299` | Version independently rechecked during this revision |
+| Installed Claude Code | `2.1.299` | Recorded during the historical planning revision |
 | Deferred Codex adapter | `@agentclientprotocol/codex-acp@2.2.2` | Reviewer reports clean session creation |
-| Installed Codex CLI | `0.162.1` | Version independently rechecked during this revision |
+| Installed Codex CLI | `0.162.1` | Recorded during the historical planning revision |
 
 Do not use deprecated `@zed-industries/codex-acp@0.16.0`. Pin published packages and retain the lockfile. Record the actual Node, adapter, SDK, and launched engine versions; a bundled binary may differ from the globally installed CLI. Adapter/package session results above are attributed to the review, not independently rerun here.
 
 ### Thin client and effective configuration
 
-Use a disposable Node command-line ACP client before building SwiftUI or a custom terminal interpreter. Run one 20–30 minute graph-clustering inquiry. Use a disposable notebook and a harmless canary file outside it.
+The historical proposal was a disposable Node command-line ACP client before native work; it is not the current implementation sequence. Run one 20–30 minute graph-clustering inquiry. Use a disposable notebook and a harmless canary file outside it.
 
 Supply these candidate SDK options through the pinned adapter's `_meta.claudeCode.options` support, then verify their effect:
 
@@ -149,9 +165,9 @@ The first model-backed test must actually invoke `propose_page` and reach the cl
 
 HTTP is a hypothesis to test, not a demonstrated fix. Claude issue #883 reports missing stdio MCP tools on 0.59.0 through 0.70.0; it does not establish failure on 0.90.0. Both adapters reportedly advertised HTTP support in the review. [S9]
 
-Native source-opening extension (October 25, 2026, SOP-44): isolated official Claude Code 2.1.304 diagnostics demonstrated both denial and exact-URL approval through `--permission-prompt-tool` with product-compatible stream-JSON input, the existing subscription route, and built-in WebFetch. The provider returned extracted Example Domain content and used its own Haiku extraction model alongside the primary model; this is not raw HTML, a product-default model change, or billing/commercial authorization evidence. The native implementation under verification uses one private ephemeral per-engine permission bridge, URL-specific Allow once/Don't open decisions, and saved provider extraction evidence. Internal read-only requests and CLI probes retain their existing restrictions. The original and refined WebSearch-only native comparisons both repeated an incorrect Bard chapter lead; an isolated Opus comparison did too. These failures remain evidence, and source-comparison acceptance requires actual native permission and content results rather than this implementation or the diagnostic alone.
+Current native source opening and its actual content/denial evidence are recorded above and in PR12. They use the direct CLI, not this historical HTTP proposal configuration. CLI probes remain WebSearch-only unless supplied a native approval bridge.
 
-### Acceptance checks
+### Historical ACP/HTTP acceptance design
 
 | Check | Required observation |
 |---|---|
@@ -165,11 +181,11 @@ Native source-opening extension (October 25, 2026, SOP-44): isolated official Cl
 
 Do not count a quota of questions as evidence of quality. Include both a direct research question and a learning-directed question so the experiment can expose a heavy-handed teaching persona.
 
-If tool delivery fails, inspect the HTTP handshake and effective options. If ACP is the obstruction, try the Agent SDK directly with the same instructions, tools, and restrictions. This changes the connection, not subscription permission. If billing cannot be established, Justin decides whether to use explicit API billing for further testing or await clarification. Never silently fall back. If the companion is unhelpful, revise SOPHIA.md and try another focused exchange before native work.
+If tool delivery fails, inspect the HTTP handshake and effective options. If ACP is the obstruction, try the Agent SDK directly with the same instructions, tools, and restrictions. This changes the connection, not subscription permission. If billing cannot be established, Justin decides whether to use explicit API billing for further testing or await clarification. Never silently fall back. If the companion is unhelpful, revise SOPHIA.md and try another focused exchange before further experiments on that historical alternative.
 
 ## 4. Notebook tools, saving, and return
 
-The current MCP tools are `read_page`, `write_page`, and `set_goal`. They accept notebook-scoped identifiers or content rather than arbitrary host paths. Page writes go through the store's checks and locking, are recorded, preserve one previous version, and are undoable. Tools cannot delete pages, remove the person's records, or confirm or complete goals. Only the person confirms a goal. DATA-MODEL.md governs current record and undo behavior.
+The current ordinary MCP tools are `read_page`, `write_page`, `set_chapter`, `set_goal`, `note`, `set_memory`, `recall`, `about_you`, and `link`. They accept notebook-scoped identifiers or content rather than arbitrary host paths. Page writes go through the store's checks and locking, are recorded, preserve one previous version, and are undoable. Tools cannot delete pages, remove the person's records, or confirm or complete goals. Only the person confirms a goal. DATA-MODEL.md governs current record and undo behavior.
 
 The store must enforce this boundary independently of provider permission prompts. Review-reported Codex permission and lifecycle issues reinforce checking its behavior before adding that engine. [S10]
 
@@ -184,9 +200,9 @@ notebook/
   learning.jsonl
 ```
 
-[DATA-MODEL.md](DATA-MODEL.md) defines these files, the record shapes inside them, who may write each, and the checks the client applies. In brief: `notebook.json` holds chapters and page order; page frontmatter holds title and inspectable sources; `transcript.jsonl` holds the conversation, page writes, and undo records (plus legacy proposals); `learning.jsonl` holds goals, Sophia's notes on attempts, the person's takes and corrections, and return briefings, all in one record shape with a client-stamped author and links to evidence. The directory supplies the notebook name during the experiment. Keep one previous page version for undo. Do not require an examination record for a research-only discussion. Each page, and the notebook's Contents, has its own conversation thread. These threads are kept in the one transcript, each entry tagged with its page. The client requests a short checkpoint at session end, before a clear, and when a thread grows long. It records the checkpoint as Sophia's account, not an objective measure of the person. The checkpoint's notes are the only compaction: no summary is stored, and the person sees nothing of it.
+[DATA-MODEL.md](DATA-MODEL.md) defines these files, the record shapes inside them, who may write each, and the checks the client applies. In brief: `notebook.json` holds chapters and page order; page frontmatter holds title and inspectable sources; `transcript.jsonl` holds the conversation, page writes, and undo records (plus legacy proposals); `learning.jsonl` holds goals, Sophia's notes on attempts, the person's takes and corrections, and return briefings, all in one record shape with a client-stamped author and links to evidence. The directory supplies the notebook name. Keep one previous page version for undo. Do not require an examination record for a research-only discussion. Each page, and the notebook's Contents, has its own conversation thread. These threads are kept in the one transcript, each entry tagged with its page. The client requests a short checkpoint at session end, before a clear, and when a thread grows long. It records the checkpoint as Sophia's account, not an objective measure of the person. Checkpoint notes and working memory are retained as inspectable learning records; no private provider session state is persisted. Connection failures can leave explicit failure/recovery evidence instead of silently advancing a checkpoint.
 
-Replace individual page files atomically. If a crash leaves an accepted page missing from the ordering, discover it on reopening. Defer cross-notebook IDs, a separate source catalog, multi-file transaction machinery, and format migrations until a real workflow needs them.
+Replace individual page files atomically. If an unrecorded page exists on disk, index it on reopening with unknown provenance and no destructive Undo. Defer cross-notebook IDs, a separate source catalog, multi-file transaction machinery, and format migrations until a real workflow needs them.
 
 For the return briefing, supply a bounded selection of recent inquiry/learning records and saved pages. Sophia should ground its account in those records and invite correction.
 
@@ -209,9 +225,9 @@ Store a map from threads to provider sessions in notebook.json only if both of t
 - fresh context reaches the resumed session and the bad id fails detectably;
 - a rebuilt thread is shown to lose a step that a resumed one kept.
 
-## 5. Native application after the experiment
+## 5. Native application: implemented behavior and remaining design
 
-The native prototype already exists. Before expanding it, run a useful first inquiry and return after approximately a week. Check the briefing, continue the inquiry, and correct a mistaken account through dialogue. The launch sequence above supersedes the original experiment-before-native ordering.
+The native prototype already exists. Continue scoped reliability and workflow work against it while separately evaluating a useful inquiry and a genuine return after approximately a week. Check the briefing, continue the inquiry, and correct a mistaken account through dialogue. Accelerated/internal returns do not complete that human validation. The original experiment-before-native ordering is historical.
 
 The October 25 internal entry comparison carries a question or supplied material into an unsent conversation, with an optional notebook name. Empty notebooks begin with the book hidden; an explicitly opened book sits below the conversation when readable columns do not fit, and beside it at wider sizes. Drafts are retained within the current window, separate by notebook and conversation thread; book visibility choices last for the running app. Neither persists across relaunch. [The comparison](research/2026-10-25-entry-charrette/README.md) records the critique-driven revision and actual native/model checks; it does not establish human preference, learning or delayed return.
 
@@ -223,21 +239,19 @@ The October 25 internal entry comparison carries a question or supplied material
 | Artifacts | Separate restricted WebKit surface, introduced only when an actual inquiry benefits from one |
 | Storage | The minimal local format from section 4, independent of provider sessions |
 
-The book and the conversation are separate surfaces. Before a notebook has a page, the Contents conversation fills the window. Once it has one, selecting a page shows the page and that page's own conversation together. Selecting the Contents shows the notebook-level conversation. Selecting a different page (including a return) starts at its title, except an explicit section link; revisions to the same open page retain the reader identity. Chapters, Goals and Sophia's notes have no conversation of their own. A reply finishes in its own thread if the person moves to another page. The book can be hidden; a new page preserves that choice and the current selection. Its conversation card offers Open, which selects the page and opens the book. Serif type marks what is in the book; the conversation is set in the system face. Sophia saves pages and revisions directly (the person decided drafts added friction); the conversation points to each page written, and the person can undo it or ask for changes. The conversation also guides reading: it can walk through a page, stop to ask, and answer questions about a selected passage. [mock/index.html](mock/index.html) shows these flows.
+The book and the conversation are separate surfaces. Before a notebook has a page, the Contents conversation fills the window. Once it has one, selecting a page shows the page and that page's own conversation together. Selecting the Contents shows the notebook-level conversation. Selecting a different page (including a return) starts at its title, except an explicit section link; revisions to the same open page retain the reader identity. Chapters, Goals and Sophia's notes have no conversation of their own. A reply finishes in its own thread if the person moves to another page. The book can be hidden; a new page preserves that choice and the current selection. Its conversation card offers Open, which selects the page and opens the book. Serif type marks what is in the book; the conversation is set in the system face. Sophia saves pages and revisions directly (the person decided drafts added friction); the conversation points to each page written, and the person can undo it or ask for changes. The companion can discuss pages in the conversation. Guided selection-to-question interaction remains a design direction, not a shipped passage-selection feature. [mock/index.html](mock/index.html) is a historical interaction reference with explicit current-vs-exploration labels.
 
 **Unrecorded disk changes.** Hashes and orphan files cannot distinguish a crash-before-entry from outside edits. Index them with unknown provenance, preserve current and previous bytes until a later content-changing recorded write or edit replaces the single previous slot, and offer inspection/manual restoration rather than destructive Undo. Unchanged requests retain both versions and inspection. Normal recorded page writes and personal edits keep durable one-way Undo; automatic Undo of an unrecorded interrupted write is outside the current promise.
 
 **Selection and focus.** Selecting a page selects its conversation, and the title above the composer names it ("1.3 The convolution theorem"; on Contents, "Fourier analysis · notebook conversation"). A write by Sophia never changes the selection or takes focus from the composer: her card in the conversation names the page and offers Open. Goals and Sophia's notes have no conversation of their own; opening them keeps the current conversation beside them, still named. A reply that finishes after the person has moved on marks its row until that conversation is next shown; nothing about it is stored.
 
-**Return.** After six hours away, the notebook opens on Contents with the briefing and one link, "Continue on 1.3", to the unresolved exchange, whoever asked it, revealed even if it has been folded. If the person opens a page before reading the briefing, it shows once above the book until dismissed. An empty briefing shows nothing, and the notebook opens where it was.
+**Return (implemented boundary).** On an informed opening after the six-hour quiet threshold, the client may catch up outstanding notes and request a checked, short briefing in the Contents thread. Unacknowledged first use suppresses that opening's automatic request; dismissing the information starts nothing. Opening a notebook starts at Contents. A persistent “Continue on …” navigation affordance, a sticky briefing above a different page, and restoring a saved selection are design ideas, not implemented promises.
 
-**Fresh start.** "Start fresh on this page" (⇧⌘N; on Contents, "Start fresh in this notebook conversation") is offered between turns. While it runs, text in the composer is kept and the action is shown as under way. If it fails, the conversation is unchanged and the composer says "Couldn't start fresh. Your message hasn't been sent." The cleared conversation folds under "Earlier on this page" (Contents: "Earlier in this notebook conversation"); opening it reads it in place and changes nothing about where the next message goes.
-
-**Reading history.** Date separators and loading older messages are reading affordances only; they never fold anything or start a new conversation. Only a fresh start folds history. A link to an older exchange reveals it and offers a way back. An empty conversation shows a plain composer for its page; nothing describes what Sophia has.
+**Fresh start and history (design, not current UI).** Core records/context helpers understand legacy clear boundaries, but the current app does not expose the proposed ⇧⌘N fresh-start action, folded “Earlier on this page” history, date separators/older-message loading, or passage-to-question actions. Do not treat the mock's controls as implemented native features. Add them only through a scoped workflow and actual native verification.
 
 Preserve focus, selection/copy, scroll position, and return to writing. Conversation following is local: follow at the end, retain the person’s position above it, and offer an explicit jump for new current-thread activity. Test long streamed mathematics, accessibility, page writes and undo, failures, and restoration on the actual Mac interface.
 
-Generated HTML/JavaScript can be proposed without executing it. Before running it, prove the viewer has no credentials, general desktop bridge, host file access, or unrestricted network access. Supply only explicit data and retain experiment parameters when accepted. Check a small graph experiment against a known example before relying on its output.
+**Deferred artifact design.** A future client may support HTML/JavaScript proposals without executing them. Before running it, prove the viewer has no credentials, general desktop bridge, host file access, or unrestricted network access. Supply only explicit data and retain experiment parameters when accepted. Check a small graph experiment against a known example before relying on its output.
 
 For the alpha, capability restriction replaces an operating-system sandbox project: no built-in shell/file tools and only scoped notebook handlers. This is not a claim of general host isolation. Use non-sensitive study material until the launch configuration passes its tests. Reconsider stronger isolation before enabling broader execution or sensitive material.
 
@@ -247,17 +261,17 @@ After repeated personal use, try the same product model for linear algebra, LLMs
 
 A subscription-backed paid custom client is not an assumed launch route. Resolve provider access in parallel with the personal experiment, before committing to that business model. The documented general third-party route is API billing; accepting that alternative remains Justin's decision.
 
-Anthropic's legal page restricts third-party Claude.ai login and requests routed through subscription credentials on users' behalf. Its SDK overview allows previously approved arrangements. The same legal page describes hosting an unmodified binary with end-user authentication, but that does not establish approval for Sophia's custom ACP/SDK interface. Sophia has no such approval established. Personal experimentation is not explicitly classified in these sources; do not convert technical success into blanket permission. [S4]
+The October 14 planning review recorded that Anthropic's legal page restricts third-party Claude.ai login and requests routed through subscription credentials on users' behalf. Its SDK overview allows previously approved arrangements. The same legal page describes hosting an unmodified binary with end-user authentication, but that does not establish approval for Sophia's custom ACP/SDK interface. Sophia has no such approval established. Personal experimentation is not explicitly classified in these sources; do not convert technical success into blanket permission. [S4]
 
-OpenAI says App Server's existing authentication is not permitted for commercial or hosted services. Its Sign in with ChatGPT guidance directs paid applications to an interest process. The newer credentials can drive App Server, but compatibility with the selected adapter and commercial eligibility remain to be established; the ordinary adapter login does not prove support for that route. [S5, S6]
+The October 14 source assessment recorded restrictions on using OpenAI App Server authentication for commercial or hosted services. That assessment cited Sign in with ChatGPT guidance directing paid applications to an interest process. That historical assessment reported credentials that could drive App Server, but compatibility with the selected adapter and commercial eligibility remain to be established; the ordinary adapter login does not prove support for that route. [S5, S6]
 
 Zed demonstrates subscription-backed external agents. Its June 16, 2026 update also reports postponement of a proposed third-party billing change. These are useful dated precedents, not authorization for Sophia or a guarantee of future costs. [S7]
 
-Founder-owned inquiry for each provider:
+Historical founder-owned inquiry draft (must be updated to describe the actual direct-CLI architecture before any authorized outreach):
 
 > Sophia is a locally running Mac research and learning notebook with a custom conversation interface over your unmodified agent through an ACP adapter. Users authenticate through your own flow and pay you directly; Sophia does not extract credentials or resell inference. What permission and registration are required for personal experimentation, an open-source release, and a paid local app? Is subscription-backed use available for this arrangement, or must product usage be API-billed?
 
-No provider inquiry has been sent from this session. The supplied review does not authorize external messaging. Contacting sales or joining a waitlist is not itself approval.
+No provider inquiry is established by this plan or the engineering verification reports. The supplied review does not authorize external messaging. Contacting sales or joining a waitlist is not itself approval.
 
 Before any paid release, choose an actually available access model, confirm the applicable conditions, and test that exact release configuration. Then address dependency redistribution, clean-Mac installation, signing/notarization, updates, backups, and any necessary format conversion.
 

@@ -6,14 +6,11 @@ The person can edit pages directly. Reading stays the default. Editing is a deli
 
 This reverses the earlier "no conventional editor" scope. It came from outside research (October 2026). That research was documented and anecdotal; nothing in it was tried hands-on.
 
-## What exists today
+## Current implementation and evidence
 
-Source inspection, October 15, 2026:
+Phase 1 is implemented: CodeMirror styled-source editing in the local reader, protected/open-range checks, byte-exact range splicing, previous-version Undo and explicit permission release. The reader also reports editor drafts/caret/commit events and notation warnings; it is not only a height bridge. Authored page Undo lasts until the next action on that page, across messages and relaunch, subject to current/previous hashes. Unchanged commits write nothing. Unknown-provenance disk states are inspected, never inferred to be undoable authored edits.
 
-- Each page renders in one `WKWebView` (`SophiaReader`): markdown-it 15.0.2, texmath, KaTeX 0.19.0, DOMPurify, a strict CSP, no network. The only bridge message reports readiness, height, and heading offsets.
-- `write_page` replaces a whole page body. A revision copies the old file to `<file>.previous.md` (one version), and the transcript gets a `write_page` entry. Undo restores `.previous.md` or removes a new page, and is offered until the person's next message.
-- Sections (`##`/`###` outside code fences) are already parsed in `NotebookStore.sections(in:)` and are the unit of links and `read_page(section:)`.
-- No revision log, no authorship tracking, and the person has no way to write a page.
+The October 15 reader/scroll-spike results below are recorded observations, not rerun by this documentation change. [The later package report](research/2026-10-25-packaged-release/README.md) records actual release reader checks and distinguishes them from packaged native UI. Manual VoiceOver, physical trackpad/selection and other unresolved checks stay explicit. The original pre-editor source inspection (“no way to write a page”, Undo until the next message) is superseded by the implemented rules above.
 
 ## Decisions
 
@@ -42,7 +39,7 @@ The Cursor lesson: a prompt asking the agent to keep manual edits is a guideline
 - A person's commit is saved by the store like any page write: the previous version is kept, a transcript entry records it (with the page's hash), and it can be undone until the next change to that page by either author, whatever is said in any conversation.
 - The entry records the changed lines: `{role: "person", purpose: "edit_page", file, section, hunks: [{before, after}]}`. Hunks are whole lines, so a sign flip protects its whole line, not one character. A Markdown paragraph is usually one line, so this is coarse; narrow it to the changed words only if real use shows Sophia's own revisions refused more than about twice a week (count refusals in the transcript).
 - **Protected lines** of a page are the `after` lines of its `edit_page` entries that still appear in the current page. Nothing is stored beyond the transcript; if the person later deletes the line or releases it (below), it stops being protected.
-- `write_page` refuses a revision that drops or alters any protected line. The refusal names the section and returns the person's current text. Block quotes of the person's words (`<!-- quote: t-… -->`) get the same check; nothing enforces them today.
+- `write_page` refuses a revision that drops or alters any protected line. The refusal names the section and returns the person's current text. Block quotes of the person's words (`<!-- quote: t-… -->`) get the same store check.
 - While a section is open for editing, the app records it in a small marker the MCP process reads under the notebook lock; `write_page` refuses changes to that section until the commit. That refusal tells Sophia to answer in the conversation and not retry.
 
 ### When Sophia wants to change the person's text
@@ -61,7 +58,7 @@ Her own untouched prose keeps today's behavior: direct write, undo, "say what yo
 
 ### How Sophia hears about an edit
 
-No automatic turn. The edited page's conversation shows a one-line marker ("You edited §2 of *Fiedler vector*") with Undo. Refusals and the release marker also appear in that page's conversation. Each conversation's next message to Sophia summarizes, as hunks, the edits, releases and undos to any page since her last turn in that conversation. An edit made while talking on another page therefore still reaches her there. She mentions an edit only when it matters (a corrected sign that later steps depend on), and fixes dependent steps through the normal rules above. Update SOPHIA.md accordingly.
+No automatic turn. The edited page's conversation shows a one-line marker ("You edited §2 of *Fiedler vector*") with Undo. Refusals and the release marker also appear in that page's conversation. Each conversation's next message to Sophia summarizes, as hunks, the edits, releases and undos to any page since her last turn in that conversation. An edit made while talking on another page therefore still reaches her there. She mentions an edit only when it matters (a corrected sign that later steps depend on), and fixes dependent steps through the normal rules above. SOPHIA.md supplies the effective acknowledgement/refusal guidance; changing it is a runtime change, not documentation-only cleanup.
 
 ## States to handle
 
@@ -70,9 +67,9 @@ No automatic turn. The edited page's conversation shows a one-line marker ("You 
 - **Two undos.** The page banner's Undo (`BookView.swift`) offers the latest action on this page (write, edit, release or undo), by either author, labelled "Undo your edit", "Undo Sophia's change" or "Undo permission to change your edit", "until the next change to this page". The conversation marker's Undo does the same for its entry, and an older marker whose action is no longer the latest offers none. An undo cannot itself be undone. Both are worked out from the transcript and the files on disk, so they survive switching pages and relaunching (DATA-MODEL.md, "The conversation log"). ⌘Z belongs to the focused text, the section editor or the composer; a page action is undone only through these buttons.
 - **Strings** that become false: the mock's "Read-only · changes go through Sophia" and the app's "To change it, ask Sophia". Replace with the Edit affordance and nothing else.
 
-## Phases
+## Delivery history and deferred phases
 
-**Phase 1: edit a section, safely.** Done when the person can fix a typo and a sign in a math-heavy page, Sophia is told, she cannot overwrite it, and the person can let her change it.
+**Phase 1 (implemented): edit a section, safely.** The original acceptance was the person can fix a typo and a sign in a math-heavy page, Sophia is told, she cannot overwrite it, and the person can let her change it.
 
 0. **Scroll spike first.** The page is a content-sized web view inside a SwiftUI `ScrollView` (`BookView.swift`), and CodeMirror expects to own its scroller. Mount CodeMirror in that view on a long math page; arrow through a section taller than the window; have `write_page` revise the section above the open one. If the caret stays visible and the editor doesn't jump, keep this layout. If not, the reader gets its own scroller while editing.
 
@@ -96,7 +93,7 @@ No automatic turn. The edited page's conversation shows a one-line marker ("You 
 
 Implemented: the store checks are in `swift run sophia-checks`, the WebKit checks in `swift run sophia-reader-checks` (with the scroll spike under `--scroll-spike`). The ⌘E-with-repeated-title no-op and a titled page in the byte-identity check were added at the panel's request.
 
-Add to `sophia-checks`:
+Existing core checks cover:
 - Splicing a section leaves every other byte of the file identical, including frontmatter, code fences, and trailing whitespace.
 - A commit against a section Sophia changed since editing began is refused, and the person's text is returned, not lost.
 - `write_page` that drops or rewords a protected line, or a quoted block, is refused; one that leaves them intact succeeds; once the person deletes their line it is no longer protected.
@@ -105,7 +102,7 @@ Add to `sophia-checks`:
 - A commit with no change writes nothing.
 - A release lifts only that edit's lines; a retried `write_page` then succeeds; undoing the release protects them again.
 
-Add to `sophia-reader-checks` (needs a desktop session):
+Existing reader checks cover (needs a desktop session):
 - Opening and committing an editor with no keystrokes returns the exact input bytes, for the math fixture and a page with CRLF, tabs, and unusual list markers.
 - The editor loads with no network request, under the existing CSP.
 - Invalid TeX keeps typing possible and shows the source.
