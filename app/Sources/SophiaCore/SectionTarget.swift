@@ -42,7 +42,7 @@ public struct SectionTarget: Equatable {
             switch self {
             case .unavailable: return "This page is no longer available."
             case .ambiguous: return "More than one section has this title. Open the page and choose a section."
-            case .changed: return "This section has changed or is no longer available. Open the evidence again to choose a current section."
+            case .changed: return "This section has changed or is no longer available. Choose a current section again."
             }
         }
     }
