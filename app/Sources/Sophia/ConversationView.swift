@@ -33,11 +33,21 @@ struct ConversationView: View {
                         VStack(alignment: .leading, spacing: 22) {
                             let retryQuestion = session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread))
                             ForEach(items, id: \.id) { item in
-                                EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion)
-                                    .background(alignment: .top) {
-                                        // The real transcript anchor appears without replacing the reader.
-                                        if let anchor = item.anchor { Color.clear.frame(height: 1).id(anchor) }
+                                Group {
+                                    if item.entries.count > 1 {
+                                        NotebookUpdatesView(session: session, entries: item.entries)
+                                    } else {
+                                        EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion)
                                     }
+                                }
+                                .background(alignment: .top) {
+                                    // Every original anchor remains at the group, including while collapsed.
+                                    VStack(spacing: 0) {
+                                        ForEach(item.anchors, id: \.self) { anchor in
+                                            Color.clear.frame(height: 1).id(anchor)
+                                        }
+                                    }
+                                }
                             }
                             if let a = session.visibleActivity {
                                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text(a).font(.caption).foregroundStyle(.secondary) }.id("activity")
@@ -104,7 +114,7 @@ struct ConversationView: View {
                         }
                     }
                 }
-                .onChange(of: items.map(\.id)) { _, _ in receivedActivity(proxy) }
+                .onChange(of: items.flatMap(\.anchors)) { _, _ in receivedActivity(proxy) }
                 .onChange(of: session.visibleStreaming) { _, _ in receivedActivity(proxy) }
                 .onChange(of: conversationKey) { _, _ in
                     scrollPosition = nil
@@ -280,6 +290,19 @@ struct EntryView: View {
                 RefusalCard(session: session, entry: entry)
             } else if entry.str("tool") == "write_page" {
                 PageWriteCard(session: session, entry: entry)
+            } else if ["note", "memory"].contains(entry.str("tool") ?? ""), failedNotebookUpdate(entry) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("\(entry.str("tool") == "note" ? "Note" : "Memory") update reported an error.", systemImage: "exclamationmark.triangle")
+                        .font(.caption).foregroundStyle(.orange)
+                    if let reason = entry.str("error") ?? entry.str("reason"), !reason.isEmpty {
+                        Text(reason).font(.caption).textSelection(.enabled)
+                    }
+                    if entry.str("tool") == "note", let record = entry.str("record") {
+                        NoteLine(session: session, recordID: record, revised: entry["revised"] == .bool(true))
+                    } else {
+                        Button("Notes") { session.show(.notes) }.buttonStyle(.link).font(.caption)
+                    }
+                }
             } else if let pid = entry.str("proposal") {
                 // Notebooks from before pages were saved directly.
                 Label("Sophia proposed “\((entry["payload"]?["title"]?.string) ?? pid)”", systemImage: "doc.text")
@@ -288,8 +311,12 @@ struct EntryView: View {
                 MemoryChangedLine(session: session, entry: entry)
             } else if ["about_you", "link"].contains(entry.str("tool") ?? "") {
                 LibraryProposalCard(session: session, entry: entry)
-            } else if entry.str("tool") == "note", let rid = entry.str("record") {
-                NoteLine(session: session, recordID: rid, revised: entry["revised"] == .bool(true))
+            } else if entry.str("tool") == "note" {
+                if let rid = entry.str("record") {
+                    NoteLine(session: session, recordID: rid, revised: entry["revised"] == .bool(true))
+                } else {
+                    Label("Note update record unavailable.", systemImage: "note.text").font(.caption).foregroundStyle(.secondary)
+                }
             } else if entry.str("tool") == "set_chapter" {
                 let n = entry["files"]?.array?.count ?? 0
                 Label("Put \(n) page\(n == 1 ? "" : "s") in \(entry.str("chapter") ?? "a chapter")", systemImage: "books.vertical")
@@ -351,6 +378,32 @@ struct EntryView: View {
     }
 }
 
+/// Adjacent successful bookkeeping stays quiet; every original detail/action remains available.
+private struct NotebookUpdatesView: View {
+    @ObservedObject var session: NotebookSession
+    let entries: [JSONObject]
+    @State private var expanded = false
+
+    private var title: String {
+        let notes = entries.filter { $0.str("tool") == "note" }.count
+        let kind = notes == entries.count ? "note" : notes == 0 ? "memory" : "note and memory"
+        return "\(entries.count) \(kind) updates"
+    }
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $expanded) {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(entries, id: \.self.line) { entry in
+                    EntryView(session: session, entry: entry, retryQuestion: nil)
+                }
+            }.padding(.top, 6)
+        } label: {
+            Label(title, systemImage: "note.text").font(.caption).foregroundStyle(.secondary)
+        }
+        .help("Show each note or memory update and its actions")
+    }
+}
+
 /// A note Sophia wrote during the conversation: one quiet line, so the person can see what she keeps.
 struct NoteLine: View {
     @ObservedObject var session: NotebookSession
@@ -368,6 +421,12 @@ struct NoteLine: View {
                 Button("Notes") { session.show(.notes) }.buttonStyle(.link)
             }
             .font(.caption)
+        } else {
+            HStack {
+                Label("Note no longer available.", systemImage: "note.text").foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Button("Notes") { session.show(.notes) }.buttonStyle(.link)
+            }.font(.caption).help(recordID)
         }
     }
 }
