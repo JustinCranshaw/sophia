@@ -1,0 +1,27 @@
+# SOP-24 readable evidence — October 25, 2026
+
+`EvidenceReference` resolves existing local refs without writes, store creation or indexing. The UI shows readable page titles, exchange authors/dates/excerpts, goal and criterion text/status, and note/memory interpretations with separate exact quotations and person corrections. A compact read-only detail expands one reference per group, with selectable plain text, bounded long-text scrolling and an external Close control. Only a checked current local page has Open page; raw IDs stay in details/Show record. Missing, deleted, malformed or ambiguous refs are unavailable, not navigation routes. Page evidence explicitly says current version, not a historical snapshot or independently verified source quotation.
+
+Ordinary navigation clears pending section intent. Every pendingSection assignment rotates a transient UUID; delayed section scroll/clear callbacks require that exact request and the current page. A missing stored heading clears immediately, while a valid heading waits for renderer positions and retains the existing one-second font/math follow. This does not add full checked section/cross-notebook navigation; that broader work remains SOP-28.
+
+## Checks
+
+Three focused core checks cover actual local material/no writes, original interpretation plus correction, and missing/deleted/malformed targets without arbitrary page access or file creation. All 75 checks passed on the merged goal baseline (72 + these three); debug app/MCP builds passed. The final branch also integrates merged conversation-follow main `9a764bc`; its check/build and presentation-row checks are recorded separately in `/tmp/sophia-evidence-integrated-{checks,build}.log` and `/tmp/sophia-evidence-row-checks.log`.
+
+## Native evidence and limits
+
+Disposable `/tmp/sophia-sop24-ui` copies the actual October 24 simulated history notebook read-only from the original workspace; no human evidence or auth material. Developer-labelled notes and a navigation notebook were then made through the production MCP binary to assemble local ref kinds. Developer-labelled correction text was entered through real Notes controls, and actual Delete/Undo made a supporting item unavailable/restored. These setup actions are not new model or person statements. Fixture manifests: `/tmp/sophia-sop24-fixture.txt`, `...-fixture-mcp{,-revision}.json`, `...-navigation-fixture.json`.
+
+The initial popover implementation was replaced by inline detail: its AX tree contained the detail, but the harness main-window PNG omitted the separate popover and OS window capture was unavailable. Those PNGs do not prove visible popover content. No capture-harness modification was made.
+
+The following original PNGs were inspected from `results/` on evidence source `fb5ee46` over main `6204997` (before the conversation-follow integration):
+
+- Corrected note detail: `1792922849339195000-67f37e.png` shows exact quoted words, explicitly labelled developer correction, original Sophia interpretation and raw ID separately.
+- Actual full exchange/date/author: `1792923222566877000-57209e.png`; goal criterion wording: `1792923226020023000-d676cd.png`. Opening another reference in the same group left exactly one Close evidence control.
+- Deleted n-14: `1792923233125450000-589eb0.png` shows Evidence unavailable, explanation and raw ID, with no Open page. Existing Undo restored the note and correction; this was a disposable test.
+- Long current page text at requested 900×600 (capture 900×652 including chrome): `1792923167498203000-857f45.png` shows the inner reader scrolled to the actual final source text, with Open page and Close evidence reachable below it. Wide 1440×900 was also exercised.
+- Valid developer section with actual math/font rendering: `1792923012339557000-155a48.png`. After the linked heading was renamed through a production-MCP revision, the old confirmed link opened at the page top (`1792923021125964000-83005c.png`); ordinary navigation to another page containing the original heading stayed at UNRELATED_TOP_MARKER (`1792923029950553000-3c2b06.png`). No section carry-over.
+
+An explicitly accelerated return (`--return-gap 60`, over a minute closed) made a real checkpoint t-0061 and briefing t-0062 citing stored refs; a second actual briefing t-0063 appeared while the accelerated threshold remained active during notebook navigation. These were real internal provider responses, with no new typed inquiry or source fetch. The first two minutes had no saved result; that interim observation was corrected when the records arrived, with no latency/cause claim. This is not delayed retention or billing evidence. Expanding the first fresh briefing's refs retained Contents conversation and Notes selection; settled image `1792922951790676000-343586.png`. The original history page and previous-version bytes still matched the original copy exactly.
+
+A final AX Close press timed out after 25 seconds while disk was full (~652MB free). The app's main-thread sample was idle; native Cmd-Q exited PID65777, verified gone. Cause is unclassified, not a confirmed Close defect. Workflow build caches were cleared externally afterwards. **Before merge:** one focused post-rebase Close retry and real reading-position/selection check of inline briefing evidence on merged conversation-follow code remain required. Earlier observations remain attributed to their source head. No human comprehension, VoiceOver, durable evidence snapshot or full cross-notebook/section safety claim.
