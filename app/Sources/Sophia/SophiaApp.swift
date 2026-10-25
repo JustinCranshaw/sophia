@@ -1,8 +1,20 @@
 import SwiftUI
 import AppKit
 import SophiaCore
+import UserNotifications
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        if Bundle.main.bundleIdentifier != nil, Snapshot.outDir == nil { UNUserNotificationCenter.current().delegate = self }
+    }
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
+        if response.actionIdentifier == UNNotificationDefaultActionIdentifier,
+           let id = response.notification.request.content.userInfo["almanacEntryID"] as? String {
+            DispatchQueue.main.async { NotificationCenter.default.post(name: .openAlmanacEntry, object: id) }
+        }
+        completionHandler()
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Needed when run from `swift run` without an app bundle.
         // A snapshot run must not take keyboard focus from whatever the person is doing.
@@ -28,27 +40,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 final class AppModel: ObservableObject {
-    let library = Library()
-    let connection = ConnectionState()
+    let library: Library
+    let connection: ConnectionState
+    let almanac: AlmanacModel
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
     @Published var problem: String?
     private var bookVisibility: [String: Bool] = [:]
 
     init() {
+        let library = Library(), connection = ConnectionState()
+        self.library = library; self.connection = connection
+        almanac = MainActor.assumeIsolated { AlmanacModel(root: library.root, connection: connection) }
         notebooks = library.notebooks
         if let first = notebooks.first { openNotebook(first) }
+        MainActor.assumeIsolated {
+            almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true }
+            almanac.onSaved = { [weak self] _ in
+                guard let self else { return }
+                notebooks = library.notebooks
+                if let current = open, current.store.url == almanac.worker?.url {
+                    current.objectWillChange.send()
+                    current.store.reload()
+                }
+            }
+        }
         Snapshot.run(model: self)
     }
 
     @discardableResult
-    func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil) -> Bool {
+    func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil, allowAutomaticReturn: Bool = true) -> Bool {
         guard library.notebooks.contains(url) else { problem = "This notebook is no longer available."; return false }
         if open?.store.url != url {
             // A page/Open action counts as choosing the book; an untouched empty default does not.
             if let current = open, current.bookShown { bookVisibility[current.store.url.path] = true }
             do {
-                let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged)
+                let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
                 open?.shutdown()
                 next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
                 open = next
@@ -56,6 +83,18 @@ final class AppModel: ObservableObject {
         }
         if let place { open?.show(place) }
         return true
+    }
+
+    func readAlmanacEntry(_ entry: AlmanacEntry) {
+        MainActor.assumeIsolated {
+            guard let worker = almanac.worker,
+                  let checked = Almanac.entry(id: entry.id, url: worker.url), checked.file == entry.file else {
+                problem = "This Almanac entry is no longer available. Saved pages remain in the notebook."; return
+            }
+            guard openNotebook(worker.url, at: .page(checked.file), allowAutomaticReturn: false) else { return }
+            open?.store.reload()
+            worker.acknowledgeOpening(file: checked.file)
+        }
     }
 
     /// Follows a link to a page in another notebook.
@@ -108,6 +147,7 @@ struct SophiaApp: App {
             RootView()
                 .environmentObject(model)
                 .environmentObject(model.connection)
+                .environmentObject(model.almanac)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowToolbarStyle(.unified)
@@ -118,6 +158,7 @@ struct SophiaApp: App {
             }
             CommandGroup(after: .appInfo) {
                 Button("Connection & Data…") { model.connection.detailsShown = true }
+                Button("Sophia’s Almanac…") { model.almanac.showSettings() }
             }
             CommandGroup(after: .pasteboard) {
                 Divider()
@@ -133,11 +174,13 @@ extension Notification.Name {
     static let newNotebook = Notification.Name("SophiaNewNotebook")
     static let editPage = Notification.Name("SophiaEditPage")
     static let scrollConversationToEnd = Notification.Name("SophiaScrollConversationToEnd")
+    static let openAlmanacEntry = Notification.Name("SophiaOpenAlmanacEntry")
 }
 
 struct RootView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject private var connection: ConnectionState
+    @EnvironmentObject private var almanac: AlmanacModel
     @State private var naming = false
     @State private var newName = ""
     @State private var startingText = ""
@@ -159,7 +202,22 @@ struct RootView: View {
         .sheet(isPresented: $connection.detailsShown) {
             ConnectionView(connection: connection).frame(width: 560)
         }
+        .sheet(isPresented: $almanac.settingsShown) { AlmanacSettingsView(almanac: almanac) }
+        .onChange(of: almanac.worker?.url) { _, _ in model.notebooks = model.library.notebooks }
+        .onReceive(NotificationCenter.default.publisher(for: .openAlmanacEntry)) { notification in
+            guard let id = notification.object as? String,
+                  let worker = almanac.worker,
+                  let entry = Almanac.entry(id: id, url: worker.url) else {
+                model.problem = "This Almanac entry is no longer available."; return
+            }
+            model.readAlmanacEntry(entry)
+        }
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if let worker = almanac.worker {
+                    AlmanacToolbarView(worker: worker, almanac: almanac, read: model.readAlmanacEntry)
+                } else { Button("Almanac…") { almanac.settingsShown = true } }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("Connection & Data") { connection.detailsShown = true }
             }
@@ -252,20 +310,38 @@ struct NotebookView: View {
     static func bookWidth(_ total: CGFloat) -> CGFloat {
         min(800, max(460, min(total * 0.6, total - 360)))
     }
+    private enum Surface: Hashable { case conversation, divider, book }
+    private var readingAlmanac: Bool {
+        guard model.almanac.worker?.url == session.store.url, session.bookShown,
+              case .page = session.place, !session.isPending(session.activeThread),
+              session.pendingSource == nil, session.problem == nil, session.editRecovery.edits.isEmpty else { return false }
+        return !session.store.threadEntries(for: session.activeThread).contains(where: NotebookStore.isMessage)
+    }
     var body: some View {
         GeometryReader { geo in
             let key = Self.draftKey(session)
             let draft = Binding(get: { drafts[key] ?? "" }, set: { drafts[key] = $0 })
             let narrow = geo.size.width < 821
-            let layout = narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+            let reading = readingAlmanac
+            let surfaces: [Surface] = reading ? [.book, .divider, .conversation] : [.conversation, .divider, .book]
+            let layout = reading || narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
             layout {
-                ConversationView(session: session, draft: draft)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if session.bookShown {
-                    Divider()
-                    BookView(session: session)
-                        .frame(width: narrow ? nil : Self.bookWidth(geo.size.width),
-                               height: narrow ? max(0, min(geo.size.height * 0.55, geo.size.height - 300)) : nil)
+                // Stable surface IDs retain the reader/editor when the first question opens discussion.
+                ForEach(surfaces, id: \.self) { surface in
+                    switch surface {
+                    case .conversation:
+                        ConversationView(session: session, draft: draft, compact: reading)
+                            .frame(maxWidth: .infinity, maxHeight: reading ? nil : .infinity)
+                            .fixedSize(horizontal: false, vertical: reading)
+                    case .divider:
+                        if session.bookShown { Divider() }
+                    case .book:
+                        if session.bookShown {
+                            BookView(session: session)
+                                .frame(width: reading || narrow ? nil : Self.bookWidth(geo.size.width),
+                                       height: !reading && narrow ? max(0, min(geo.size.height * 0.55, geo.size.height - 300)) : nil)
+                        }
+                    }
                 }
             }
         }

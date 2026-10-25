@@ -5,19 +5,22 @@ import SophiaCore
 struct ConversationView: View {
     @ObservedObject var session: NotebookSession
     @Binding private var message: String
+    private let compact: Bool
     @FocusState private var focused: Bool
     @State private var followsLatest = true
     @State private var hasNewActivity = false
     @State private var scrollPosition: ConversationScrollPosition?
     @State private var settlingViewport = false
 
-    init(session: NotebookSession, draft: Binding<String> = .constant("")) {
+    init(session: NotebookSession, draft: Binding<String> = .constant(""), compact: Bool = false) {
         self.session = session
         _message = draft
+        self.compact = compact
     }
 
     var body: some View {
         VStack(spacing: 0) {
+            if !compact {
             HStack {
                 Spacer()
                 Text(session.conversationName).font(.caption).foregroundStyle(.secondary)
@@ -126,6 +129,7 @@ struct ConversationView: View {
                     followIfNeeded(proxy)
                 }
             }
+            }
             if let request = session.pendingSource {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Open this source?").font(.callout.weight(.semibold))
@@ -180,7 +184,8 @@ struct ConversationView: View {
             .padding(.horizontal, 24).padding(.vertical, 14)
             .frame(maxWidth: .infinity)
         }
-        .onAppear { focused = Snapshot.outDir == nil }
+        .onAppear { focused = Snapshot.outDir == nil && !compact }
+        .onChange(of: compact) { _, value in if value { focused = false } }
         .disabled(Snapshot.outDir != nil)
     }
 

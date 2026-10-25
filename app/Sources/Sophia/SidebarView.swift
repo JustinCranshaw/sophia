@@ -5,11 +5,19 @@ import SophiaCore
 /// Goals and Sophia's notes, then the book's pages. Every row is one line: titles truncate, with the full title on hover.
 struct SidebarView: View {
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject private var almanac: AlmanacModel
 
     var body: some View {
         List {
             Section("Library") {
-                ForEach(model.notebooks, id: \.self) { url in
+                if let worker = almanac.worker {
+                    NotebookRows(url: worker.url)
+                    AlmanacStatusView(worker: worker, almanac: almanac, read: model.readAlmanacEntry, sidebar: true)
+                        .padding(.leading, 20).padding(.bottom, 8)
+                } else {
+                    Button("Sophia’s Almanac…") { almanac.settingsShown = true }
+                }
+                ForEach(model.notebooks.filter { $0 != almanac.worker?.url }, id: \.self) { url in
                     NotebookRows(url: url)
                 }
             }

@@ -42,6 +42,8 @@ struct NotebookCopyView: View {
             Text("About you and links between notebooks live separately in the Library’s hidden .sophia folder. To move everything, copy the whole Library, including .sophia, while Sophia is quit. Keep notebook names together so links still resolve.")
             Text("A copied folder is a snapshot, not supported concurrent sync. Do not open the same Library in multiple running copies of Sophia, including through a cloud folder.")
                 .foregroundStyle(.secondary)
+            Text("An Almanac copy keeps its automatic-preparation settings. Pause or disable preparation before copying if you want an archive only. Notification choices stay local to each Library; macOS permission does not travel with the folder.")
+                .foregroundStyle(.secondary)
             HStack {
                 Button("Show Notebook in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
                 Button("Show Library in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url.deletingLastPathComponent()]) }

@@ -161,3 +161,24 @@ If an edited page range disappears before it can be saved, its unsaved text is k
 
 Explicit **Finish for now** reports a connection, unusable reply, or save failure without retrying automatically. A disk failure may leave some notes saved before completion is recorded: inspect Sophia's notes before choosing Finish again. Automatic return-note failures stay quiet. See [SOP54 feedback checks](checks/sop54-finish-feedback.md).
 Linked notebook page reads and link-title discovery use an existing-only reader: missing or corrupt notebooks remain unavailable, without creating pages, defaults or recovery records. MCP `read_page` also avoids writable startup for its source notebook. See [the focused checks](checks/sop52-linked-read-only.md); this does not change the writable context used by other tools such as local `recall`.
+
+## Sophia’s Almanac
+
+Use **Sophia’s Almanac…** in the Library or app menu to opt in. Choose eligible notebook names and optional topics; these and earlier Almanac entry titles go to Claude for thematic curation. The source notebooks’ pages, conversations, goals and personal assessments are not sent. Separate notebooks are excluded; if the Almanac itself is kept separate, only typed topics guide it. Enabling creates a uniquely named, marked notebook rather than converting an ordinary same-name notebook.
+
+Manual preparation can make another entry even when an earlier one is waiting. Daily preparation is a separate explicit choice: set a local time and leave Sophia open with this Mac awake. The app checks on its timer, activation and wake; it does not run a closed-app daemon, wake the Mac, or create catch-up entries for missed days. One waiting entry blocks automatic accumulation. Pause daily preparation leaves manual preparation available; Disable stops preparation while keeping saved pages. Changing settings cancels stale preparation. Connection & Data must be acknowledged before requests; closing that information starts nothing by itself.
+
+Entries use ordinary pages, conversation, Undo and protected editing. Background preparation keeps the current notebook, page, editor and unsent composer in place. Read entry explicitly navigates; opening is not a claim of reading or learning. Prepare another entry creates another page, rather than silently replacing an edited one. Failed/cancelled preparation keeps earlier pages readable. The generation source basis is WebSearch summaries or general explanation, never a claim of inspected passages; attended conversation retains its normal source-opening permission controls.
+
+Notifications are independently optional. **Enable notifications…** is the only action that may ask macOS for alert permission. The generic notification contains no topic or source-notebook title and is attempted only after an entry is saved. Denial or submission failure does not prevent reading/preparation; automatic notification retry does not repeatedly announce the same entry. A notification click only opens its revalidated saved target. Controlled adapter checks do not establish actual OS delivery, Focus behavior or ad-hoc-package permission behavior.
+
+Almanac automatic opt-in is stored with its notebook and survives a whole-folder copy. Pause/disable before copying if the destination is intended only as an archive; reopening an enabled copy can prepare when eligible. Notification intent is a local per-Library preference, and OS authorization is not portable.
+
+Controlled notification verification (no OS permission or delivery): from repository root,
+
+```sh
+swiftc app/Sources/Sophia/AlmanacNotifications.swift app/checks/almanac-notifications.swift -o /tmp/sophia-almanac-notifications
+/tmp/sophia-almanac-notifications
+```
+
+Core/worker and native build observations remain separate from these adapter checks; see [SOP57 native verification](checks/sop57-almanac-native.md). Two bounded actual entries establish delivery, not factual certification: the first exposed a physical-model error; a narrow assumptions instruction improved the second sample without establishing general accuracy.
