@@ -149,8 +149,13 @@ struct LinksList: View {
     }
 
     func pageTitle(_ notebook: String, _ file: String) -> String {
-        let s = try? NotebookStore(url: session.library.root.appendingPathComponent(notebook))
-        return s?.readPage(file)?.title ?? file
+        let folder = session.library.root.appendingPathComponent(notebook)
+        let pages = folder.appendingPathComponent("pages", isDirectory: true).resolvingSymlinksInPath()
+        let page = pages.appendingPathComponent(file).resolvingSymlinksInPath()
+        guard FileManager.default.fileExists(atPath: folder.appendingPathComponent("notebook.json").path),
+              page.deletingLastPathComponent() == pages,
+              let text = try? String(contentsOf: page, encoding: .utf8) else { return file }
+        return NotebookStore.splitFrontmatter(text).title
     }
 }
 
