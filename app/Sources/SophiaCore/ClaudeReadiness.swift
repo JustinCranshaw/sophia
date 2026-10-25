@@ -24,12 +24,17 @@ public struct ClaudeStatusConfiguration {
     public let executable: String
     public let directory: URL
     public let environment: [String: String]
-    public init(executable: String, directory: URL, environment: [String: String] = ProcessInfo.processInfo.environment) {
-        self.executable = executable; self.directory = directory
+    public let settings: String?
+    public var isolationArguments: [String] {
+        ["--restricted", "--setting-sources", ""] + (settings.map { ["--settings", $0] } ?? [])
+    }
+    public init(executable: String, directory: URL, settings: String? = nil, environment: [String: String] = ProcessInfo.processInfo.environment) {
+        self.executable = executable; self.directory = directory; self.settings = settings
         var clean = environment
         for key in ClaudeEngine.droppedEnvironment { clean.removeValue(forKey: key) }
         for key in clean.keys where key.hasPrefix("SOPHIA_") { clean.removeValue(forKey: key) }
-        clean["PATH"] = (clean["PATH"] ?? "") + ":/usr/bin:/bin:/usr/sbin:/sbin"
+        let paths = (clean["PATH"] ?? "").split(separator: ":").map(String.init)
+        clean["PATH"] = (paths + ["/usr/bin", "/bin", "/usr/sbin", "/sbin"]).joined(separator: ":")
         self.environment = clean
     }
 }
@@ -39,7 +44,7 @@ public enum ClaudeStatusCheck {
     public static func run(_ config: ClaudeStatusConfiguration, timeout: TimeInterval = 5) -> ClaudeReadiness {
         let p = Process(), pipe = Pipe()
         p.executableURL = URL(fileURLWithPath: config.executable)
-        p.arguments = ["--setting-sources", "", "auth", "status", "--json"]
+        p.arguments = config.isolationArguments + ["auth", "status", "--json"]
         p.currentDirectoryURL = config.directory; p.environment = config.environment
         p.standardInput = FileHandle.nullDevice; p.standardOutput = pipe; p.standardError = FileHandle.nullDevice
         let reader = pipe.fileHandleForReading

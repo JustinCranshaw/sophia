@@ -69,6 +69,9 @@ struct LiveRunner {
                 if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false" }
                 else if !isError { try! store.appendTranscript(["role": .string("client"), "purpose": .string("replied"), "page": .string(page), "session": .string(session)]) }
                 next()
+            case .routeBlocked:
+                info["routeBlocked"] = "true"; done = true
+                print("  Local Claude connection was not verified; request withheld.")
             case .exited(let code, _, _):
                 done = true
                 if code != 0 { print("  claude exited \(code)") }

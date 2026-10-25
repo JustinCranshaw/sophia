@@ -19,13 +19,15 @@ func localConnectionProcessIsBoundedAndScrubbed() throws {
     try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: root) }
     let executable = root.appendingPathComponent("fake-claude")
+    expect(ClaudeStatusConfiguration(executable: "/unused", directory: root, environment: [:]).environment["PATH"] == "/usr/bin:/bin:/usr/sbin:/sbin")
+    expect(ClaudeStatusConfiguration(executable: "/unused", directory: root, environment: ["PATH": ":/known::"]).environment["PATH"] == "/known:/usr/bin:/bin:/usr/sbin:/sbin")
     func run(_ script: String, timeout: TimeInterval = 1) throws -> ClaudeReadiness {
         try ("#!/bin/sh\n" + script).write(to: executable, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
         return ClaudeStatusCheck.run(.init(executable: executable.path, directory: root,
                                           environment: ["PATH": "/usr/bin:/bin", "ANTHROPIC_API_KEY": "fixture-secret", "SOPHIA_LIBRARY": "private"]), timeout: timeout)
     }
-    expect(try run("[ -z \"$ANTHROPIC_API_KEY\" ] && [ -z \"$SOPHIA_LIBRARY\" ] && [ \"$1\" = --setting-sources ] && [ -z \"$2\" ] && [ \"$3\" = auth ] && [ \"$4\" = status ] && [ \"$5\" = --json ] || exit 2\nprintf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'") == .readyToAttempt)
+    expect(try run("[ -z \"$ANTHROPIC_API_KEY\" ] && [ -z \"$SOPHIA_LIBRARY\" ] && [ \"$1\" = --restricted ] && [ \"$2\" = --setting-sources ] && [ -z \"$3\" ] && [ \"$4\" = auth ] && [ \"$5\" = status ] && [ \"$6\" = --json ] || exit 2\nprintf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'") == .readyToAttempt)
     expect(try run("printf '%s' '{\"loggedIn\":false}'; exit 1") == .signedOut)
     expect(try run("printf '%s' 'not JSON'; exit 1") == .unknown)
     let ready = #"{"loggedIn":true,"authMethod":"claude.ai","apiProvider":"firstParty"}"#

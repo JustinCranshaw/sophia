@@ -276,9 +276,20 @@ struct PageView: View {
                              editor: editor(ranges, hidden), onEdit: { session.handle($0, file: file) }, onHeadings: { headings in
                     // A link into a section: scroll there once the reader has placed the headings.
                     // Headings move as fonts and math finish loading, so follow them for a moment.
-                    guard let title = session.pendingSection, let sec = store.section(title, of: file), sec.index < headings.count else { return }
-                    DispatchQueue.main.async { proxy.scrollTo("section-\(sec.index)", anchor: .top) }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { if session.pendingSection == title { session.pendingSection = nil } }
+                    guard session.place == .page(file), let title = session.pendingSection else { return }
+                    let request = session.pendingSectionID
+                    guard let sec = store.section(title, of: file) else {
+                        if session.pendingSectionID == request { session.pendingSection = nil }
+                        return
+                    }
+                    guard sec.index < headings.count else { return }
+                    DispatchQueue.main.async {
+                        guard session.place == .page(file), session.pendingSectionID == request else { return }
+                        proxy.scrollTo("section-\(sec.index)", anchor: .top)
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        if session.place == .page(file), session.pendingSectionID == request { session.pendingSection = nil }
+                    }
                 }, onMusic: { tunes in
                     // Name each tune's section: the innermost one holding the line its fence starts on.
                     session.noteMusic(file: file, warnings: tunes.filter { !$0.warnings.isEmpty }.map { t in
@@ -406,7 +417,7 @@ struct NotesView: View {
                 SophiaText(label: kind == "attempt" ? "Sophia's read" : "Sophia", text: r.str("text") ?? "")
             }
             let refs = (r["refs"]?.array ?? []).compactMap(\.string)
-            if !refs.isEmpty { Text("Based on " + refs.joined(separator: ", ")).font(.caption2).foregroundStyle(.tertiary) }
+            EvidenceLinks(session: session, refs: refs)
             if correcting == id {
                 TextEditor(text: $draft).font(.system(size: 15, design: .serif)).frame(height: 70)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
