@@ -211,6 +211,8 @@ Store a map from threads to provider sessions in notebook.json only if both of t
 
 The native prototype already exists. Before expanding it, run a useful first inquiry and return after approximately a week. Check the briefing, continue the inquiry, and correct a mistaken account through dialogue. The launch sequence above supersedes the original experiment-before-native ordering.
 
+The October 25 internal entry comparison carries a question or supplied material into an unsent conversation, with an optional notebook name. Empty notebooks begin with the book hidden; an explicitly opened book sits below the conversation when readable columns do not fit, and beside it at wider sizes. Drafts are retained within the current window, separate by notebook and conversation thread; book visibility choices last for the running app. Neither persists across relaunch. [The comparison](research/2026-10-25-entry-charrette/README.md) records the critique-driven revision and actual native/model checks; it does not establish human preference, learning or delayed return.
+
 | Part | Direction and reason |
 |---|---|
 | Windows, outline, commands, composer | SwiftUI with AppKit where useful; native Mac interaction is the user's preference |

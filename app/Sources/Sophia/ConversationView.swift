@@ -3,8 +3,13 @@ import SophiaCore
 
 struct ConversationView: View {
     @ObservedObject var session: NotebookSession
-    @State private var message = ""
+    @Binding private var message: String
     @FocusState private var focused: Bool
+
+    init(session: NotebookSession, draft: Binding<String> = .constant("")) {
+        self.session = session
+        _message = draft
+    }
 
     var body: some View {
         VStack(spacing: 0) {
