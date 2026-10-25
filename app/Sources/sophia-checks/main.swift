@@ -599,6 +599,7 @@ func notationWarningsNameTheirPageAndSection() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("createdAndEnumeratedNotebooksHaveTheSameURL", createdAndEnumeratedNotebooksHaveTheSameURL),
     ("keepsVerifiedQuoteAndStampsNothingFromSophia", keepsVerifiedQuoteAndStampsNothingFromSophia),
     ("misquoteBecomesParaphrase", misquoteBecomesParaphrase),
     ("quoteFromAnEarlierSessionIsRemoved", quoteFromAnEarlierSessionIsRemoved),
