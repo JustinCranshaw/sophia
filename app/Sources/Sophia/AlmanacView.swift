@@ -269,6 +269,8 @@ struct AlmanacStatusView: View {
             }
             AlmanacNotificationControls(notifications: almanac.notifications)
         }
+        // Keep each action independent when this control is embedded in the sidebar List.
+        .buttonStyle(.borderless)
     }
 
     private var status: String {
