@@ -516,10 +516,10 @@ public final class NotebookStore {
                 let previous = pagesURL.appendingPathComponent(Self.previousName(file))
                 let bytes = Data(text.utf8)
                 let unchanged = try Data(contentsOf: current) == bytes
-                if FileManager.default.fileExists(atPath: previous.path) {
-                    try FileManager.default.removeItem(at: previous)
-                }
                 if !unchanged {
+                    if FileManager.default.fileExists(atPath: previous.path) {
+                        try FileManager.default.removeItem(at: previous)
+                    }
                     try FileManager.default.copyItem(at: current, to: previous)
                     try bytes.write(to: current, options: .atomic)
                 }

@@ -118,12 +118,12 @@ Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ...
 
   A file name never changes once used: a revision keeps its file whatever the title becomes, moving a page between chapters changes only notebook.json, and a new page never reuses a file name already in the transcript.
 - A page write is a `tool` entry: `{ "tool": "write_page", "file", "title", "revised"?: true, "tool_use", "hash", "page" }`. `file` is the page written. `page` is the thread the request came from, which may be another page. `hash` is the SHA-256 of the page's bytes as written.
-- A byte-identical revision records the same `write_page` shape with `unchanged: true`, without rewriting the page. It is the latest action but has no Undo; a redundant previous version is removed so an outside edit cannot be mistaken for a later interrupted write.
+- A byte-identical revision records the same `write_page` shape with `unchanged: true`, without rewriting the page. It is the latest action and ends earlier Undo, but has no Undo of its own. Current and existing previous bytes are retained; unchanged requests do not establish authorship or hide unknown-provenance inspection.
 - **An unrecorded disk change** uses the compatibility shape `{ "role": "client", "tool": "write_page", "recovered": true, "file", "page": <file>, "hash", "revised"?: true }`. On opening, the app indexes two possible interruption states; neither hashes nor orphanhood establish who authored them:
   - a page whose bytes don't match the latest recorded hash while `.previous.md` does (the copy was made, then the crash came);
   - a page file listed in neither notebook.json nor the transcript.
 
-  An outside edit or outside-added page can match these states too. The entry records unknown provenance, never an authored Sophia revision or conversation activity, and offers no destructive Undo. Current and previous bytes remain available for inspection and manual restoration through the page editor.
+  An outside edit or outside-added page can match these states too. The entry records unknown provenance, never an authored Sophia revision or conversation activity, and offers no destructive Undo. Current and previous bytes remain available for inspection and manual restoration through the page editor until a later content-changing recorded write or edit replaces the single previous slot.
 - An undo is a `client` entry: `{ "purpose": "undo_page", "entry": "t-0042", "file", "page", "hash"? }`. `hash` is the SHA-256 of the restored page; there is none when the undo removed a new page.
 - When Sophia records a goal, the app adds `{ "role": "client", "purpose": "goal_noted", "record": "g-3", "page" }` so the conversation shows it where it happened.
 - **Clearing a thread.** `{ "role": "client", "purpose": "clear", "page" }`. The app first runs a checkpoint and writes the entry only once the checkpoint has succeeded, so what mattered before a clear is in Sophia's notes. A fresh start is offered only between turns. If the checkpoint fails, no entry is written, the thread is unchanged, and the app says it couldn't start fresh. A message typed while the notes are being written is sent after the clear; if the clear fails, it stays unsent in the composer.
@@ -310,9 +310,9 @@ Page writes and edits are undone by the rule in "The conversation log", not this
   - Judging by the last entry's author fails both cases, and also when checkpoint entries follow a message.
   - Keeping it in memory loses it in exactly the crash.
 - **`hash` on page writes, edits and undos:** needed so Undo, now worked out from records and kept across relaunch, can't be offered for a write a crash has already overwritten, and so unrecorded disk states can be found without inferring authorship. Cost: one SHA-256 per write. Rejected: file modification times, which have seconds resolution and are changed by other programs.
-- **Recovered writes:** needed so every page write is recorded and undoable even when a crash cut off its entry (AGENTS.md). It is a flag on the existing page-write entry, not a new kind. Two options were rejected:
-  - Stating an exception was rejected because the rule is a fixed boundary.
-  - Hashes and orphanhood do not prove authorship. Matching outside disk changes may be indexed as unknown, but never treated as authored writes or destructively undoable.
+- **Unrecorded disk states:** the existing `recovered` flag indexes unknown provenance without a new record kind. Hashes and orphanhood do not prove who wrote a file. Current and previous bytes are preserved until a later content-changing recorded write or edit replaces the single previous slot; unchanged requests retain both versions.
+  - Inferred destructive Undo was rejected because a copy-success/write-failure followed by an outside edit is indistinguishable from a genuine crash-before-entry.
+  - Automatic restoration would require additional durable intent evidence. A write-ahead journal is deferred; the current boundary is inspection and manual restoration, not automatic interrupted-write Undo.
 - **No stored provider session, cursor, or undo state:** Sophia's context is rebuilt from these records whenever a thread's conversation starts, so storage stays independent of provider sessions. A map from threads to provider sessions waits on the test in PLAN.md §4.
 
 ## Delivery sequence

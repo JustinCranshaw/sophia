@@ -794,18 +794,29 @@ func verificationUnknownRecoveryPreservesOutsideBytes() throws {
     // Old recovered markers receive the same non-destructive treatment on reopen.
     expectThrows { try reopened.undoPageWrite(unknown.str("id")!, session: "s-3") }
     expect(try Data(contentsOf: page) == outside)
+    let value = reopened.readPage(file)!
+    let same = try reopened.writePage(title: value.title, content: String(value.body.dropLast()), revising: file,
+                                     session: "s-3", toolUseID: "same-unknown")
+    expect(same["unchanged"] == .bool(true) && !reopened.isUndoable(same))
+    expect(try Data(contentsOf: page) == outside)
+    expect(try Data(contentsOf: previous) == recorded)
 }
 
 func verificationNoOpRevisionCannotClaimOutsideEdits() throws {
-    let s = try tempStore(), first = try fixturePage(s, "No-op", body: "Same bytes"), file = first.str("file")!
+    let s = try tempStore(), first = try fixturePage(s, "No-op", body: "Earlier bytes"), file = first.str("file")!
     let current = s.url.appendingPathComponent("pages").appendingPathComponent(file)
+    let priorRevision = try s.writePage(title: "No-op", content: "Same bytes", revising: file, session: "s-1", toolUseID: "revision")
+    let previousFile = s.url.appendingPathComponent("pages").appendingPathComponent(NotebookStore.previousName(file))
+    let previousBytes = try Data(contentsOf: previousFile)
+    expect(s.isUndoable(priorRevision))
     let unchangedBytes = try Data(contentsOf: current)
     let same = try s.writePage(title: "No-op", content: "Same bytes", revising: file, session: "s-1", toolUseID: "same")
-    expect(same["unchanged"] == .bool(true) && !s.hasPreviousVersion(file))
+    expect(same["unchanged"] == .bool(true) && s.hasPreviousVersion(file))
+    expect(try Data(contentsOf: previousFile) == previousBytes)
     expect(!Prompts.turnPrefix(s, thread: file).contains("Unchanged"))
     expectThrows { try s.undoPageWrite(same.str("id")!, session: "s-2") }
     let afterNoOp = try Data(contentsOf: current)
-    expect(!s.isUndoable(same) && !s.isUndoable(first) && afterNoOp == unchangedBytes)
+    expect(!s.isUndoable(same) && !s.isUndoable(priorRevision) && !s.isUndoable(first) && afterNoOp == unchangedBytes)
     let outside = unchangedBytes + Data("\nOutside wording\n".utf8)
     try outside.write(to: current, options: .atomic)
     let opened = try NotebookStore.open(url: s.url)

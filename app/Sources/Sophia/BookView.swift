@@ -228,7 +228,13 @@ struct PageView: View {
             ScrollViewReader { proxy in
             Sheet {
                 let store = session.store
-                if let found = store.latestPageAction(for: file), found["recovered"] == .bool(true) {
+                // Permission records and unchanged requests do not establish content provenance.
+                let provenance = store.transcript.last { entry in
+                    entry.str("file") == file && entry["unchanged"] != .bool(true)
+                        && ((entry.str("tool") == "write_page" && entry["refused"] != .bool(true))
+                            || ["edit_page", "undo_page"].contains(entry.str("purpose") ?? ""))
+                }
+                if provenance?["recovered"] == .bool(true) {
                     VStack(alignment: .leading, spacing: 8) {
                         Banner(tone: .plain, text: "An unrecorded page change was found. Its author is unknown; it has no Undo.")
                         if store.hasPreviousVersion(file) {
