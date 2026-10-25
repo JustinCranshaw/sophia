@@ -17,7 +17,7 @@ struct ConversationRow: Identifiable {
     }
 }
 
-func conversationRows(_ entries: [JSONObject], streaming: String, scope: String) -> [ConversationRow] {
+func conversationRows(_ entries: [JSONObject], streaming: String, scope: String, thread: String? = nil) -> [ConversationRow] {
     var rows: [ConversationRow] = []
     var origin: String?
     var originThread: String?
@@ -27,6 +27,7 @@ func conversationRows(_ entries: [JSONObject], streaming: String, scope: String)
         let mayExtend = previousWasUpdate
         // Even a hidden record is a boundary; never group across a checkpoint or action.
         previousWasUpdate = false
+        if let thread, NotebookStore.thread(of: entry) != thread { continue }
         if entry["recovered"] == .bool(true) { continue }
         guard let id = entry.str("id") else { continue }
         let role = entry.str("role") ?? ""

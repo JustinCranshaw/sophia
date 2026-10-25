@@ -187,7 +187,7 @@ struct ConversationView: View {
     static let measure: CGFloat = 620
 
     var items: [ConversationRow] {
-        conversationRows(session.store.threadEntries(for: session.activeThread), streaming: session.visibleStreaming, scope: conversationKey)
+        conversationRows(session.store.transcript, streaming: session.visibleStreaming, scope: conversationKey, thread: session.activeThread)
     }
 
     private var conversationKey: String { session.store.url.path + "/" + session.activeThread }
