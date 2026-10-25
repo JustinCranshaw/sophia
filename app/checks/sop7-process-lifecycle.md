@@ -1,4 +1,4 @@
-# SOP7: bounded cleanup of owned Claude processes
+# SOP50: bounded cleanup of owned Claude processes (SOP7 lifecycle slice)
 
 ## Observed failure
 
@@ -56,4 +56,4 @@ Proofs live in `/tmp/sophia-sop7-fixture/<case>/proof.json`, with separate `proo
 
 This is bounded best-effort ownership cleanup, not OS process isolation. A child that is born and completely detaches/reparents between ownership samples cannot be guaranteed captured. Signals are skipped if identity can no longer be established; identity lookup and signalling are not an atomic kernel handle. The five-second AppKit cap is not a guarantee against an OS-uninterruptible process. No claim that controlled processes reproduce every real Claude descendant topology or service failure. Idle real-provider Quit was separately observed in SOP48; no real provider request was repeated here.
 
-Composer drafts remain the existing window-local state, not durable storage across app closure. Page-editor behavior is unchanged. The remaining short native audit will check the preexisting generic error/recovery-text path and malformed checkpoint feedback; readiness is withheld until that audit and required independent review/fixes finish. Billing/commercial authorization, clean-Mac sign-in and human usability are not established by these controls.
+Composer drafts remain the existing window-local state, not durable storage across app closure. Page-editor behavior is unchanged. The wider SOP7 remains open for a separate audit of the preexisting generic error/recovery-text path and malformed checkpoint feedback. This SOP50 slice has completed its native lifecycle gates and requires independent review/fixes before merge. Billing/commercial authorization, clean-Mac sign-in and human usability are not established by these controls.
