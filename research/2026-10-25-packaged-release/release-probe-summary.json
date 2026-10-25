@@ -1,0 +1,32 @@
+{
+  "source": "7965f045a568a004a2c27418662aacf72e28d18a",
+  "main": "f7f5e5d3829b1edb91774c07674727f9c4d1dc4b",
+  "cliVersion": "2.1.304",
+  "mcpSHA256": "069a62e5c94ca398e90f742c423dfee7bb4c7ed2e31196a1223ac016f9e03b23",
+  "turns": [
+    {
+      "apiKeySource": "none",
+      "model": "claude-fable-5-1",
+      "tools": "WebSearch,mcp__sophia__about_you,mcp__sophia__link,mcp__sophia__note,mcp__sophia__read_page,mcp__sophia__recall,mcp__sophia__set_chapter,mcp__sophia__set_goal,mcp__sophia__set_memory,mcp__sophia__write_page"
+    },
+    {
+      "apiKeySource": "none",
+      "model": "claude-fable-5-1",
+      "tools": "WebSearch,mcp__sophia__about_you,mcp__sophia__link,mcp__sophia__note,mcp__sophia__read_page,mcp__sophia__recall,mcp__sophia__set_chapter,mcp__sophia__set_goal,mcp__sophia__set_memory,mcp__sophia__write_page"
+    },
+    {
+      "apiKeySource": "none",
+      "model": "claude-fable-5-1",
+      "tools": "WebSearch,mcp__sophia__about_you,mcp__sophia__link,mcp__sophia__note,mcp__sophia__read_page,mcp__sophia__recall,mcp__sophia__set_chapter,mcp__sophia__set_goal,mcp__sophia__set_memory,mcp__sophia__write_page"
+    }
+  ],
+  "exit": {
+    "returncode": 0,
+    "capturedCount": 10,
+    "stillAlive": []
+  },
+  "previousBytesExact": true,
+  "outsideHashUnchanged": true,
+  "executedCanaryMarkers": [],
+  "localInstructionOrSkillPrefixInReplies": false
+}
