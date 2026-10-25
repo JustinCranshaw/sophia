@@ -1,13 +1,47 @@
 [0/1] Planning build
 Building for debugging...
-[0/3] Write swift-version--1AB21518FC5DEDBE.txt
-[1/4] Write sources
-[3/6] Compiling sophia_checks main.swift
-[4/6] Emitting module sophia_checks
-[4/7] Write Objects.LinkFileList
-[5/7] Linking sophia-checks
-[6/7] Applying sophia-checks
-Build of product 'sophia-checks' complete! (1.33s)
+[0/4] Write sources
+[1/4] Write swift-version--1AB21518FC5DEDBE.txt
+[3/6] Emitting module SophiaCore
+[4/6] Compiling SophiaCore NotebookStore.swift
+/private/tmp/sophia-s1-integration/app/Sources/SophiaCore/NotebookStore.swift:162:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+160 |             for rec in out.kept { kept.append(try appendLearningLocked(rec, by: "sophia", session: session)["id"]!) }
+161 |             if let memory { _ = try setMemory(memory, session: session) }
+162 |             try appendTranscriptLocked(["role": .string("client"), "page": .string(""), "session": .string(session),
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+163 |                                         "purpose": .string("checkpoint"), "through": .string(through),
+164 |                                         "catch_up": .bool(catchUp), "kept": .array(kept)])
+
+/private/tmp/sophia-s1-integration/app/Sources/SophiaCore/NotebookStore.swift:633:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+631 |                                         "page": .string(e["revised"] == .bool(true) || e.str("purpose") == "edit_page" ? file : Self.thread(of: e))]
+632 |             if let hash = pageHash(file) { undo["hash"] = .string(hash) }
+633 |             try appendTranscriptLocked(undo)
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+634 |         }
+635 |     }
+
+/private/tmp/sophia-s1-integration/app/Sources/SophiaCore/NotebookStore.swift:656:21: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+654 |                 let w = try writePage(title: payload.str("title") ?? "Untitled", content: payload.str("content") ?? "",
+655 |                                       revising: nil, session: session, toolUseID: e.str("tool_use") ?? "")
+656 |                 try appendTranscriptLocked(["role": .string("client"), "session": .string(session), "purpose": .string("filed_draft"),
+    |                     `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+657 |                                             "proposal": .string(pid), "file": w["file"] ?? .null])
+658 |             }
+
+/private/tmp/sophia-s1-integration/app/Sources/SophiaCore/NotebookStore.swift:687:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+685 |             if let last = personMessages.last?.str("id") { record["refs"] = .array([.string(last)]) }
+686 |             let saved = try appendLearningLocked(record, by: "sophia", session: session)
+687 |             try appendTranscriptLocked(["role": .string("client"), "purpose": .string("goal_noted"),
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+688 |                                         "record": saved["id"]!, "page": .string(thread), "session": .string(session)])
+689 |             return saved
+[4/8] Write sources
+[6/10] Emitting module sophia_checks
+[7/10] Compiling sophia_checks main.swift
+[7/10] Write Objects.LinkFileList
+[8/10] Linking sophia-checks
+[9/10] Applying sophia-checks
+Build of product 'sophia-checks' complete! (2.32s)
 ok   verificationInterleavedThreadOwnership
 ok   verificationUndoAcrossScopesAndReopen
 ok   verificationLatestReleaseAndOneWayUndo
@@ -15,6 +49,7 @@ ok   verificationRecoveredRevisionBeforeEntry
 ok   verificationRecoveredNewPageBeforeUnfiled
 ok   verificationExternalAndCopyOnlyChanges
 ok   verificationAtomicUndoAndNewPageCutoff
+ok   verificationUnknownRecoveryPreservesOutsideBytes
 ok   verificationNoOpRevisionCannotClaimOutsideEdits
 ok   verificationNeverReuseUndoneFilename
 ok   verificationWindowUsesThroughPosition
@@ -61,4 +96,4 @@ ok   anOpenSectionIsRefusedAndOthersAreNot
 ok   undoingAPersonEditRestoresThePreviousVersion
 ok   aReleaseLiftsOnlyThatEdit
 ok   notationWarningsNameTheirPageAndSection
-All 53 checks passed.
+All 54 checks passed.

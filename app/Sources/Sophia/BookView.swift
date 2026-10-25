@@ -217,22 +217,39 @@ extension ContentsView {
 struct PageView: View {
     @ObservedObject var session: NotebookSession
     let file: String
+    private struct PreviousVersion: Identifiable {
+        let id = UUID()
+        let title: String
+        let body: String
+    }
+    @State private var previous: PreviousVersion?
     var body: some View {
         if let page = session.store.readPage(file) {
             ScrollViewReader { proxy in
             Sheet {
-                // Undo offers the latest write to this page, by either author.
+                let store = session.store
+                if let found = store.latestPageAction(for: file), found["recovered"] == .bool(true) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Banner(tone: .plain, text: "An unrecorded page change was found. Its author is unknown; it has no Undo.")
+                        if store.hasPreviousVersion(file) {
+                            Button("Previous version") {
+                                if let value = store.readPreviousVersion(file) {
+                                    previous = PreviousVersion(title: value.title, body: value.body)
+                                }
+                            }
+                        }
+                    }
+                }
+                // Only recorded, authored actions have destructive Undo.
                 if let w = session.undoableWrite(for: file), let e = session.store.transcript.first(where: { $0.str("id") == w }) {
                     let mine = e.str("purpose") == "edit_page"
                     let release = e.str("purpose") == "release_edit"
-                    let recovered = e["recovered"] == .bool(true)
                     HStack {
-                        Banner(tone: .saved, text: release ? "Sophia may change your edit on your next message." : recovered ? "A page change was recovered." : mine ? "You edited \(editedPlace(e)). The previous version is kept."
+                        Banner(tone: .saved, text: release ? "Sophia may change your edit on your next message." : mine ? "You edited \(editedPlace(e)). The previous version is kept."
                                : e["revised"] == .bool(true) ? "Sophia revised this page. The previous version is kept." : "Sophia added this page to your book.")
-                        Button(release ? "Undo permission to change your edit" : mine ? "Undo your edit" : recovered ? "Undo recovered change" : "Undo Sophia's change") { session.undoWrite(w) }
+                        Button(release ? "Undo permission to change your edit" : mine ? "Undo your edit" : "Undo Sophia's change") { session.undoWrite(w) }
                     }
                 }
-                let store = session.store
                 let chapter = store.chapter(of: file)
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
                 VStack(alignment: .leading, spacing: 8) {
@@ -271,6 +288,25 @@ struct PageView: View {
                     LinksList(session: session, links: links)
                 }
             }
+            }
+            .sheet(item: $previous) { snapshot in
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Previous version: \(snapshot.title)").font(.headline)
+                    Text("Nothing is applied here. To restore wording, copy it into the page editor.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    ScrollView {
+                        Text(verbatim: snapshot.body).font(.system(.body, design: .monospaced))
+                            .textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding(12)
+                    }
+                    HStack {
+                        Button("Copy Markdown") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(snapshot.body, forType: .string)
+                        }
+                        Spacer()
+                        Button("Done") { previous = nil }.keyboardShortcut(.cancelAction)
+                    }
+                }.padding(20).frame(width: 620, height: 460)
             }
         } else {
             Sheet { Text("This page isn't in the book.").foregroundStyle(.secondary) }
