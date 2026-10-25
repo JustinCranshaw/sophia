@@ -22,7 +22,7 @@ final class NotebookSession: ObservableObject {
 
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
-        if oldValue != place { pendingSection = nil }
+        if oldValue != place { pendingSection = nil; navigationProblem = nil }
         switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
         pendingSource = engines[activeThread]?.pendingSource
@@ -50,7 +50,11 @@ final class NotebookSession: ObservableObject {
         let target: SectionTarget?
     }
     @Published private(set) var sectionNavigation = SectionNavigation(target: nil)
-    @Published var navigationProblem: String?
+    struct NavigationProblem {
+        let file: String
+        let text: String
+    }
+    @Published var navigationProblem: NavigationProblem?
     // Snapshot and confirmed cross-notebook links still use title-based requests.
     var pendingSection: String? {
         get { if case .title(let title) = sectionNavigation.target?.selector { return title }; return nil }
@@ -66,7 +70,7 @@ final class NotebookSession: ObservableObject {
     @discardableResult
     func openSection(_ target: SectionTarget) -> Bool {
         switch target.resolve(in: store) {
-        case .failure(let error): navigationProblem = error.localizedDescription; return false
+        case .failure(let error): navigationProblem = NavigationProblem(file: target.file, text: error.localizedDescription); return false
         case .success:
             show(.page(target.file))
             sectionNavigation = SectionNavigation(target: target)

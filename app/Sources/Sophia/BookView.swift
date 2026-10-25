@@ -231,13 +231,13 @@ struct PageView: View {
         let request = session.pendingSectionID
         switch target.resolve(in: session.store) {
         case .failure(let error):
-            session.navigationProblem = error.localizedDescription
+            session.navigationProblem = .init(file: file, text: error.localizedDescription)
             session.pendingSection = nil
         case .success(let index):
             guard headingCount > 0 else { return } // wait for the actual renderer's anchors
             guard headingCount == session.store.editRanges(of: file).filter({ $0.index != nil }).count,
                   index < headingCount else {
-                session.navigationProblem = "This section could not be located in the rendered page. You can still read the page."
+                session.navigationProblem = .init(file: file, text: "This section could not be located in the rendered page. You can still read the page.")
                 session.pendingSection = nil
                 return
             }
@@ -284,6 +284,8 @@ struct PageView: View {
                     }
                 }
                 let chapter = store.chapter(of: file)
+                let hidden = NotebookStore.repeatedHeadingLines(in: page.body, title: page.title, chapter: chapter)
+                let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
                 VStack(alignment: .leading, spacing: 8) {
                     if let chapter { ChapterLabel(chapter: chapter) }
@@ -293,13 +295,22 @@ struct PageView: View {
                         .tracking(-0.3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(updated).font(.system(size: 12)).foregroundStyle(.secondary)
-                if let notice = session.navigationProblem {
-                    Text(notice).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                HStack {
+                    Text(updated).font(.system(size: 12)).foregroundStyle(.secondary)
+                    if ranges.contains(where: { $0.index != nil }) {
+                        Menu("Sections") {
+                            ForEach(ranges.filter { $0.index != nil }, id: \.key) { range in
+                                Button(range.label + " · " + range.section) {
+                                    session.openSection(.exact(notebook: store.url, file: file, range: range))
+                                }
+                            }
+                        }.controlSize(.small)
+                    }
+                }
+                if let notice = session.navigationProblem, notice.file == file {
+                    Text(notice.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
                 }
 
-                let hidden = NotebookStore.repeatedHeadingLines(in: page.body, title: page.title, chapter: chapter)
-                let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
                 MarkdownView(text: page.body.components(separatedBy: "\n").dropFirst(hidden).joined(separator: "\n"), anchors: true,
                              sections: ranges.filter { $0.key != "(page)" }.map { reader($0, hidden) },
                              editor: editor(ranges, hidden), onEdit: { session.handle($0, file: file) }, onHeadings: { headings in

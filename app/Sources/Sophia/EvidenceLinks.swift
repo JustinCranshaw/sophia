@@ -20,11 +20,12 @@ struct EvidenceLinks: View {
                         }
                     }.buttonStyle(.link)
                     if expanded == index {
-                        EvidenceDetail(session: session, reference: ref) { expanded = nil }
+                        EvidenceDetail(session: session, reference: ref) { expanded = nil; session.navigationProblem = nil }
                     }
                 }
             }
-            .onChange(of: refs) { _, _ in expanded = nil }
+            .onChange(of: refs) { _, _ in expanded = nil; session.navigationProblem = nil }
+            .onChange(of: expanded) { _, value in if value == nil { session.navigationProblem = nil } }
         }
     }
 }
@@ -50,13 +51,13 @@ private struct EvidenceDetail: View {
                     Text("Record: " + reference).font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.frame(maxHeight: 300)
-            if let notice = session.navigationProblem { Text(notice).font(.callout).foregroundStyle(.secondary) }
+            if let notice = session.navigationProblem, reference == "p:" + notice.file { Text(notice.text).font(.callout).foregroundStyle(.secondary) }
             HStack {
                 if let file = evidence.page {
                     Button("Open page") {
                         if EvidenceReference.resolve(reference, in: session.store).page == file {
                             session.show(.page(file)); close()
-                        } else { session.navigationProblem = "This page is no longer available." }
+                        } else { session.navigationProblem = .init(file: file, text: "This page is no longer available.") }
                     }
                     let sections = session.store.editRanges(of: file).filter { $0.index != nil }
                     if !sections.isEmpty {
