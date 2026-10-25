@@ -34,17 +34,19 @@ func sourcePermissionsAreExplicitMatchedAndTemporary() throws {
         expect(!bridge.decide(request, allow: true))
     }
     expect(allowed["behavior"]?.string == "allow" && allowed["updatedInput"] == input)
-    expect(attempt("second") { expect(bridge.decide($0, allow: false)) }["behavior"]?.string == "deny")
+    let declined = attempt("second") { expect(bridge.decide($0, allow: false)) }
+    expect(declined["behavior"]?.string == "deny" && declined["message"]?.string?.contains("chose Don't open") == true)
     expect(SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("../../first"), toolUseID: "../../first", timeout: 0.1)["behavior"]?.string == "deny")
     expect(SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("mismatch"), toolUseID: "different", timeout: 0.1)["behavior"]?.string == "deny")
     expect(attempt("mismatched-decision") { request in
         SourcePermissionBridge.write(.object(["nonce": .string("wrong"), "generation": .string(request.generation), "toolUseID": .string(request.toolUseID), "allow": .bool(true)]), at: bridge.directory.appendingPathComponent("decision.json"))
     }["behavior"]?.string == "deny")
-    expect(attempt("switch") { _ in bridge.setActive(false) }["behavior"]?.string == "deny")
+    let switched = attempt("switch") { _ in bridge.setActive(false) }
+    expect(switched["behavior"]?.string == "deny" && switched["message"]?.string?.contains("cancelled") == true)
     bridge.setActive(true)
     expect(attempt("returned") { expect(bridge.decide($0, allow: true)) }["behavior"]?.string == "allow")
     let timedOut = SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("timeout"), toolUseID: "timeout", timeout: 0.01)
-    expect(timedOut["behavior"]?.string == "deny")
+    expect(timedOut["behavior"]?.string == "deny" && timedOut["message"]?.string?.contains("no choice was recorded") == true)
     _ = bridge.poll(); expect(bridge.pending == nil)
     expect(attempt("cancel") { _ in bridge.close() }["behavior"]?.string == "deny")
     expect(SourcePermissionBridge.awaitDecision(directory: bridge.directory, arguments: arguments("closed"), toolUseID: "closed", timeout: 0.1)["behavior"]?.string == "deny")

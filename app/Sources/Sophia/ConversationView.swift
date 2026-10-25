@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import SophiaCore
 
 struct ConversationView: View {
@@ -58,7 +59,14 @@ struct ConversationView: View {
             if let request = session.pendingSource {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Open this source?").font(.callout.weight(.semibold))
-                    Text(request.url).font(.caption).textSelection(.enabled).lineLimit(4)
+                    HStack(alignment: .top, spacing: 8) {
+                        Text(request.url).font(.caption).textSelection(.enabled).lineLimit(2).truncationMode(.middle).help(request.url)
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(request.url, forType: .string)
+                        } label: { Image(systemName: "doc.on.doc") }
+                        .buttonStyle(.plain).help("Copy full source URL").accessibilityLabel("Copy full source URL")
+                    }
                     Text("Claude will read it and return an extracted passage, which may omit details.").font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Button("Allow once") { session.decideSource(request, allow: true) }.buttonStyle(.borderedProminent)
@@ -432,14 +440,15 @@ struct SourceEvidence: View {
     let entry: JSONObject
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(entry["is_error"] == .bool(true) ? "SOURCE REQUEST DID NOT COMPLETE" : "PROVIDER-EXTRACTED SOURCE").font(.caption2.weight(.bold)).foregroundStyle(.secondary)
+            Text(entry["is_error"] == .bool(true) ? "Source request did not complete" : "Source response received").font(.caption.weight(.semibold))
+            Text("Provider-extracted source").font(.caption2).foregroundStyle(.secondary)
             Text(entry.str("url") ?? "").font(.caption).textSelection(.enabled)
             if let returned = entry.str("returned_url"), returned != entry.str("url") {
                 Text("Returned URL: " + returned).font(.caption).textSelection(.enabled)
             }
-            if let status = entry["http_status"] { Text("HTTP status: " + status.line).font(.caption2).foregroundStyle(.secondary) }
             if let location = entry.str("location") { Text("Reported location: " + location).font(.caption).textSelection(.enabled) }
             DisclosureGroup("Extracted content and outcome") {
+                if let status = entry["http_status"] { Text("HTTP status: " + status.line).font(.caption2).foregroundStyle(.secondary) }
                 Text(SourceEvidenceText.plain(entry["content"] ?? .null)).font(.callout).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                 Text("Provider extraction may omit details. It is not raw full text or an independently verified quotation.").font(.caption).foregroundStyle(.secondary)
             }.font(.caption)

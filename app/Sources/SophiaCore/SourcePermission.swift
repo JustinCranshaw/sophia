@@ -69,15 +69,19 @@ public final class SourcePermissionBridge {
     }
     /// Called only by the approval-only MCP process. Fixed filenames never derive from tool input.
     public static func awaitDecision(directory: URL, arguments: JSON, toolUseID: String, timeout: TimeInterval = 120) -> JSON {
-        func deny() -> JSON { .object(["behavior": .string("deny"), "message": .string("The person did not approve opening this source. Do not retry it without their request.")]) }
+        func deny(_ reason: String) -> JSON {
+            .object(["behavior": .string("deny"), "message": .string(reason + " No source content was returned for this request. Do not retry it without a fresh request from the person.")])
+        }
         guard arguments["tool_name"]?.string == "WebFetch", !toolUseID.isEmpty,
               arguments["tool_use_id"]?.string == toolUseID,
-              let input = arguments["input"], let url = input["url"]?.string, validURL(url),
-              let state = read(directory.appendingPathComponent("state.json")), state["active"]?.bool == true, state["closed"]?.bool == false,
-              let generation = state["generation"]?.string else { return deny() }
+              let input = arguments["input"], let url = input["url"]?.string, validURL(url) else {
+            return deny("The permission callback or source URL was invalid or did not match the tool call.")
+        }
+        guard let state = read(directory.appendingPathComponent("state.json")), state["active"]?.bool == true, state["closed"]?.bool == false,
+              let generation = state["generation"]?.string else { return deny("The source request is no longer active; its conversation or connection ended.") }
         // Reusing a tool-use id is never a second approval request.
         var used = read(directory.appendingPathComponent("used.json"))?.array ?? []
-        guard !used.contains(.string(toolUseID)) else { return deny() }
+        guard !used.contains(.string(toolUseID)) else { return deny("This source request was already handled or expired; reusing it is not allowed.") }
         used.append(.string(toolUseID)); write(.array(used), at: directory.appendingPathComponent("used.json"))
         let nonce = UUID().uuidString
         defer { write(.object(["nonce": .string(nonce)]), at: directory.appendingPathComponent("outcome.json")) }
@@ -86,15 +90,15 @@ public final class SourcePermissionBridge {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             guard let current = read(directory.appendingPathComponent("state.json")), current["generation"]?.string == generation,
-                  current["active"]?.bool == true, current["closed"]?.bool == false else { return deny() }
+                  current["active"]?.bool == true, current["closed"]?.bool == false else { return deny("The source request was cancelled because its conversation became inactive or the connection ended.") }
             if let decision = read(directory.appendingPathComponent("decision.json")) {
                 guard decision["nonce"]?.string == nonce, decision["generation"]?.string == generation,
-                      decision["toolUseID"]?.string == toolUseID, let allow = decision["allow"]?.bool else { return deny() }
-                return allow ? .object(["behavior": .string("allow"), "updatedInput": input]) : deny()
+                      decision["toolUseID"]?.string == toolUseID, let allow = decision["allow"]?.bool else { return deny("The source decision did not match this request; access was refused.") }
+                return allow ? .object(["behavior": .string("allow"), "updatedInput": input]) : deny("The person chose Don't open for this source.")
             }
             Thread.sleep(forTimeInterval: 0.05)
         }
-        return deny()
+        return deny("The source request expired while waiting for a decision; no choice was recorded.")
     }
 }
 
