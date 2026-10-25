@@ -77,3 +77,20 @@ See [actual requests and handler results](release-probe-calls.json) and [allowli
 The disposable notebook also contained local `.claude/settings.json` and `settings.local.json` with harmless hook/allow-rule canaries, a `.claude/skills/package-canary/SKILL.md`, `CLAUDE.md`, and `.mcp.json` with a harmless connector marker. A random non-sensitive outside-notebook file was provided only as a boundary canary, never as prompt content. Both local config files, skill/instruction/connector files and outside bytes remained unchanged; no hook/connector marker appeared and no instruction/skill prefix appeared in replies. The advertised tool list contained no local connector or Skill tool. These observations support the effective restricted/explicit configuration in this run; absence of a marker alone does not prove that every customization could never load. No developer operation inspected, copied or changed authentication caches or global settings; the official CLI used its existing login through its normal process. Only notebook metadata, transcript, provisional learning record, seed/current/previous pages and its lock file were added/changed.
 
 The current [official CLI reference](https://code.claude.com/docs/en/cli-reference) documents restricted configuration, explicit MCP configuration and builtin tool selection; [settings documentation](https://code.claude.com/docs/en/settings) describes project/local settings. Those documents were checked on 25 October; the concrete evidence above comes from the installed version and actual handler traffic. Login/route status and successful calls do not independently establish billing attribution or commercial authorization. Those remain inconclusive, as do clean-Mac behavior, distribution signing, notarization and publishing.
+
+The probe's CLI configuration has **no native source-permission bridge**: `--tools WebSearch`, no explicit WebFetch ask rule. The native app's bridge enables WebSearch+WebFetch with an explicit ask rule and an in-window single-request decision; that different path was observed in [SOP44's separately attributed native report](https://github.com/JustinCranshaw/sophia/pull/12) at its explicitly recorded source epochs and final same-thread follow-up `8571ba5` (landed PR12 main `2bc5955481e021954db9b6232a702740c29e6825`). It is not re-verified as current packaged-release UI behavior by this CLI probe.
+
+Actual build/compile commands (the temporary artifacts remain under `/tmp/sophia-package-probe`):
+
+```sh
+sh app/scripts/make-app.sh release
+swiftc -O -I app/.build/arm64-apple-macosx/release/Modules \
+  /tmp/sophia-package-probe/main.swift /tmp/sophia-package-probe/LiveRun.swift \
+  app/.build/arm64-apple-macosx/release/SophiaCore.build/*.o \
+  -o /tmp/sophia-package-probe/bin/package-probe
+shasum -a 256 app/build/Sophia.app/Contents/MacOS/sophia-mcp \
+  /tmp/sophia-package-probe/bin/packaged-sophia-mcp
+python3 /tmp/sophia-package-probe/supervise.py
+```
+
+The supervisor launched the caller in its own process group, removed provider/API-key override variables, captured only descendants of its owned PID (with process-start identity), recorded fixture manifests, and imposed a 565-second outer cap over the three 180-second bounded runs plus cleanup windows. It did not delete shared temp directories or discover/kill processes by name. No bound was reached. The official CLI subprocess used the product's unchanged notebook cwd, scrubbed environment, `--restricted --setting-sources ''`, explicit system prompt/context, strict single-server MCP configuration and existing allowlist. No product default model override was added. The source records and successful handler results above establish a useful bounded local learning loop; they do not substitute for the remaining native release interaction, clean-Mac or commercial/billing evidence in SOP4/SOP39.
