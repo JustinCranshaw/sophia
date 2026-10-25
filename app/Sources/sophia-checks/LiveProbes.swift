@@ -69,7 +69,8 @@ func runAttributionProbe(dir: URL) {
     let challenge = "I had thought an eigenvector was a vector whose length does not change. In your example its length seems to change all the time. Also, you said every point moves in phase, but the (1,-1) mode moves oppositely. What exactly does fixed shape mean when the masses pass through zero? Please keep this answer short; the page is a lot to absorb."
     try! store.appendTranscript(["role": .string("person"), "session": .string("fixture"), "text": .string(initial)])
     try! store.appendTranscript(["role": .string("sophia"), "session": .string("fixture"), "text": .string(erroneous)])
-    let page = try! store.writePage(title: "Two-mass modes", content: erroneous + "\n\nFor two identical masses between three identical springs, the mode shapes are (1,1) and (1,-1).", revising: nil, session: "fixture", toolUseID: "synthetic-attribution-fixture").str("file")!
+    let fixtureBody = erroneous + "\n\nFor two identical masses between three identical springs, the mode shapes are (1,1) and (1,-1)."
+    let page = try! store.writePage(title: "Two-mass modes", content: fixtureBody, revising: nil, session: "fixture", toolUseID: "synthetic-attribution-fixture").str("file")!
     print("SYNTHETIC SETUP: prior exchange/page seeded; next replies and notebook tools are real. No human evidence.")
     let runner = LiveRunner(store: store)
     let first = runner.run(session: "s-1", resume: nil, messages: [
@@ -86,14 +87,20 @@ func runAttributionProbe(dir: URL) {
         for m in store.memory { print("MEMORY \(m.str("id") ?? ""): " + (m.str("text") ?? "")) }
     }
     records("ACTUAL MODEL RECORDS BEFORE PERSON CORRECTION")
-    print("ACTUAL PAGE AFTER CHALLENGE: " + (store.readPage(page)?.body ?? ""))
+    let pageAfter = store.readPage(page)?.body ?? ""
+    print("ACTUAL PAGE AFTER CHALLENGE: " + pageAfter)
+    let revised = store.pageWrites.contains { $0.str("file") == page && $0["revised"] == .bool(true) && $0.str("session") == "s-1" }
+    guard revised, pageAfter != fixtureBody, !pageAfter.hasPrefix(erroneous) else {
+        print("FAIL: the known erroneous fixture passage was not repaired. Inspect the actual reply and records above.")
+        exit(1)
+    }
     guard let note = store.shownNotes.first else {
         print("FAIL: the directed retention request produced no note to inspect.")
         exit(1)
     }
     // Diagnostic equivalent of Notes' correction API, not a native UI interaction.
     // This is an actual subsequent evaluation input, not attributed to the original simulated learner.
-    let correction = "My opposite-sign objection was valid and corrected Sophia's wording. Keep that separate from my earlier fixed-length belief. Next time, start with why one mass with zero displacement can still accelerate."
+    let correction = "My opposite-sign objection was valid and corrected Sophia's wording. Keep that separate from my earlier fixed-length belief. Next time, start with the (1,0) non-mode counterexample: the second mass has zero displacement but gets a positive acceleration, so the displacements cannot keep their 1:0 ratio."
     try! store.appendLearning(["kind": .string("correction"), "replaces": note["id"]!, "text": .string(correction)], by: "person", session: "s-2")
     let context = Prompts.context(store)
     let briefing = Prompts.briefing(store)
