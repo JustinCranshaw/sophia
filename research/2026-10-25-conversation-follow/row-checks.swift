@@ -36,30 +36,30 @@ check(edited.last!.id == before.last!.id, "page edits do not become question ori
 check(Set(two.map(\.id)).count == two.count && two.compactMap(\.anchor) == ["t-1", "t-2", "t-3", "t-4", "t-5"], "all rows are unique and retain actual transcript anchors")
 
 
-func update(_ id: String, _ tool: String = "note", page: String = "P", session: String = "s-1") -> JSONObject {
+func update(_ id: String, _ tool: String = "note", page: String = "", session: String = "s-1") -> JSONObject {
     var e = entry(id, "tool")
-    e["tool"] = .string(tool); e["page"] = .string(page); e["session"] = .string(session)
+    e["tool"] = .string(tool); e["page"] = .string(tool == "memory" ? "" : page); e["session"] = .string(session)
     if tool == "note" { e["record"] = .string("n-" + id) }
     if tool == "memory" { e["added"] = .number(1); e["changed"] = .number(0); e["dropped"] = .number(0) }
     return e
 }
 var updateQuestion = question
-updateQuestion["page"] = .string("P")
+updateQuestion["page"] = .string("")
 updateQuestion["session"] = .string("s-1")
 let n1 = update("u-1"), n2 = update("u-2"), memory = update("u-3", "memory")
-let grouped = conversationRows([updateQuestion, n1, n2, memory], streaming: "", scope: "A/P")
-check(grouped.count == 2 && grouped.last!.entries == [n1, n2, memory], "adjacent successful note and memory events group without reordering")
+let grouped = conversationRows([updateQuestion, n1, n2, memory], streaming: "", scope: "A/Contents")
+check(grouped.count == 2 && grouped.last!.entries == [n1, n2, memory], "adjacent successful Contents note and memory events group without reordering")
 check(grouped.last!.anchor == "u-1" && grouped.last!.anchors == ["u-1", "u-2", "u-3"], "every original group anchor remains available")
-let growing = conversationRows([updateQuestion, n1, n2, memory, update("u-4")], streaming: "", scope: "A/P")
+let growing = conversationRows([updateQuestion, n1, n2, memory, update("u-4")], streaming: "", scope: "A/Contents")
 check(growing.last!.id == grouped.last!.id && growing.last!.anchors.count == 4, "appending a member keeps group identity and changes activity IDs")
-let groupedStream = conversationRows([updateQuestion, n1, n2], streaming: "Answer", scope: "A/P")
-let groupedMore = conversationRows([updateQuestion, n1, n2, memory], streaming: "Answer", scope: "A/P")
-let groupedCommit = conversationRows([updateQuestion, n1, n2, memory, entry("u-5", "sophia", "Answer")], streaming: "", scope: "A/P")
+let groupedStream = conversationRows([updateQuestion, n1, n2], streaming: "Answer", scope: "A/Contents")
+let groupedMore = conversationRows([updateQuestion, n1, n2, memory], streaming: "Answer", scope: "A/Contents")
+let groupedCommit = conversationRows([updateQuestion, n1, n2, memory, entry("u-5", "sophia", "Answer")], streaming: "", scope: "A/Contents")
 check(groupedStream.last!.id == groupedMore.last!.id && groupedMore.last!.id == groupedCommit.last!.id, "group growth and stream-to-record preserve the reply reader")
-check(conversationRows([updateQuestion, n1], streaming: "", scope: "A/P").last!.entries.count == 1, "a single update stays a normal entry")
-check(conversationRows([n1, n2], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }, "no person turn means no inferred group")
-check(conversationRows([updateQuestion, n1, update("u-2", session: "s-2")], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }, "sessions are a grouping boundary")
-check(conversationRows([updateQuestion, n1, update("u-2", page: "Q")], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }, "threads are a grouping boundary")
+check(conversationRows([updateQuestion, n1], streaming: "", scope: "A/Contents").last!.entries.count == 1, "a single update stays a normal entry")
+check(conversationRows([n1, n2], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }, "no person turn means no inferred group")
+check(conversationRows([updateQuestion, n1, update("u-2", session: "s-2")], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }, "sessions are a grouping boundary")
+check(conversationRows([updateQuestion, n1, update("u-2", page: "Q")], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }, "threads are a grouping boundary")
 let important: [JSONObject] = [
     first, entry("b-person", "person", "Next turn"),
     entry("b-undo", "client", "", "undo_page"), entry("b-goal", "client", "", "goal_noted"),
@@ -68,32 +68,37 @@ let important: [JSONObject] = [
     update("b-about", "about_you"), update("b-link", "link"), update("b-chapter", "set_chapter")
 ]
 check(important.allSatisfy { boundary in
-    conversationRows([updateQuestion, n1, boundary, n2], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }
+    conversationRows([updateQuestion, n1, boundary, n2], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }
 }, "prose, person turns, Undo, goals, checkpoint, page/source/library outcomes never collapse or bridge")
 for flag in ["refused", "is_error", "error"] {
     var failure = n2; failure[flag] = flag == "error" ? .string("Denied") : .bool(true)
-    check(!successfulNotebookUpdate(failure) && conversationRows([updateQuestion, n1, failure, memory], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }, "explicit \(flag) remains outside groups and breaks adjacency")
+    check(!successfulNotebookUpdate(failure) && conversationRows([updateQuestion, n1, failure, memory], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }, "explicit \(flag) remains outside groups and breaks adjacency")
 }
 var missing = n2; missing.removeValue(forKey: "record")
 var incompleteMemory = memory; incompleteMemory.removeValue(forKey: "changed")
 var noChange = memory; noChange["added"] = .number(0)
 check([missing, incompleteMemory, noChange].allSatisfy { !successfulNotebookUpdate($0) }, "only explicit successful metadata qualifies")
 let hidden = entry("hidden", "client", "", "replied")
-check(conversationRows([updateQuestion, n1, hidden, n2], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }, "even filtered records break raw adjacency")
+check(conversationRows([updateQuestion, n1, hidden, n2], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }, "even filtered records break raw adjacency")
 check(grouped.flatMap(\.entries) == [updateQuestion, n1, n2, memory] && Set(grouped.map(\.id)).count == grouped.count, "raw records and unique presentation identities are preserved")
-check(conversationRows([question, n1, n2], streaming: "", scope: "A/P").allSatisfy { $0.entries.count == 1 }, "a different thread’s person turn cannot authorize grouping")
+var wrongThreadQuestion = question; wrongThreadQuestion["page"] = .string("Q")
+check(conversationRows([wrongThreadQuestion, n1, n2], streaming: "", scope: "A/Contents").allSatisfy { $0.entries.count == 1 }, "a different thread’s person turn cannot authorize grouping")
+var pQuestion = updateQuestion; pQuestion["page"] = .string("P")
+let pNote1 = update("u-1", page: "P"), pNote2 = update("u-2", page: "P")
 let globalCheckpoint = entry("global-checkpoint", "client", "", "checkpoint")
-let acrossGlobal = conversationRows([updateQuestion, n1, globalCheckpoint, n2], streaming: "", scope: "A/P", thread: "P")
+let acrossGlobal = conversationRows([pQuestion, pNote1, globalCheckpoint, pNote2], streaming: "", scope: "A/P", thread: "P")
 check(acrossGlobal.allSatisfy { $0.entries.count == 1 } && acrossGlobal.flatMap(\.anchors) == ["t-2", "u-1", "u-2"], "a global checkpoint separates page updates without becoming visible")
+let acrossMemory = conversationRows([pQuestion, pNote1, memory, pNote2], streaming: "", scope: "A/P", thread: "P")
+check(acrossMemory.allSatisfy { $0.entries.count == 1 } && !acrossMemory.flatMap(\.anchors).contains("u-3"), "real global memory splits page notes and is never displayed in the page thread")
 var otherQuestion = entry("other-person", "person", "Other thread question")
 otherQuestion["page"] = .string("Q")
 var otherReply = entry("other-reply", "sophia", "Other thread answer")
 otherReply["page"] = .string("Q")
-let interleavedThreads = conversationRows([updateQuestion, n1, otherQuestion, otherReply, n2], streaming: "P answer", scope: "A/P", thread: "P")
-let isolatedThread = conversationRows([updateQuestion, n1, n2], streaming: "P answer", scope: "A/P", thread: "P")
+let interleavedThreads = conversationRows([pQuestion, pNote1, otherQuestion, otherReply, pNote2], streaming: "P answer", scope: "A/P", thread: "P")
+let isolatedThread = conversationRows([pQuestion, pNote1, pNote2], streaming: "P answer", scope: "A/P", thread: "P")
 check(interleavedThreads.dropLast().allSatisfy { $0.entries.count == 1 }, "other-thread raw activity breaks page-group adjacency")
 check(interleavedThreads.last!.id == isolatedThread.last!.id && !interleavedThreads.flatMap(\.anchors).contains("other-reply"), "hidden thread activity cannot steal reply origin or block identity")
 var pReply = entry("committed-P", "sophia", "P answer"); pReply["page"] = .string("P")
-let afterInterleave = conversationRows([updateQuestion, n1, otherQuestion, otherReply, n2, pReply], streaming: "", scope: "A/P", thread: "P")
+let afterInterleave = conversationRows([pQuestion, pNote1, otherQuestion, otherReply, pNote2, pReply], streaming: "", scope: "A/P", thread: "P")
 check(afterInterleave.last!.id == interleavedThreads.last!.id, "page reply stream-to-record stays stable with interleaved threads")
 print("All \(checkCount) focused presentation checks passed.")
