@@ -145,6 +145,7 @@ struct ConversationView: View {
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Color.accentColor.opacity(0.08))
             }
+            if !session.editRecovery.edits.isEmpty { PageRecoveryView(session: session) }
             if let p = session.problem {
                 HStack(alignment: .top) {
                     Image(systemName: "exclamationmark.triangle").foregroundStyle(.red)

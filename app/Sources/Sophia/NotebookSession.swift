@@ -38,6 +38,7 @@ final class NotebookSession: ObservableObject {
     @Published var isResponding = false
     @Published var activity: String?
     @Published var pendingSource: SourcePermissionBridge.Request?
+    @Published var editRecovery = PageEditRecovery()
     @Published var problem: String?
     @Published var goalReviewID: String?
     @Published var goalProblem: String?
@@ -333,7 +334,13 @@ final class NotebookSession: ObservableObject {
     @discardableResult
     private func writeNotes(catchUp: Bool) -> Bool {
         let messages = store.unnotedMessages
-        guard !isResponding, let last = messages.last?.str("id"), ensureEngine(thread: "", internalRequest: true) else { return false }
+        guard !shuttingDown, !isResponding, let last = messages.last?.str("id") else { return false }
+        // Only Finish for now uses catchUp:false; automatic return work stays quiet.
+        if !catchUp { problem = nil }
+        guard ensureEngine(thread: "", internalRequest: true) else {
+            if !catchUp { problem = "Couldn't finish for now: the notes connection couldn't start. Open Connection & Data, then try Finish for now again." }
+            return false
+        }
         request = .checkpoint(through: last, entries: Set(messages.compactMap { $0.str("id") }), catchUp: catchUp)
         requestText = ""; isResponding = true; activity = nil
         engine?.send(Prompts.checkpoint(store, messages: messages, catchUp: catchUp))
@@ -354,9 +361,24 @@ final class NotebookSession: ObservableObject {
         let finished = checkpointEngine; checkpointEngine = nil; engine = nil; finished?.stop()
         switch r {
         case .checkpoint(let through, let entries, let catchUp):
-            let result = try? store.finishCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
-            if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
-            else { briefAfterNotes = false }
+            do {
+                let result = try store.finishCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
+                if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
+                else {
+                    briefAfterNotes = false
+                    if !catchUp && !shuttingDown {
+                        problem = failed
+                            ? "Couldn't finish for now: the notes request failed. Your conversation is still here. Try Finish for now again."
+                            : "Couldn't finish for now: the notes reply couldn't be used. Your conversation is still here. Try Finish for now again."
+                    }
+                }
+            } catch {
+                briefAfterNotes = false
+                store.reload() // Some learning records may precede the failed completion marker.
+                if !catchUp && !shuttingDown {
+                    problem = "Couldn't confirm Finish for now. Some notes may already have been kept. Review Sophia's notes before trying Finish for now again."
+                }
+            }
         case .briefing:
             if !failed && !dropBriefing, var obj = RecordChecks.extractJSON(text)?.object {
                 obj["kind"] = .string("briefing")
@@ -400,6 +422,7 @@ final class NotebookSession: ObservableObject {
     struct PageEditing: Equatable {
         let id = UUID().uuidString
         let file: String
+        let title: String
         var range: NotebookStore.EditRange
         /// Set when a commit was refused because the range changed underneath: what's there now.
         var conflict: NotebookStore.EditRange?
@@ -413,7 +436,7 @@ final class NotebookSession: ObservableObject {
             guard let range = try store.beginEdit(file: file, key: key, session: session) else { return }
             pendingSection = nil
             editDraft = nil
-            editing = PageEditing(file: file, range: range, atVisibleTop: atVisibleTop)
+            editing = PageEditing(file: file, title: store.readPage(file)?.title ?? file, range: range, atVisibleTop: atVisibleTop)
         } catch { problem = error.localizedDescription }
     }
 
@@ -453,7 +476,7 @@ final class NotebookSession: ObservableObject {
                 // The range is gone from the page (undone, or the page removed). Nothing is discarded:
                 // the person's text stays here, selectable, to put back where they want it.
                 endEditing()
-                problem = "The part of the page you were editing is gone, so your edit wasn't saved. Your text:\n\n" + t
+                editRecovery.keep(file: e.file, title: e.title, section: base.index == nil ? base.section : "\(base.label) · \(base.section)", text: t)
             case .conflict(let current?):
                 e.conflict = current
                 editDraft = t
