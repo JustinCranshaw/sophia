@@ -38,6 +38,7 @@ final class NotebookSession: ObservableObject {
     @Published var isResponding = false
     @Published var activity: String?
     @Published var pendingSource: SourcePermissionBridge.Request?
+    @Published var editRecovery = PageEditRecovery()
     @Published var problem: String?
     @Published var goalReviewID: String?
     @Published var goalProblem: String?
@@ -400,6 +401,7 @@ final class NotebookSession: ObservableObject {
     struct PageEditing: Equatable {
         let id = UUID().uuidString
         let file: String
+        let title: String
         var range: NotebookStore.EditRange
         /// Set when a commit was refused because the range changed underneath: what's there now.
         var conflict: NotebookStore.EditRange?
@@ -413,7 +415,7 @@ final class NotebookSession: ObservableObject {
             guard let range = try store.beginEdit(file: file, key: key, session: session) else { return }
             pendingSection = nil
             editDraft = nil
-            editing = PageEditing(file: file, range: range, atVisibleTop: atVisibleTop)
+            editing = PageEditing(file: file, title: store.readPage(file)?.title ?? file, range: range, atVisibleTop: atVisibleTop)
         } catch { problem = error.localizedDescription }
     }
 
@@ -453,7 +455,7 @@ final class NotebookSession: ObservableObject {
                 // The range is gone from the page (undone, or the page removed). Nothing is discarded:
                 // the person's text stays here, selectable, to put back where they want it.
                 endEditing()
-                problem = "The part of the page you were editing is gone, so your edit wasn't saved. Your text:\n\n" + t
+                editRecovery.keep(file: e.file, title: e.title, section: base.index == nil ? base.section : "\(base.label) · \(base.section)", text: t)
             case .conflict(let current?):
                 e.conflict = current
                 editDraft = t
