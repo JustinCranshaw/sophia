@@ -173,6 +173,11 @@ public final class NotebookStore {
 
     static func now() -> String { ISO8601DateFormatter().string(from: Date()) }
 
+    func saveAlmanacMetadata(_ value: JSON) throws {
+        meta["almanac"] = value
+        try writeMeta()
+    }
+
     func writeMeta() throws {
         try Data(JSON.object(meta).pretty.utf8).write(to: metaURL, options: .atomic)
     }
