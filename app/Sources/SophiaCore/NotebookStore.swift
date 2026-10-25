@@ -108,8 +108,11 @@ public final class NotebookStore {
     }
     public func cursor(for thread: String, before: String? = nil) -> Int {
         guard let checkpoint = transcript.last(where: { $0.str("purpose") == "checkpoint" }) else { return -1 }
-        if let through = checkpoint.str("through") { return transcript.firstIndex { $0.str("id") == through } ?? -1 }
-        return transcript.firstIndex { $0.str("id") == checkpoint.str("id") } ?? -1
+        let position = transcript.firstIndex { $0.str("id") == (checkpoint.str("through") ?? checkpoint.str("id")) } ?? -1
+        // A retry must retain outcomes after its original question, even when a later
+        // conversation has already checkpointed beyond that interrupted turn.
+        guard let before, let boundary = transcript.firstIndex(where: { $0.str("id") == before }) else { return position }
+        return min(position, boundary)
     }
     public func window(for thread: String, before: String? = nil) -> [JSONObject] {
         let start = max(clearPosition(for: thread, before: before), cursor(for: thread, before: before)) + 1

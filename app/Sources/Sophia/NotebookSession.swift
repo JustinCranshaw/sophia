@@ -97,7 +97,7 @@ final class NotebookSession: ObservableObject {
 
     private func ensureEngine(thread: String, before: String? = nil, internalRequest: Bool = false) -> Bool {
         if !internalRequest, let e = engines[thread], e.isRunning { engine = e; return true }
-        guard let claude = ClaudeEngine.locateClaude() else { if !internalRequest { problem = "Install Claude Code and sign in to continue." }; return false }
+        guard let claude = ClaudeEngine.locateClaude() else { if !internalRequest { problem = "Claude Code isn’t installed. Open the setup guide, install it and sign in from Terminal, then choose Retry on your saved question." }; return false }
         guard let prompt = Self.sophiaPrompt() else { if !internalRequest { problem = "SOPHIA.md is missing from the app." }; return false }
         let tools = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("sophia-mcp").path
         let e = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: tools, notebookURL: store.url,
@@ -191,6 +191,25 @@ final class NotebookSession: ObservableObject {
         } catch { problem = error.localizedDescription; return }
         briefAfterNotes = false
         if request == .briefing { dropBriefing = true }
+        dispatchNext(); changed()
+    }
+
+    static let setupURL = URL(string: "https://code.claude.com/docs/en/quickstart")!
+
+    /// Explicitly resend a saved incomplete question, retaining its one transcript entry.
+    func retry(_ entryID: String) {
+        let thread = activeThread
+        guard let question = store.unansweredQuestion(in: thread, pending: isPending(thread)),
+              question.str("id") == entryID, let text = question.str("text") else { return }
+        // Rebuild from the saved conversation, including any partial reply and completed tools.
+        if let old = engines.removeValue(forKey: thread) {
+            if engine === old { engine = nil }
+            old.stop()
+        }
+        problem = nil; lastDeleted = nil; briefAfterNotes = false
+        if request == .briefing { dropBriefing = true }
+        let retry = "[Sophia app] The person chose Retry for saved question \(entryID). Use any reply or page changes already in the conversation; continue the answer without repeating saved writes. Their unchanged question follows.\n\n" + text
+        queue.append(Turn(id: entryID, thread: thread, text: retry))
         dispatchNext(); changed()
     }
 
