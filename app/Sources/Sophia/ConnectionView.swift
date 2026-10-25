@@ -64,7 +64,7 @@ struct ConnectionView: View {
         case .unchecked: return "Claude Code installed · status not checked"
         case .signedOut: return "Claude Code reports signed out"
         case .readyToAttempt: return "Claude installation/login status ready to attempt a request"
-        case .unknown: return "Claude installation/login status could not be verified for this route"
+        case .unknown: return "Claude installation/login status could not be verified"
         }
     }
     var body: some View {
@@ -75,7 +75,7 @@ struct ConnectionView: View {
             Text("Claude access and usage are separate from Sophia. Check your Claude plan’s limits and charges.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !compact {
-                Text("About you is personal background shared across your notebooks, not an account. After you dismiss this information, a later return can prepare a briefing or catch-up notes automatically; dismissal itself starts nothing. This development build intends to use your Claude account through Claude Code, excluding API-key and alternate-provider environment overrides. Installation/login status is not a successful request, billing proof, or commercial permission, and does not guarantee every notebook’s effective route.")
+                Text("About you is personal background shared across your notebooks, not an account, and is included with requests from any notebook. After you dismiss this information, a later return can prepare a briefing or catch-up notes automatically; dismissal itself starts nothing. This development build intends to use your Claude account through Claude Code, excluding API-key and alternate-provider environment overrides. Installation/login status is not a successful request, billing proof, or commercial permission, and does not guarantee every notebook’s effective route.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if connection.isStatusFixture { Text("Synthetic status fixture — not this Mac’s login result").font(.caption) }

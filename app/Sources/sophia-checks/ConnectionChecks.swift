@@ -25,10 +25,15 @@ func localConnectionProcessIsBoundedAndScrubbed() throws {
         return ClaudeStatusCheck.run(.init(executable: executable.path, directory: root,
                                           environment: ["PATH": "/usr/bin:/bin", "ANTHROPIC_API_KEY": "fixture-secret", "SOPHIA_LIBRARY": "private"]), timeout: timeout)
     }
-    expect(try run("[ -z \"$ANTHROPIC_API_KEY\" ] && [ -z \"$SOPHIA_LIBRARY\" ] && [ \"$1\" = --setting-sources ] && [ \"$3\" = auth ] && [ \"$4\" = status ] && [ \"$5\" = --json ] || exit 2\nprintf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'") == .readyToAttempt)
+    expect(try run("[ -z \"$ANTHROPIC_API_KEY\" ] && [ -z \"$SOPHIA_LIBRARY\" ] && [ \"$1\" = --setting-sources ] && [ -z \"$2\" ] && [ \"$3\" = auth ] && [ \"$4\" = status ] && [ \"$5\" = --json ] || exit 2\nprintf '%s' '{\"loggedIn\":true,\"authMethod\":\"claude.ai\",\"apiProvider\":\"firstParty\"}'") == .readyToAttempt)
     expect(try run("printf '%s' '{\"loggedIn\":false}'; exit 1") == .signedOut)
     expect(try run("printf '%s' 'not JSON'; exit 1") == .unknown)
-    expect(try run("head -c 70000 /dev/zero") == .unknown)
+    let ready = #"{"loggedIn":true,"authMethod":"claude.ai","apiProvider":"firstParty"}"#
+    func padded(_ size: Int) -> String {
+        "printf '%s' '\(ready)'; head -c \(size - ready.utf8.count) /dev/zero | tr '\\000' ' '"
+    }
+    expect(try run(padded(65_536)) == .readyToAttempt)
+    expect(try run(padded(70_000)) == .unknown)
     let start = Date()
     expect(try run("exec sleep 5", timeout: 0.05) == .unknown)
     expect(Date().timeIntervalSince(start) < 2)
