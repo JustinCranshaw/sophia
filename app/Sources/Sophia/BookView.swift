@@ -12,7 +12,9 @@ struct BookView: View {
             case .goals: GoalsView(session: session)
             case .notes: NotesView(session: session)
             case .about: AboutView(session: session)
-            case .page(let file): PageView(session: session, file: file)
+            case .page(let file):
+                // A different page starts a fresh reader, including the same filename in another notebook.
+                PageView(session: session, file: file).id(session.store.url.appendingPathComponent(file))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
