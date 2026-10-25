@@ -32,13 +32,11 @@ struct ConversationView: View {
                         VStack(alignment: .leading, spacing: 22) {
                             let retryQuestion = session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread))
                             ForEach(items, id: \.id) { item in
-                                EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion).id(item.id)
-                            }
-                            if !session.visibleStreaming.isEmpty {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Who(text: "Sophia", sophia: true)
-                                    MarkdownView(text: session.visibleStreaming, style: .chat) { followIfNeeded(proxy) }
-                                }.id("streaming")
+                                EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion)
+                                    .background(alignment: .top) {
+                                        // The real transcript anchor appears without replacing the reader.
+                                        if let anchor = item.anchor { Color.clear.frame(height: 1).id(anchor) }
+                                    }
                             }
                             if let a = session.visibleActivity {
                                 HStack(spacing: 8) { ProgressView().controlSize(.small); Text(a).font(.caption).foregroundStyle(.secondary) }.id("activity")
@@ -158,18 +156,8 @@ struct ConversationView: View {
     /// Line length for the conversation: about 75 characters of 14pt SF Pro.
     static let measure: CGFloat = 620
 
-    struct Item { let id: String; let entry: JSONObject }
-
-    var items: [Item] {
-        session.store.threadEntries(for: session.activeThread).compactMap { e in
-            if e["recovered"] == .bool(true) { return nil }
-            guard let id = e.str("id") else { return nil }
-            let role = e.str("role") ?? ""
-            if role == "client", e["decision"] == nil, !["stopped", "undo_page", "goal_noted", "filed_draft"].contains(e.str("purpose") ?? "") { return nil }
-            // A release shows on the card it answers.
-            if role == "person", e.str("purpose") == "release_edit" { return nil }
-            return Item(id: id, entry: e)
-        }
+    var items: [ConversationRow] {
+        conversationRows(session.store.threadEntries(for: session.activeThread), streaming: session.visibleStreaming, scope: conversationKey)
     }
 
     private var conversationKey: String { session.store.url.path + "/" + session.activeThread }
