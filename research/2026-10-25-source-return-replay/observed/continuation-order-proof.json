@@ -1,0 +1,13 @@
+{
+  "beforeMetadataSHA256": "7d49aab6ad48950b6e6eca565bdbafcd0c85cb224c5c7b7b294ee47522948dd9",
+  "afterMetadataWithOnlyWatermarkRestoredSHA256": "7d49aab6ad48950b6e6eca565bdbafcd0c85cb224c5c7b7b294ee47522948dd9",
+  "exactAfterRestoringOnlyLearningIDFloor": true,
+  "beforeLearningIDs": {
+    "g": "3",
+    "n": "39"
+  },
+  "afterLearningIDs": {
+    "g": "3",
+    "n": "51"
+  }
+}

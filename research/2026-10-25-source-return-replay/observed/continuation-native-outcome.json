@@ -1,0 +1,32 @@
+{
+  "reason": "Turn idle",
+  "elapsed": 57.70295786857605,
+  "decisions": [],
+  "screenshot": "/private/tmp/sophia-sop32-current-ui/results/1792940342842428000-58c7c0.png",
+  "owned": [
+    {
+      "pid": 56157,
+      "parent": 56090,
+      "uid": 501,
+      "birth": "Sun Oct 25 07:58:06 2026",
+      "state": "S"
+    },
+    {
+      "pid": 56168,
+      "parent": 56157,
+      "uid": 501,
+      "birth": "Sun Oct 25 07:58:07 2026",
+      "state": "S"
+    },
+    {
+      "pid": 56169,
+      "parent": 56157,
+      "uid": 501,
+      "birth": "Sun Oct 25 07:58:07 2026",
+      "state": "S"
+    }
+  ],
+  "bridges": [
+    "/var/folders/hq/h4b7c4c534j8vr7r6swlc4kw0000gn/T/sophia-source-ABEAB0D1-2E85-4CE8-8B96-2A49C85832A2"
+  ]
+}
