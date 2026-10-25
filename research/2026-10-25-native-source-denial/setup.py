@@ -16,7 +16,7 @@ def sha(path): return hashlib.sha256(path.read_bytes()).hexdigest()
 def write(name, data): (root/name).write_text(json.dumps(data, indent=2)+'\n')
 head = command('git','rev-parse','HEAD')
 assert command('git','rev-parse','origin/main') == a.expected_main, 'Fetch and pin current main first'
-assert len(a.require_commit) >= 2, 'Supply the actual landed SOP51 and SOP52 commits'
+assert len(a.require_commit) >= 3, 'Supply the actual landed SOP51, SOP52 and SOP54 commits'
 for commit in a.require_commit:
     subprocess.run(['git','merge-base','--is-ancestor',commit,a.expected_main],cwd=repo,check=True)
 product = ['app/Sources','app/Package.swift','app/reader','SOPHIA.md','app/scripts/make-app.sh']
