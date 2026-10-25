@@ -34,7 +34,8 @@ final class AppModel: ObservableObject {
 
     func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil) {
         if open?.store.url != url {
-            if let current = open { bookVisibility[current.store.url.path] = current.bookShown }
+            // A page/Open action counts as choosing the book; an untouched empty default does not.
+            if let current = open, current.bookShown { bookVisibility[current.store.url.path] = true }
             open?.shutdown()
             do {
                 let next = try NotebookSession(url: url)
@@ -49,6 +50,12 @@ final class AppModel: ObservableObject {
     func follow(notebook name: String, page: String?, section: String? = nil) {
         openNotebook(library.root.appendingPathComponent(name), at: page.map { .page($0) } ?? .contents)
         open?.pendingSection = section
+    }
+
+    func toggleBook() {
+        guard let current = open else { return }
+        current.bookShown.toggle()
+        bookVisibility[current.store.url.path] = current.bookShown
     }
 
     @discardableResult
@@ -157,6 +164,7 @@ struct RootView: View {
             base = String(base[..<boundary])
         }
         for separator in ["/", "\\", ":", "\n", "\r"] { base = base.replacingOccurrences(of: separator, with: " ") }
+        while base.utf8.count > 240 { base.removeLast() }
         base = base.trimmingCharacters(in: .whitespacesAndNewlines)
         if base.isEmpty || base == "." || base == ".." { base = "New inquiry" }
         var candidate = base, number = 2
@@ -180,6 +188,7 @@ struct RootView: View {
 /// Empty notebooks begin with the conversation; explicit book visibility remains the person's choice.
 struct NotebookView: View {
     @ObservedObject var session: NotebookSession
+    @EnvironmentObject private var model: AppModel
     @Binding var drafts: [String: String]
 
     init(session: NotebookSession, drafts: Binding<[String: String]> = .constant([:])) {
@@ -209,14 +218,22 @@ struct NotebookView: View {
                     Divider()
                     BookView(session: session)
                         .frame(width: narrow ? nil : Self.bookWidth(geo.size.width),
-                               height: narrow ? geo.size.height * 0.55 : nil)
+                               height: narrow ? max(0, min(geo.size.height * 0.55, geo.size.height - 300)) : nil)
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .editPage)) { _ in session.editWholePage() }
+        .onChange(of: Self.draftKey(session)) { old, new in
+            let prefix = session.store.url.path + "/"
+            guard old.hasPrefix(prefix), !old.hasSuffix("/"),
+                  !session.store.pageFiles.contains(String(old.dropFirst(prefix.count))),
+                  let orphaned = drafts.removeValue(forKey: old), !orphaned.isEmpty else { return }
+            let destination = drafts[new] ?? ""
+            drafts[new] = destination.isEmpty ? orphaned : destination + "\n\n" + orphaned
+        }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { withAnimation { session.bookShown.toggle() } } label: {
+                Button { withAnimation { model.toggleBook() } } label: {
                     Label(session.bookShown ? "Hide Book" : "Show Book", systemImage: "sidebar.right")
                 }
                 .help(session.bookShown ? "Hide the book" : "Show the book")
