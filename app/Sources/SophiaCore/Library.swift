@@ -15,15 +15,14 @@ public struct Library {
                 .appendingPathComponent("Documents").appendingPathComponent("Sophia")
         }
         try? FileManager.default.createDirectory(at: location, withIntermediateDirectories: true)
-        // Enumeration returns directory URLs with resolved ancestors (for example /tmp).
-        // Use the same representation when creating and following notebook URLs.
+        // Keep directory URLs consistent across creation, enumeration, and following links.
         self.root = URL(fileURLWithPath: location.path, isDirectory: true).resolvingSymlinksInPath()
     }
 
     public var notebooks: [URL] {
         let items = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
         return items.filter { FileManager.default.fileExists(atPath: $0.appendingPathComponent("notebook.json").path) }
-            .map { $0.resolvingSymlinksInPath() }
+            .map { root.appendingPathComponent($0.lastPathComponent, isDirectory: true) }
             .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
     }
 

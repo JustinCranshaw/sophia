@@ -14,7 +14,7 @@ func createdAndEnumeratedNotebooksHaveTheSameURL() throws {
     let library = Library(root: URL(fileURLWithPath: alias.path))
     expect(library.notebooks.isEmpty)
     let created = try library.create(named: "New inquiry")
-    let enumerated = library.notebooks.first!
+    guard let enumerated = library.notebooks.first else { expect(false); return }
     expect(created == enumerated)
     expect(created.hasDirectoryPath)
     expect(try NotebookStore(url: created).url == enumerated)
