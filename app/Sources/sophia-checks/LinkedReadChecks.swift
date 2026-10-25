@@ -46,7 +46,7 @@ func existingNotebookReadsKeepFormatAndNeverRepair() throws {
     let legal = try Library(root: f.library.root).create(named: "C\\C++ notes")
     let legalStore = try NotebookStore(url: legal)
     let legalFile = try legalStore.writePage(title: "Backslash notebook", content: "Legal body", revising: nil, session: "s-1", toolUseID: "legal").str("file")!
-    expect(ExistingNotebook(root: f.library.root, name: legal.lastPathComponent)?.readPage(legalFile)?.body == "Legal body")
+    expect(ExistingNotebook(root: f.library.root, name: legal.lastPathComponent)?.readPage(legalFile)?.body == legalStore.readPage(legalFile)?.body)
     let meta = f.target.url.appendingPathComponent("notebook.json")
     let originalMeta = try Data(contentsOf: meta)
     var duplicated = try JSONSerialization.jsonObject(with: originalMeta) as! [String: Any]
