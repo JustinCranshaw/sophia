@@ -235,7 +235,7 @@ A goal's history is its chain of `replaces`: rewording, adding criteria, confirm
      - at Finish for now;
      - before a clear in the core helper/legacy workflow; the current native app has no fresh-start/clear command;
      - when the person comes back to a notebook whose last messages have no notes, before the briefing;
-     - after a turn ends in a thread that then has 30 or more messages after the latest `through` and its latest clear.
+     - automatic long-thread checkpointing remains a design direction; the current native callers are Finish for now and return catch-up.
    - **How it runs:** in its own short-lived conversation process, never in a thread's. Its entries belong to the Contents thread. It is not limited by the `note` quota. The UI can show checking activity or connection failure; no private provider context is presented as saved notebook data.
    - **What it is shown:** the request lists each message with its page, and every record written since the previous checkpoint entry, whatever the session, as already noted. A crash between saving a checkpoint's records and its entry can still leave repeated records, which the person can delete.
    - **If it fails:** a checkpoint fails when the request ends in an error or the reply can't be read. It writes no accepted learning records, no memory and no successful checkpoint/cursor entry, so the checkpoint boundary does not advance. Connection failures can retain explicit failure evidence. A later request may retry; the core clear helper does not clear after failure.
