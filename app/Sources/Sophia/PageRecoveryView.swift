@@ -8,7 +8,7 @@ struct PageRecoveryView: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "doc.badge.exclamationmark").foregroundStyle(.orange)
-            Text(session.editRecovery.edits.count == 1 ? "An unsaved page edit is kept here." : "\(session.editRecovery.edits.count) unsaved page edits are kept here.")
+            Text(session.editRecovery.edits.count == 1 ? "1 unsaved edit kept temporarily." : "\(session.editRecovery.edits.count) unsaved edits kept temporarily.")
             Spacer(minLength: 4)
             Button("Review kept edits") { reviewing = true }
         }
