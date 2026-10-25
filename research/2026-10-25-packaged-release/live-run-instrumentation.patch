@@ -1,0 +1,25 @@
+--- LiveRun.swift
++++ temporary/LiveRun.swift
+@@ -60,7 +60,7 @@
+                 reply += t
+                 if currentPurpose == nil { try! store.appendTranscript(["role": .string("sophia"), "page": .string(page), "session": .string(session), "text": .string(t)]) }
+             case .toolUse(_, let name, let input):
+-                print("  tool used: \(name) \(input["title"]?.string ?? input["text"]?.string ?? input["query"]?.string ?? "")")
++                print("TOOL_EVENT " + JSON.object(["name": .string(name), "input": input]).line)
+             case .sourcePermission, .sourceResult: break // This CLI runner has no native approval bridge.
+             case .toolResult:
+                 store.reload()
+@@ -80,8 +80,12 @@
+         }
+         try! engine.start()
+         next()
+-        let deadline = Date().addingTimeInterval(600)
++        let deadline = Date().addingTimeInterval(180)
+         while !done && Date() < deadline { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.2)) }
++        if !done { info["timedOut"] = "true"; engine.stop() }
++        // Temporary caller instrumentation: retain the run loop for the existing delayed stop.
++        let cleanup = Date().addingTimeInterval(4)
++        while Date() < cleanup { RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.1)) }
+         return info
+     }
+ }
