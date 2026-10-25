@@ -28,8 +28,8 @@ enum Snapshot {
             func shoot(_ i: Int) {
                 guard i < places.count else { exit(0) }
                 // SOPHIA_SNAPSHOT_SECTION: open the page scrolled to that section, as a followed link does.
-                if case .page = places[i].1 { s.pendingSection = ProcessInfo.processInfo.environment["SOPHIA_SNAPSHOT_SECTION"] }
                 s.place = places[i].1
+                if case .page = places[i].1 { s.pendingSection = ProcessInfo.processInfo.environment["SOPHIA_SNAPSHOT_SECTION"] }
                 // SOPHIA_SNAPSHOT_EDIT: open that section ("(opening)", "(page)", or a section title) in the editor.
                 if case .page(let file) = places[i].1, let want = ProcessInfo.processInfo.environment["SOPHIA_SNAPSHOT_EDIT"],
                    let r = s.store.editRanges(of: file).first(where: { $0.key == want || $0.section == want }) {
