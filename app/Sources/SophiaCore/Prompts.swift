@@ -162,7 +162,7 @@ public enum Prompts {
         let previous = max(clear, priorTurn ?? store.cursor(for: thread, before: before))
         let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
         var out = bookChanges(store, since: previous + 1)
-        for e in changes where e["recovered"] != .bool(true) {
+        for e in changes where e["recovered"] != .bool(true) && e["unchanged"] != .bool(true) {
             if e.str("file") == thread && ((e.str("tool") == "write_page" && NotebookStore.thread(of: e) != thread) || e.str("purpose") == "undo_page") {
                 out += "[Sophia app] This page changed: \(contextLine(e) ?? e.line)\n"
             }

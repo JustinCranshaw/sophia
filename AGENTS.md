@@ -36,7 +36,7 @@ Use the exact package baselines in PLAN.md and retain a lockfile when dependenci
 ## Implementation boundaries
 
 - Notebook tools may read pages, write or revise pages, group pages into chapters, record provisional goals, write or revise Sophia's own notes and working memory, and propose lines for "About you" and links between notebooks, all through the stores' checks and locking. Across notebooks, Sophia sees only titles, and reads another notebook's page only through a link the person confirmed; a notebook kept separate is invisible to the others. They must not delete pages, remove the person's records, change lines the person wrote or edited on a page, or mark goals met or dropped.
-- Every page write must be recorded and undoable (a revision keeps the previous version). Only the person confirms a goal.
+- Sophia page writes must be recorded and undoable (a revision keeps the previous version). If interrupted before recording, preserve the unrecorded disk change and any previous version for inspection instead of inferring destructive Undo. Only the person confirms a goal.
 - Keep the initial storage small: Markdown pages, ordering metadata, transcript and learning JSONL, and one previous page version. Add complexity only for a demonstrated failure or workflow.
 - Configure the experiment explicitly rather than inheriting personal hooks, skills, instructions, or permissive tool settings. Prefer per-process configuration over modifying global agent settings.
 - Prevent silent fallback from intended subscription usage to separately billed API usage. Never extract subscription tokens, copy authentication caches into the project, or log credentials.

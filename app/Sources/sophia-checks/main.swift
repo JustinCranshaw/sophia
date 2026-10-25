@@ -705,16 +705,19 @@ func verificationLatestReleaseAndOneWayUndo() throws {
     expect(!two.isReleaseUndoable(r1) && !two.isReleaseUndoable(r2) && !two.isUndoable(two.transcript.last!))
 }
 func verificationRecoveredRevisionBeforeEntry() throws {
-    let s = try tempStore(); let w = try fixturePage(s), p = w.str("file")!
-    let original = try Data(contentsOf: s.pagesURL.appendingPathComponent(p))
     for iteration in 0..<2 {
+        let s = try tempStore(); let w = try fixturePage(s), p = w.str("file")!
+        let original = try Data(contentsOf: s.pagesURL.appendingPathComponent(p))
         try original.write(to: s.pagesURL.appendingPathComponent(NotebookStore.previousName(p)))
         try Data("---\ntitle: \"P\"\n---\nUnrecorded \(iteration)\n".utf8).write(to: s.pagesURL.appendingPathComponent(p), options: .atomic)
         let opened = try NotebookStore.open(url: s.url), recovered = opened.transcript.last!
-        expect(recovered["recovered"] == .bool(true) && opened.isUndoable(recovered) && !opened.isUndoable(w))
+        expect(recovered["recovered"] == .bool(true) && recovered.str("hash") == opened.pageHash(p))
+        expect(!opened.isUndoable(recovered) && !opened.isUndoable(w))
         expect(try NotebookStore.open(url: s.url).transcript.count == opened.transcript.count)
-        try opened.undoPageWrite(recovered.str("id")!, session: "s-2")
-        expect(try Data(contentsOf: opened.pagesURL.appendingPathComponent(p)) == original)
+        let found = try Data(contentsOf: opened.pagesURL.appendingPathComponent(p))
+        expectThrows { try opened.undoPageWrite(recovered.str("id")!, session: "s-2") }
+        expect(try Data(contentsOf: opened.pagesURL.appendingPathComponent(p)) == found)
+        expect(try Data(contentsOf: opened.pagesURL.appendingPathComponent(NotebookStore.previousName(p))) == original)
     }
 }
 func verificationRecoveredNewPageBeforeUnfiled() throws {
@@ -723,7 +726,10 @@ func verificationRecoveredNewPageBeforeUnfiled() throws {
     expect(try NotebookStore(url: s.url).pageFiles.isEmpty)
     let opened = try NotebookStore.open(url: s.url)
     expect(opened.pageFiles == [file] && opened.transcript.last?["recovered"] == .bool(true))
-    expect(opened.isUndoable(opened.transcript.last!))
+    let found = opened.transcript.last!
+    expect(!opened.isUndoable(found))
+    expectThrows { try opened.undoPageWrite(found.str("id")!, session: "s-2") }
+    expect(try Data(contentsOf: opened.pagesURL.appendingPathComponent(file)) == Data("Orphan bytes".utf8))
     expect(try NotebookStore.open(url: s.url).transcript.count == 1)
     let other = try tempStore(), recorded = try fixturePage(other), f = recorded.str("file")!
     try Data("{\"chapters\":[],\"unfiled\":[]}".utf8).write(to: other.url.appendingPathComponent("notebook.json"))
@@ -768,15 +774,49 @@ func verificationAtomicUndoAndNewPageCutoff() throws {
     let gone = try NotebookStore.open(url: cut.url)
     expect(gone.transcript.count == 1 && !gone.isUndoable(w))
 }
+func verificationUnknownRecoveryPreservesOutsideBytes() throws {
+    let s = try tempStore(), first = try fixturePage(s, "Ambiguous", body: "Recorded"), file = first.str("file")!
+    let page = s.pagesURL.appendingPathComponent(file)
+    let previous = s.pagesURL.appendingPathComponent(NotebookStore.previousName(file))
+    let recorded = try Data(contentsOf: page)
+    try FileManager.default.copyItem(at: page, to: previous) // Copy succeeded, write never happened.
+    let outside = recorded + Data("\nOutside wording\n".utf8)
+    try outside.write(to: page, options: .atomic)
+    let opened = try NotebookStore.open(url: s.url)
+    let unknown = opened.transcript.last!
+    expect(unknown["recovered"] == .bool(true) && !opened.isUndoable(unknown))
+    expectThrows { try opened.undoPageWrite(unknown.str("id")!, session: "s-2") }
+    expect(try Data(contentsOf: page) == outside)
+    expect(try Data(contentsOf: previous) == recorded)
+    expect(opened.readPreviousVersion(file)?.body.contains("Recorded") == true)
+    let reopened = try NotebookStore.open(url: s.url)
+    expect(reopened.transcript.count == opened.transcript.count && !reopened.isUndoable(unknown))
+    // Old recovered markers receive the same non-destructive treatment on reopen.
+    expectThrows { try reopened.undoPageWrite(unknown.str("id")!, session: "s-3") }
+    expect(try Data(contentsOf: page) == outside)
+    let value = reopened.readPage(file)!
+    let same = try reopened.writePage(title: value.title, content: String(value.body.dropLast()), revising: file,
+                                     session: "s-3", toolUseID: "same-unknown")
+    expect(same["unchanged"] == .bool(true) && !reopened.isUndoable(same))
+    expect(try Data(contentsOf: page) == outside)
+    expect(try Data(contentsOf: previous) == recorded)
+}
+
 func verificationNoOpRevisionCannotClaimOutsideEdits() throws {
-    let s = try tempStore(), first = try fixturePage(s, "No-op", body: "Same bytes"), file = first.str("file")!
+    let s = try tempStore(), first = try fixturePage(s, "No-op", body: "Earlier bytes"), file = first.str("file")!
     let current = s.url.appendingPathComponent("pages").appendingPathComponent(file)
+    let priorRevision = try s.writePage(title: "No-op", content: "Same bytes", revising: file, session: "s-1", toolUseID: "revision")
+    let previousFile = s.url.appendingPathComponent("pages").appendingPathComponent(NotebookStore.previousName(file))
+    let previousBytes = try Data(contentsOf: previousFile)
+    expect(s.isUndoable(priorRevision))
     let unchangedBytes = try Data(contentsOf: current)
     let same = try s.writePage(title: "No-op", content: "Same bytes", revising: file, session: "s-1", toolUseID: "same")
-    expect(same["unchanged"] == .bool(true) && !s.hasPreviousVersion(file))
+    expect(same["unchanged"] == .bool(true) && s.hasPreviousVersion(file))
+    expect(try Data(contentsOf: previousFile) == previousBytes)
+    expect(!Prompts.turnPrefix(s, thread: file).contains("Unchanged"))
     expectThrows { try s.undoPageWrite(same.str("id")!, session: "s-2") }
     let afterNoOp = try Data(contentsOf: current)
-    expect(!s.isUndoable(same) && !s.isUndoable(first) && afterNoOp == unchangedBytes)
+    expect(!s.isUndoable(same) && !s.isUndoable(priorRevision) && !s.isUndoable(first) && afterNoOp == unchangedBytes)
     let outside = unchangedBytes + Data("\nOutside wording\n".utf8)
     try outside.write(to: current, options: .atomic)
     let opened = try NotebookStore.open(url: s.url)
@@ -784,7 +824,7 @@ func verificationNoOpRevisionCannotClaimOutsideEdits() throws {
     let afterOpen = try Data(contentsOf: current)
     expect(!opened.isUndoable(same) && afterOpen == outside)
 
-    // A real later copy/write cutoff still has the evidence required for recovery.
+    // A later copy/write cutoff is still indexed, preserving both versions without inferred Undo.
     let interrupted = try tempStore(), initial = try fixturePage(interrupted, "Later cutoff", body: "Before"), p = initial.str("file")!
     _ = try interrupted.writePage(title: "Later cutoff", content: "Before", revising: p, session: "s-1", toolUseID: "same")
     let page = interrupted.url.appendingPathComponent("pages").appendingPathComponent(p)
@@ -794,10 +834,11 @@ func verificationNoOpRevisionCannotClaimOutsideEdits() throws {
     try (prior + Data("\nInterrupted new text\n".utf8)).write(to: page, options: .atomic)
     let recovered = try NotebookStore.open(url: interrupted.url)
     let records = recovered.transcript.filter { $0["recovered"] == .bool(true) }
-    expect(records.count == 1 && recovered.isUndoable(records[0]))
-    try recovered.undoPageWrite(records[0].str("id")!, session: "s-2")
-    let restored = try Data(contentsOf: page)
-    expect(restored == prior && !recovered.isUndoable(records[0]))
+    expect(records.count == 1 && !recovered.isUndoable(records[0]))
+    let unrecorded = try Data(contentsOf: page)
+    expectThrows { try recovered.undoPageWrite(records[0].str("id")!, session: "s-2") }
+    expect(try Data(contentsOf: page) == unrecorded)
+    expect(try Data(contentsOf: previous) == prior)
 }
 
 func verificationNeverReuseUndoneFilename() throws {
@@ -994,6 +1035,7 @@ let all: [(String, () throws -> Void)] = [
     ("verificationRecoveredNewPageBeforeUnfiled", verificationRecoveredNewPageBeforeUnfiled),
     ("verificationExternalAndCopyOnlyChanges", verificationExternalAndCopyOnlyChanges),
     ("verificationAtomicUndoAndNewPageCutoff", verificationAtomicUndoAndNewPageCutoff),
+    ("verificationUnknownRecoveryPreservesOutsideBytes", verificationUnknownRecoveryPreservesOutsideBytes),
     ("verificationNoOpRevisionCannotClaimOutsideEdits", verificationNoOpRevisionCannotClaimOutsideEdits),
     ("verificationNeverReuseUndoneFilename", verificationNeverReuseUndoneFilename),
     ("verificationWindowUsesThroughPosition", verificationWindowUsesThroughPosition),

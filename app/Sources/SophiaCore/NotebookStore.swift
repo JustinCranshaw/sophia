@@ -70,7 +70,8 @@ public final class NotebookStore {
         return text.split(separator: "\n").compactMap { JSON.parse(String($0))?.object }
     }
 
-    /// Only the application opens/reconciles a notebook. Tool processes use the plain initializer.
+    /// Only the application reconciles unrecorded disk changes. Hashes do not establish authorship;
+    /// these records preserve visibility, not permission to undo. Tool processes use the plain initializer.
     public static func open(url: URL) throws -> NotebookStore {
         let store = try NotebookStore(url: url)
         try store.locked {
@@ -515,10 +516,10 @@ public final class NotebookStore {
                 let previous = pagesURL.appendingPathComponent(Self.previousName(file))
                 let bytes = Data(text.utf8)
                 let unchanged = try Data(contentsOf: current) == bytes
-                if FileManager.default.fileExists(atPath: previous.path) {
-                    try FileManager.default.removeItem(at: previous)
-                }
                 if !unchanged {
+                    if FileManager.default.fileExists(atPath: previous.path) {
+                        try FileManager.default.removeItem(at: previous)
+                    }
                     try FileManager.default.copyItem(at: current, to: previous)
                     try bytes.write(to: current, options: .atomic)
                 }
@@ -551,7 +552,8 @@ public final class NotebookStore {
         readPage(Self.previousName(file))
     }
 
-    /// The transcript entry for each page Sophia wrote, oldest first. Refused writes changed nothing and aren't included.
+    /// Page-write outcomes and unknown-provenance reconciliation records, oldest first.
+    /// Refused writes changed nothing and aren't included; a client record does not establish authorship.
     public var pageWrites: [JSONObject] { transcript.filter { $0.str("tool") == "write_page" && $0["refused"] != .bool(true) } }
 
     /// A write that can still be undone: Sophia's page write or the person's edit, with nothing written to that page since.
@@ -581,13 +583,10 @@ public final class NotebookStore {
 
     public func isUndoable(_ e: JSONObject) -> Bool {
         guard e.str("tool") == "write_page" || e.str("purpose") == "edit_page",
-              e["refused"] != .bool(true), e["unchanged"] != .bool(true), let id = e.str("id"), let file = e.str("file"),
+              e["refused"] != .bool(true), e["unchanged"] != .bool(true), e["recovered"] != .bool(true), let id = e.str("id"), let file = e.str("file"),
               let hash = e.str("hash"), isLatestWrite(id), pageHash(file) == hash else { return false }
         if e["revised"] == .bool(true) || e.str("purpose") == "edit_page" {
             guard let previous = pageHash(Self.previousName(file)), previous != hash else { return false }
-            if e["recovered"] == .bool(true), let i = transcript.firstIndex(where: { $0.str("id") == id }) {
-                guard transcript[..<i].last(where: { $0.str("file") == file && $0.str("hash") != nil })?.str("hash") == previous else { return false }
-            }
         }
         return true
     }
