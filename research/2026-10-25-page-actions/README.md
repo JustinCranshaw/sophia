@@ -1,0 +1,7 @@
+# Checked cited-page navigation — SOP28
+
+Implementation source `b817b01` on main `f7f5e5d`. Cited-page evidence retains Open page and adds numbered choices for current visible sections. Each exact choice binds notebook, page, edit-range key, heading and content hash in memory. No persisted evidence/transcript schema changes. Duplicate headings remain distinct choices; old title-only links require an unambiguous visible match. A changed/deleted target produces a notice instead of guessing. Page identity still resets on a different page/notebook; a new section request explicitly triggers even with the same page mounted. Ordinary page selection and Undo clear old intent.
+
+`AppModel.follow` checks existing notebook metadata and the listed on-disk page before opening, so a missing destination cannot create a notebook or install a target on the old session. Navigation itself does not call write_page or edit the source. SOPHIA's instructions now distinguish suggesting available page/section navigation from moving the person's view.
+
+Observed before native checks: debug Sophia and MCP bundle build passed; `swift run --package-path app sophia-checks` passed all 88 checks, including visible hidden-title/chapter mapping, fenced decoys, distinct duplicate headings, stale/renamed/deleted targets, cross-notebook rejection and read-only resolution. Native practice/math, same-mounted target, legacy/Contents/Undo and prompt behavior verification are pending; no claim of complete acceptance yet.
