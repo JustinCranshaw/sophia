@@ -11,8 +11,9 @@ extension NotebookStore {
         let later = entries[(index + 1)...]
         guard !later.contains(where: { ["replied", "stopped", "clear"].contains($0.str("purpose") ?? "") }) else { return nil }
         // Older clients did not record completion. An old reply or tool result is ambiguous;
-        // only their questions with no output at all can safely be called unanswered.
-        if entries[index]["page"] == nil && later.contains(where: { Self.isMessage($0) || $0.str("role") == "tool" }) { return nil }
+        // page-stamped output proves a newer retry attempt, whose completion is recorded.
+        let output = later.filter { Self.isMessage($0) || $0.str("role") == "tool" }
+        if entries[index]["page"] == nil && !output.isEmpty && !output.contains(where: { $0.str("page") != nil }) { return nil }
         return entries[index]
     }
 
