@@ -30,6 +30,8 @@ swift run sophia-checks --music <dir>   # Sophia writes a tune page with tab, th
 
 Swift's test frameworks ship with full Xcode, so the checks are a small executable instead. The live run uses your Claude Code login (about four short turns).
 
+`swift run sophia-checks --attribution <empty-dir>` runs a focused, nonhuman attribution regression. It labels a seeded prior exchange/page from the October 24 simulation, sends the actual phase-wording challenge to Claude, then explicitly asks to retain accurate notes. Read the printed reply, page, notes and memory together: a valid correction of Sophia must stay separate from the person’s earlier fixed-length misconception. A later direct-store correction checks fresh model context and briefing influence; it does not stand in for native Notes UI verification. The probe uses the same Claude Code login and refuses a nonempty test notebook.
+
 The reader checks need a normal macOS desktop session where WebKit can launch its rendering process; they start no Claude session and use synthetic text. Set `SOPHIA_READER_SNAPSHOT=/tmp/math.png` to capture the math fixture. The Node checks exercise the same bundled parser and TeX configuration, but do not verify sanitization, native sizing, selection, or accessibility.
 
 To look at the interface without clicking through it, render the window to PNGs (contents, goals, notes, first page). This starts no conversation process and doesn't take keyboard focus:
