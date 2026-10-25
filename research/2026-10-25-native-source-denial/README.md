@@ -23,3 +23,5 @@ python3 /tmp/<new-private-run-name>/archive/supervise.py /tmp/<new-private-run-n
 ```
 
 Observed results, exact source/version/hashes and any limitations must be added after the single run. Unattempted/unavailable means inconclusive. This can verify release-Core/native-engine permission topology and controlled denial, **not native UI, inspected source passages, physical learning/retention, billing attribution or commercial permission**. No additional call is authorized to make a result pass.
+
+Preparation correction: the first pre-call setup stopped on a raw packaged-MCP equality assertion because packaging re-signs its copy. The actual executables were not changed. Setup now verifies the packaged signature, records both raw hashes and Mach-O UUIDs, removes signatures on owned comparison copies, and compares every remaining byte after normalizing only the retained `__LINKEDIT` VM allocation field. The failed setup directory remains preserved; it contains no request marker or model call.

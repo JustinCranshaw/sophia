@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Prepare one fresh SOP53 run. Never invokes the model; supervise.py is a separate explicit step."""
-import argparse, hashlib, json, os, shutil, subprocess
+import argparse, hashlib, json, os, shutil, struct, subprocess
 from pathlib import Path
 
 p = argparse.ArgumentParser()
@@ -32,7 +32,34 @@ mcp = package/'Contents/MacOS/sophia-mcp'; prompt = package/'Contents/Resources/
 assert mcp.is_file() and prompt.is_file(), 'Build the final release package first'
 assert prompt.read_bytes() == (repo/'SOPHIA.md').read_bytes(), 'Packaged prompt mismatch'
 binpath = Path(command('swift','build','--package-path','app','-c','release','--show-bin-path'))
-assert mcp.read_bytes() == (binpath/'sophia-mcp').read_bytes(), 'Packaged MCP mismatch'
+# make-app.sh re-signs the packaged copy. Never alter either actual executable.
+subprocess.run(['codesign','--verify','--strict',str(mcp)],check=True)
+comparison = root/'signature-comparison'; comparison.mkdir()
+def unsigned_identity(path, name):
+    copy = comparison/name; shutil.copy2(path,copy)
+    subprocess.run(['codesign','--remove-signature',str(copy)],check=True)
+    data = bytearray(copy.read_bytes()); original_hash = sha(copy)
+    assert struct.unpack_from('<I',data)[0] == 0xfeedfacf, 'Expected native 64-bit Mach-O'
+    offset = 32; uuid = None; linkedit_size = None
+    for _ in range(struct.unpack_from('<I',data,16)[0]):
+        kind,size = struct.unpack_from('<II',data,offset)
+        assert size >= 8 and offset+size <= len(data)
+        if kind == 0x1b: uuid = bytes(data[offset+8:offset+24]).hex()
+        if kind == 0x19 and bytes(data[offset+8:offset+24]).rstrip(b'\0') == b'__LINKEDIT':
+            linkedit_size = struct.unpack_from('<Q',data,offset+32)[0]
+            # codesign removal retains signing allocation in LINKEDIT's VM size.
+            # Normalize only this non-content allocation field; all other bytes must match.
+            struct.pack_into('<Q',data,offset+32,0)
+        offset += size
+    assert uuid and linkedit_size is not None
+    return data, {'uuid':uuid,'rawHash':sha(path),'strippedHash':original_hash,
+                  'linkeditVMSize':linkedit_size,'normalizedHash':hashlib.sha256(data).hexdigest()}
+packaged_bytes, packaged_identity = unsigned_identity(mcp,'packaged-mcp')
+product_bytes, product_identity = unsigned_identity(binpath/'sophia-mcp','release-product-mcp')
+assert packaged_identity['uuid'] == product_identity['uuid'] and packaged_bytes == product_bytes, 'MCP code/content mismatch'
+write('mcp-identity.json',{'packaged':packaged_identity,'releaseProduct':product_identity,
+      'normalization':'signature removed on owned copies; only LINKEDIT VM allocation zeroed; remaining bytes exact',
+      'packagedSignatureVerified':True})
 objects = sorted((binpath/'SophiaCore.build').glob('*.o')); assert objects
 assert b'SOPHIA_UX_HARNESS' not in (package/'Contents/MacOS/Sophia').read_bytes(), 'Not a release app'
 compile_args = ['swiftc','-O','-I',str(binpath/'Modules'),str(root/'archive/main.swift'),*map(str,objects),'-o',str(root/'caller')]
