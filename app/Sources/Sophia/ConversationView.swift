@@ -6,6 +6,10 @@ struct ConversationView: View {
     @ObservedObject var session: NotebookSession
     @Binding private var message: String
     @FocusState private var focused: Bool
+    @State private var followsLatest = true
+    @State private var hasNewActivity = false
+    @State private var scrollPosition: ConversationScrollPosition?
+    @State private var settlingViewport = false
 
     init(session: NotebookSession, draft: Binding<String> = .constant("")) {
         self.session = session
@@ -24,36 +28,92 @@ struct ConversationView: View {
             .padding(.horizontal, 14).padding(.vertical, 9)
             Divider()
             ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
-                        let retryQuestion = session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread))
-                        ForEach(items, id: \.id) { item in
-                            EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion).id(item.id)
+                GeometryReader { viewport in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 22) {
+                            let retryQuestion = session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread))
+                            ForEach(items, id: \.id) { item in
+                                EntryView(session: session, entry: item.entry, retryQuestion: retryQuestion)
+                                    .background(alignment: .top) {
+                                        // The real transcript anchor appears without replacing the reader.
+                                        if let anchor = item.anchor { Color.clear.frame(height: 1).id(anchor) }
+                                    }
+                            }
+                            if let a = session.visibleActivity {
+                                HStack(spacing: 8) { ProgressView().controlSize(.small); Text(a).font(.caption).foregroundStyle(.secondary) }.id("activity")
+                            } else if session.visibleThinking && session.visibleStreaming.isEmpty {
+                                HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Sophia is thinking…").font(.caption).foregroundStyle(.secondary) }.id("activity")
+                            }
                         }
-                        if !session.visibleStreaming.isEmpty {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Who(text: "Sophia", sophia: true)
-                                MarkdownView(text: session.visibleStreaming, style: .chat) {
-                                    proxy.scrollTo("bottom", anchor: .bottom)
-                                }
-                            }.id("streaming")
+                        .frame(maxWidth: Self.measure, alignment: .leading)
+                        .padding(.horizontal, 24).padding(.vertical, 20)
+                        .frame(maxWidth: .infinity)
+                        .id("bottom")
+                        .background {
+                            GeometryReader { content in
+                                Color.clear.preference(key: ConversationScrollPositionKey.self,
+                                    value: ConversationScrollPosition(frame: content.frame(in: .named("conversationViewport")), viewport: viewport.size.height))
+                            }
                         }
-                        if let a = session.visibleActivity {
-                            HStack(spacing: 8) { ProgressView().controlSize(.small); Text(a).font(.caption).foregroundStyle(.secondary) }.id("activity")
-                        } else if session.visibleThinking && session.visibleStreaming.isEmpty {
-                            HStack(spacing: 8) { ProgressView().controlSize(.small); Text("Sophia is thinking…").font(.caption).foregroundStyle(.secondary) }.id("activity")
-                        }
-                        Color.clear.frame(height: 1).id("bottom")
                     }
-                    .frame(maxWidth: Self.measure, alignment: .leading)
-                    .padding(.horizontal, 24).padding(.vertical, 20)
-                    .frame(maxWidth: .infinity)
+                    .coordinateSpace(name: "conversationViewport")
+                    .onPreferenceChange(ConversationScrollPositionKey.self) { position in
+                        guard let position else { return }
+                        let previous = scrollPosition
+                        scrollPosition = position
+                        if let previous, followsLatest,
+                           abs(position.frame.width - previous.frame.width) > 0.5 || abs(position.viewport - previous.viewport) > 0.5 {
+                            settlingViewport = true
+                        }
+                        // The native clip view can adjust a frame after SwiftUI reports the
+                        // new viewport. Keep the existing follow choice through that reflow.
+                        if settlingViewport {
+                            let shortContent = position.frame.height <= position.viewport + 1 && abs(position.frame.minY) <= 1
+                            if shortContent || abs(position.frame.maxY - position.viewport) <= 1 { settlingViewport = false }
+                            followIfNeeded(proxy)
+                            return
+                        }
+                        // Appended content changes the bottom, not the origin. A resize alone
+                        // also must not turn following off or manufacture unread activity.
+                        if let previous, abs(position.frame.minY - previous.frame.minY) > 0.5,
+                           abs(position.viewport - previous.viewport) < 0.5,
+                           abs(position.frame.width - previous.frame.width) < 0.5 {
+                            let upward = position.frame.minY - previous.frame.minY
+                            let shrink = max(0, previous.frame.height - position.frame.height)
+                            // Even a small deliberate upward move stops following. A shorter
+                            // document can also clamp the origin upward without a scroll.
+                            if upward > shrink + 0.5, position.frame.maxY > position.viewport + 0.5 {
+                                followsLatest = false
+                            } else if upward < -0.5 {
+                                followsLatest = position.frame.maxY <= position.viewport + 32
+                                if followsLatest { hasNewActivity = false }
+                            } else {
+                                // An automatic clamp keeps the person's existing follow choice.
+                                followIfNeeded(proxy)
+                            }
+                        } else {
+                            followIfNeeded(proxy)
+                        }
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if hasNewActivity && !followsLatest {
+                            Button { jumpToLatest(proxy) } label: { Label("New activity", systemImage: "arrow.down") }
+                                .buttonStyle(.borderedProminent).controlSize(.small)
+                                .help("Jump to the latest conversation activity")
+                                .padding(12)
+                        }
+                    }
                 }
-                .onChange(of: items.map(\.id)) { _, _ in withAnimation { proxy.scrollTo("bottom") } }
-                .onChange(of: session.visibleStreaming) { _, _ in proxy.scrollTo("bottom") }
-                .onAppear { DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) } }
+                .onChange(of: items.map(\.id)) { _, _ in receivedActivity(proxy) }
+                .onChange(of: session.visibleStreaming) { _, _ in receivedActivity(proxy) }
+                .onChange(of: conversationKey) { _, _ in
+                    scrollPosition = nil
+                    jumpToLatest(proxy)
+                }
+                .onAppear { jumpToLatest(proxy) }
                 .onReceive(NotificationCenter.default.publisher(for: .scrollConversationToEnd)) { _ in
-                    DispatchQueue.main.async { proxy.scrollTo("bottom", anchor: .bottom) }
+                    // Existing Markdown height notifications are automatic reflow, not intent.
+                    followIfNeeded(proxy)
                 }
             }
             if let request = session.pendingSource {
@@ -116,25 +176,51 @@ struct ConversationView: View {
     /// Line length for the conversation: about 75 characters of 14pt SF Pro.
     static let measure: CGFloat = 620
 
-    struct Item { let id: String; let entry: JSONObject }
+    var items: [ConversationRow] {
+        conversationRows(session.store.threadEntries(for: session.activeThread), streaming: session.visibleStreaming, scope: conversationKey)
+    }
 
-    var items: [Item] {
-        session.store.threadEntries(for: session.activeThread).compactMap { e in
-            if e["recovered"] == .bool(true) { return nil }
-            guard let id = e.str("id") else { return nil }
-            let role = e.str("role") ?? ""
-            if role == "client", e["decision"] == nil, !["stopped", "undo_page", "goal_noted", "filed_draft"].contains(e.str("purpose") ?? "") { return nil }
-            // A release shows on the card it answers.
-            if role == "person", e.str("purpose") == "release_edit" { return nil }
-            return Item(id: id, entry: e)
+    private var conversationKey: String { session.store.url.path + "/" + session.activeThread }
+
+    private func followIfNeeded(_ proxy: ScrollViewProxy) {
+        // Never animate automatic following: intermediate offsets can look like scrolling away.
+        guard followsLatest else { return }
+        DispatchQueue.main.async {
+            if followsLatest { proxy.scrollTo("bottom", anchor: .bottom) }
         }
+    }
+
+    private func receivedActivity(_ proxy: ScrollViewProxy) {
+        if followsLatest { followIfNeeded(proxy) } else { hasNewActivity = true }
+    }
+
+    private func jumpToLatest(_ proxy: ScrollViewProxy) {
+        followsLatest = true
+        hasNewActivity = false
+        settlingViewport = false
+        followIfNeeded(proxy)
     }
 
     func send() {
         let t = message
         guard !t.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, session.canSend else { return }
+        followsLatest = true
+        hasNewActivity = false
+        settlingViewport = false
         message = ""
         session.send(t)
+    }
+}
+
+private struct ConversationScrollPosition: Equatable {
+    let frame: CGRect
+    let viewport: CGFloat
+}
+
+private struct ConversationScrollPositionKey: PreferenceKey {
+    static var defaultValue: ConversationScrollPosition? = nil
+    static func reduce(value: inout ConversationScrollPosition?, nextValue: () -> ConversationScrollPosition?) {
+        value = nextValue() ?? value
     }
 }
 
