@@ -67,8 +67,9 @@ struct ConversationView: View {
                            abs(position.viewport - previous.viewport) < 0.5 {
                             followsLatest = position.frame.maxY <= position.viewport + 32
                             if followsLatest { hasNewActivity = false }
+                        } else {
+                            followIfNeeded(proxy)
                         }
-                        followIfNeeded(proxy)
                     }
                     .overlay(alignment: .bottomTrailing) {
                         if hasNewActivity && !followsLatest {
