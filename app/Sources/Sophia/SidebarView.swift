@@ -12,7 +12,7 @@ struct SidebarView: View {
             Section("Library") {
                 if let worker = almanac.worker {
                     NotebookRows(url: worker.url)
-                    AlmanacStatusView(worker: worker, almanac: almanac, read: model.readAlmanacEntry)
+                    AlmanacStatusView(worker: worker, almanac: almanac, read: model.readAlmanacEntry, sidebar: true)
                         .padding(.leading, 20).padding(.bottom, 8)
                 } else {
                     Button("Sophia’s Almanac…") { almanac.settingsShown = true }

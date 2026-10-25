@@ -158,7 +158,7 @@ struct SophiaApp: App {
             }
             CommandGroup(after: .appInfo) {
                 Button("Connection & Data…") { model.connection.detailsShown = true }
-                Button("Sophia’s Almanac…") { model.almanac.settingsShown = true }
+                Button("Sophia’s Almanac…") { model.almanac.showSettings() }
             }
             CommandGroup(after: .pasteboard) {
                 Divider()
@@ -310,20 +310,38 @@ struct NotebookView: View {
     static func bookWidth(_ total: CGFloat) -> CGFloat {
         min(800, max(460, min(total * 0.6, total - 360)))
     }
+    private enum Surface: Hashable { case conversation, divider, book }
+    private var readingAlmanac: Bool {
+        guard model.almanac.worker?.url == session.store.url, session.bookShown,
+              case .page = session.place, !session.isPending(session.activeThread),
+              session.pendingSource == nil, session.problem == nil, session.editRecovery.edits.isEmpty else { return false }
+        return !session.store.threadEntries(for: session.activeThread).contains(where: NotebookStore.isMessage)
+    }
     var body: some View {
         GeometryReader { geo in
             let key = Self.draftKey(session)
             let draft = Binding(get: { drafts[key] ?? "" }, set: { drafts[key] = $0 })
             let narrow = geo.size.width < 821
-            let layout = narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+            let reading = readingAlmanac
+            let surfaces: [Surface] = reading ? [.book, .divider, .conversation] : [.conversation, .divider, .book]
+            let layout = reading || narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
             layout {
-                ConversationView(session: session, draft: draft)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if session.bookShown {
-                    Divider()
-                    BookView(session: session)
-                        .frame(width: narrow ? nil : Self.bookWidth(geo.size.width),
-                               height: narrow ? max(0, min(geo.size.height * 0.55, geo.size.height - 300)) : nil)
+                // Stable surface IDs retain the reader/editor when the first question opens discussion.
+                ForEach(surfaces, id: \.self) { surface in
+                    switch surface {
+                    case .conversation:
+                        ConversationView(session: session, draft: draft, compact: reading)
+                            .frame(maxWidth: .infinity, maxHeight: reading ? nil : .infinity)
+                            .fixedSize(horizontal: false, vertical: reading)
+                    case .divider:
+                        if session.bookShown { Divider() }
+                    case .book:
+                        if session.bookShown {
+                            BookView(session: session)
+                                .frame(width: reading || narrow ? nil : Self.bookWidth(geo.size.width),
+                                       height: !reading && narrow ? max(0, min(geo.size.height * 0.55, geo.size.height - 300)) : nil)
+                        }
+                    }
                 }
             }
         }
