@@ -35,8 +35,7 @@ struct MemoryCard: View {
                         }.controlSize(.small)
                     } else {
                         HStack(spacing: 10) {
-                            Text("Based on " + (m["refs"]?.array ?? []).compactMap(\.string).joined(separator: ", "))
-                                .font(.caption2).foregroundStyle(.tertiary)
+                            EvidenceLinks(session: session, refs: (m["refs"]?.array ?? []).compactMap(\.string))
                             Spacer()
                             Button(store.correction(of: id) == nil ? "Correct" : "Edit correction") {
                                 draft = store.correction(of: id)?.str("text") ?? m.str("text") ?? ""
