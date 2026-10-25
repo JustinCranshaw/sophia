@@ -149,8 +149,7 @@ final class NotebookSession: ObservableObject {
         case .toolResult(let id):
             guard current, let name = pendingTools.removeValue(forKey: id), name.hasPrefix("mcp__sophia__") else { return }
             store.reload(); library.reload()
-            // Match the actual tool call even if another app action already reloaded its write.
-            if name == "mcp__sophia__write_page", let file = store.pageWrite(toolUse: id)?.str("file") { showWrittenPage(file) }
+            // A saved page has an Open action in the conversation. Keep the person's book visibility choice.
             changed()
         case .turnDone(let isError, let message, _):
             guard current else { return }
@@ -264,9 +263,6 @@ final class NotebookSession: ObservableObject {
     }
 
     // MARK: Pages Sophia writes
-
-    /// Reveal the book while preserving the selected place and the composer's focus.
-    private func showWrittenPage(_ file: String) { bookShown = true }
 
     /// Shows a place in the book, opening the book if it is hidden.
     func show(_ p: Place) { place = p; bookShown = true }
