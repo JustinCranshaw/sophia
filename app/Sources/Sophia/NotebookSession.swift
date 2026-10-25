@@ -133,6 +133,7 @@ final class NotebookSession: ObservableObject {
         case .assistantText(let t):
             guard current else { return }
             if internalRequest { requestText += t; return }
+            // Suppress only verbatim repeats; a similar block may answer an outstanding question.
             defer { turnTexts.append(t) }
             if Prompts.isRestatement(t, of: turnTexts) { streaming = ""; changed(); return }
             try? store.appendTranscript(["role": .string("sophia"), "page": .string(thread), "session": .string(session), "text": .string(t)])
@@ -198,7 +199,7 @@ final class NotebookSession: ObservableObject {
             let turn = queue.removeFirst()
             // A failed startup leaves its saved message incomplete; it cannot block other threads.
             guard ensureEngine(thread: turn.thread, before: turn.id) else { changed(); continue }
-            running = turn; isResponding = true
+            running = turn; turnTexts = []; isResponding = true
             let music = musicWarnings.keys.sorted().flatMap { musicWarnings[$0]! }.filter { !toldMusic.contains($0) }
             toldMusic.formUnion(music)
             engine?.send(Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music) + turn.text)

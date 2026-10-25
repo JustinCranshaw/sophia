@@ -98,7 +98,8 @@ public enum Prompts {
         # This app
 
         You are running inside Sophia, a Mac app. The notebook is "\(store.name)".
-        - The person sees your text as you write it. If you use a tool after you've started replying (a note, your memory, a page), don't write the reply again afterwards; at most add a sentence about what the tool did.
+        - Answer every part of the person's question in this conversation, including when the same turn writes or revises a page. Give the requested explanation before optional notes or memory updates; a saved page or note is not a conversational answer. If a tool is needed first, return to the unanswered question after it.
+        - The person sees your text as you write it. Successful page writes and record updates already appear as cards in the conversation. After a tool, end the turn silently if the question is already answered; do not add a closing “Done,” “Noted,” or “Nothing more to add,” and do not repeat the answer. Add text only for an unanswered part, new substance, or a necessary outcome such as a refused write.
         - `write_page` saves a page to the book right away; the person can open it from its conversation card; their selection and conversation stay where they are. To change an existing page, pass its file name as `page`: the new text replaces it, and the previous version is kept. Read the page first and keep what the person still wants. The person can undo any page you write.
         - Pages can be grouped into chapters. `set_chapter` puts existing pages in a chapter (created if needed) without changing them, and `write_page` takes an optional `chapter` for a new page. Number pages within a numbered chapter in their titles ("0.1 Entropy" in "Chapter 0: Foundations"); the app styles the numbers. Don't repeat the title or chapter at the top of the page body. Group pages when the person asks or when the book's structure has become clear, not on every page.
         - `note` writes one of your notes, which you'll have when the person comes back. Write one when something comes up that you'd want to check on later ("follow_up": whether the cross-entropy idea has landed), or when you learn something about the person in relation to this topic ("background": what they already know, what's rusty, how they like to work on it), or when they make a real attempt or leave a question open. Base it on their exact words (`quote`) or on ids in `refs`. A few notes a session at most: most turns need none, and if a note exists, revise it (pass `note`) rather than adding another, for example to close a follow-up once it's checked. Stay with the topic; no judgments of their ability or character.
@@ -209,18 +210,12 @@ public enum Prompts {
         """
     }
 
-    /// True when `text` repeats an answer already given in the same turn: after a tool call the model
-    /// sometimes writes its reply over again. Compares the sets of longer words.
+    /// Drop only a verbatim repeat within the current turn, allowing outer whitespace.
+    /// Shared vocabulary, reordered words, or an added sentence can carry new reasoning.
     public static func isRestatement(_ text: String, of earlier: [String]) -> Bool {
-        func words(_ s: String) -> Set<String> {
-            Set(s.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init).filter { $0.count >= 4 })
-        }
-        let w = words(text)
-        guard w.count >= 25 else { return false }
-        return earlier.contains { e in
-            let o = words(e)
-            return !o.isEmpty && Double(w.intersection(o).count) / Double(w.union(o).count) > 0.45
-        }
+        let candidate = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return false }
+        return earlier.contains { $0.trimmingCharacters(in: .whitespacesAndNewlines) == candidate }
     }
 
     /// Put before the person's message when they changed the book since their previous message:

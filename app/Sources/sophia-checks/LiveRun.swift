@@ -34,6 +34,7 @@ struct LiveRunner {
         var done = false, reply = "", info: [String: String] = [:]
         var queue = messages
         var currentPurpose: String? = nil
+        var turnTexts: [String] = []
         func next() {
             guard !queue.isEmpty else { engine.stop(); done = true; return }
             guard NotebookStore.nextStep(thread: page, pending: false) == .reply else { return }
@@ -41,6 +42,7 @@ struct LiveRunner {
             currentPurpose = purpose
             if let purpose { info[purpose + "_failed"] = "true" }
             reply = ""
+            turnTexts = []
             var before: String?
             if purpose == nil { before = try! store.appendTranscript(["role": .string("person"), "page": .string(page), "session": .string(session), "text": .string(text)]).str("id") }
             engine.send((purpose == nil ? Prompts.turnPrefix(store, thread: page, before: before) : "") + text)
@@ -52,8 +54,9 @@ struct LiveRunner {
                 if source != "none" { print("Claude Code reports an API key source (\(source)); stopping."); engine.stop(); done = true; return }
                 _ = sid
             case .assistantText(let t):
-                // As the app does: a second full version of the reply after a tool call is dropped.
-                if Prompts.isRestatement(t, of: [reply]) { info["restated"] = (info["restated"] ?? "") + "x"; break }
+                // As the app does: only a verbatim repeat within the turn is dropped.
+                if Prompts.isRestatement(t, of: turnTexts) { info["restated"] = (info["restated"] ?? "") + "x"; break }
+                turnTexts.append(t)
                 reply += t
                 if currentPurpose == nil { try! store.appendTranscript(["role": .string("sophia"), "page": .string(page), "session": .string(session), "text": .string(t)]) }
             case .toolUse(_, let name, let input):
