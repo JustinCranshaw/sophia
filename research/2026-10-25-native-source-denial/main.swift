@@ -51,8 +51,9 @@ for flag in ["--system-prompt", "--append-system-prompt"] {
 save("engine-configuration.json", ["arguments": .array(arguments.map(JSON.string)), "executable": .string(args[5]),
     "cwd": .string(notebook.path), "bridge": .string(bridge.directory.path), "question": .string(question)])
 var finishing = false, drained = false, turnCompleted = false, inferenceStarted = false
-var permissionCount = 0, requestID: String?, requestNonce: String?
-var matchedDenial = false, unexpectedTool = false, expectedURL = false, reply = ""
+var permissionCount = 0
+var firstRequest: SourcePermissionBridge.Request?
+var matchedDenial = false, unexpectedTool = false, reply = ""
 func finish(_ reason: String) {
     guard !finishing else { return }
     finishing = true
@@ -81,9 +82,8 @@ engine.onEvent = { event in
         engine.decideSource(request, allow: false)
         snapshotBridge(bridge, prefix: "denied")
         if permissionCount == 1 {
-            requestID = request.toolUseID; requestNonce = request.nonce
-            expectedURL = ["https://example.com/", "https://example.com"].contains(request.url)
-            if !expectedURL { finish("unexpected source URL; denied and stopped") }
+            firstRequest = request
+            if !["https://example.com/", "https://example.com"].contains(request.url) { finish("unexpected source URL; denied and stopped") }
         }
         else { finish("unexpected additional permission request; denied and stopped") }
     case .sourceResult(let id, let input, let content, let metadata, let isError):
@@ -91,9 +91,10 @@ engine.onEvent = { event in
         emit("source_result", ["id": .string(id), "input": input, "content": content, "metadata": metadata, "isError": .bool(isError)])
         let decision = try? JSONDecoder().decode(JSON.self, from: Data(contentsOf: bridge.directory.appendingPathComponent("decision.json")))
         let outcome = try? JSONDecoder().decode(JSON.self, from: Data(contentsOf: bridge.directory.appendingPathComponent("outcome.json")))
-        matchedDenial = permissionCount == 1 && expectedURL && id == requestID && isError && decision?["allow"] == .bool(false)
-            && decision?["toolUseID"]?.string == id && decision?["nonce"]?.string == requestNonce
-            && outcome?["nonce"]?.string == requestNonce
+        matchedDenial = permissionCount == 1 && ["https://example.com/", "https://example.com"].contains(firstRequest?.url ?? "")
+            && id == firstRequest?.toolUseID && isError && decision?["allow"] == .bool(false)
+            && decision?["toolUseID"]?.string == id && decision?["nonce"]?.string == firstRequest?.nonce
+            && decision?["generation"]?.string == firstRequest?.generation && outcome?["nonce"]?.string == firstRequest?.nonce
     case .assistantText(let text):
         reply += text; emit("assistant_text", ["text": .string(text)])
         try? store.appendTranscript(["role": .string("sophia"), "page": .string(""), "session": .string(session), "text": .string(text)])
