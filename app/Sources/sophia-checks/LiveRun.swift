@@ -61,7 +61,7 @@ struct LiveRunner {
                 if currentPurpose == nil { try! store.appendTranscript(["role": .string("sophia"), "page": .string(page), "session": .string(session), "text": .string(t)]) }
             case .toolUse(_, let name, let input):
                 print("  tool used: \(name) \(input["title"]?.string ?? input["text"]?.string ?? input["query"]?.string ?? "")")
-            case .sourcePermission, .sourceResult: break // This CLI runner has no native approval bridge.
+            case .sourcePermission, .sourceResult, .searchResult: break // This CLI runner has no native approval bridge.
             case .toolResult:
                 store.reload()
             case .turnDone(let isError, let message, _):

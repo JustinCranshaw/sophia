@@ -129,6 +129,8 @@ public final class NotebookStore {
     public func creatingExchange(for file: String) -> [JSONObject] {
         guard let creation = transcript.firstIndex(where: { $0.str("tool") == "write_page" && $0.str("file") == file
                   && $0["refused"] != .bool(true) && $0["revised"] != .bool(true) && $0["recovered"] != .bool(true) }) else { return [] }
+        // An explicitly agent-commissioned entry has no person creating question.
+        guard !(transcript[creation].str("tool_use") ?? "").hasPrefix("almanac:") else { return [] }
         let origin = Self.thread(of: transcript[creation])
         guard origin != file, let begin = transcript[..<creation].lastIndex(where: { Self.thread(of: $0) == origin && Self.isPersonMessage($0) }) else { return [] }
         let end = transcript[(begin + 1)...].firstIndex { Self.thread(of: $0) == origin && Self.isPersonMessage($0) } ?? transcript.count
@@ -172,6 +174,11 @@ public final class NotebookStore {
     // MARK: Writing
 
     static func now() -> String { ISO8601DateFormatter().string(from: Date()) }
+
+    func saveAlmanacMetadata(_ value: JSON) throws {
+        meta["almanac"] = value
+        try writeMeta()
+    }
 
     func writeMeta() throws {
         try Data(JSON.object(meta).pretty.utf8).write(to: metaURL, options: .atomic)

@@ -201,6 +201,7 @@ final class NotebookSession: ObservableObject {
         case .sourcePermission(let pending):
             guard !internalRequest, thread == activeThread else { return }
             pendingSource = pending; changed()
+        case .searchResult: break // Dedicated Almanac engines alone emit search evidence.
         case .sourceResult(let id, let input, let content, let metadata, let isError):
             guard current, !internalRequest else { return }
             var record: JSONObject = ["role": .string("tool"), "page": .string(thread), "session": .string(session), "tool": .string("WebFetch"),
