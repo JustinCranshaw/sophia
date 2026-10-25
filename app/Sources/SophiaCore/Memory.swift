@@ -28,6 +28,7 @@ extension NotebookStore {
     @discardableResult
     public func setMemory(_ lines: [MemoryLine], session: String) throws -> (memory: [JSONObject], problems: [String]) {
         try locked {
+            try checkLearningIdentities(learning)
             let checks = RecordChecks(store: self)
             var problems: [String] = []
             let current = Dictionary(uniqueKeysWithValues: memory.compactMap { m in m.str("id").map { ($0, m) } })

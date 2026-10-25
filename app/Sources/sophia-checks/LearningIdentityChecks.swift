@@ -66,3 +66,15 @@ func aFailedLearningAppendKeepsExistingEvidence() throws {
     expectThrows { try store.appendTranscript(["role": .string("person"), "text": .string("A second question that cannot be saved")]) }
     expect(try Data(contentsOf: transcript) == conversation)
 }
+
+func legacyDuplicateMemoryRefusesUpdateWithoutAWrite() throws {
+    let store = try tempStore()
+    let a: JSONObject = ["id": .string("n-1"), "kind": .string("memory"), "by": .string("sophia"), "text": .string("First legacy memory"), "refs": .array([])]
+    var b = a; b["text"] = .string("Different legacy memory with the same ID")
+    let file = store.url.appendingPathComponent("learning.jsonl")
+    try Data((JSON.object(a).line + "\n" + JSON.object(b).line + "\n").utf8).write(to: file)
+    let before = try Data(contentsOf: file), meta = try Data(contentsOf: store.url.appendingPathComponent("notebook.json"))
+    expectThrows { try store.setMemory([], session: "s-1") }
+    expect(try Data(contentsOf: file) == before)
+    expect(try Data(contentsOf: store.url.appendingPathComponent("notebook.json")) == meta)
+}
