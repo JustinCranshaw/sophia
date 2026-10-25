@@ -229,6 +229,11 @@ struct PageView: View {
     private func navigate(_ proxy: ScrollViewProxy) {
         guard session.place == .page(file), let target = session.sectionNavigation.target else { return }
         let request = session.pendingSectionID
+        guard session.editing?.file != file else {
+            session.navigationProblem = .init(file: file, text: "Finish editing, then choose the section again.")
+            session.pendingSection = nil
+            return
+        }
         switch target.resolve(in: session.store) {
         case .failure(let error):
             session.navigationProblem = .init(file: file, text: error.localizedDescription)
@@ -304,7 +309,7 @@ struct PageView: View {
                                     session.openSection(.exact(notebook: store.url, file: file, range: range))
                                 }
                             }
-                        }.controlSize(.small)
+                        }.controlSize(.small).disabled(session.editing?.file == file)
                     }
                 }
                 if let notice = session.navigationProblem, notice.file == file {

@@ -69,6 +69,11 @@ final class NotebookSession: ObservableObject {
     var pendingSectionID: UUID { sectionNavigation.id }
     @discardableResult
     func openSection(_ target: SectionTarget) -> Bool {
+        if editing?.file == target.file {
+            navigationProblem = NavigationProblem(file: target.file, text: "Finish editing, then choose the section again.")
+            pendingSection = nil
+            return false
+        }
         switch target.resolve(in: store) {
         case .failure(let error): navigationProblem = NavigationProblem(file: target.file, text: error.localizedDescription); return false
         case .success:
@@ -358,6 +363,8 @@ final class NotebookSession: ObservableObject {
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
     func undoWrite(_ entryID: String) {
+        pendingSection = nil
+        navigationProblem = nil
         do {
             if let e = store.transcript.first(where: { $0.str("id") == entryID }), store.isReleaseUndoable(e) { try store.undoRelease(entryID, session: session) }
             else { try store.undoPageWrite(entryID, session: session) }
