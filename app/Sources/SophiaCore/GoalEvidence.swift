@@ -23,8 +23,9 @@ extension NotebookStore {
         let reads = notes.filter { $0.str("kind") == "read" && ($0["refs"]?.array ?? []).contains(.string(ref)) }
         let citedAttemptRoots = Set(reads.flatMap { ($0["refs"]?.array ?? []).compactMap(\.string) }.compactMap { id -> String? in
             // Missing ids remain unavailable; do not guess a chain or match shared words/messages.
-            guard record(id)?.str("kind") == "attempt" else { return nil }
-            return rootID(of: id)
+            let root = rootID(of: id)
+            guard let cited = record(id), cited.str("kind") == "attempt" || (cited.str("kind") == "correction" && record(root)?.str("kind") == "attempt") else { return nil }
+            return root
         })
         let attempts = notes.filter { r in
             r.str("kind") == "attempt" && ((r["refs"]?.array ?? []).contains(.string(ref)) || citedAttemptRoots.contains(rootID(of: r.str("id") ?? "")))
@@ -32,7 +33,14 @@ extension NotebookStore {
         let read = reads.max(by: Self.evidenceSavedBefore)
         let latestReadVersion = read.map { correction(of: $0.str("id") ?? "") ?? $0 }
         let newer = latestReadVersion.map { interpretation in
-            attempts.contains { Self.evidenceSavedBefore(interpretation, correction(of: $0.str("id") ?? "") ?? $0) }
+            attempts.contains {
+                let version = correction(of: $0.str("id") ?? "") ?? $0
+                // A checkpoint batch shares one timestamp; its JSON order is not new evidence.
+                if version.str("kind") == "correction", version.str("by") == "person" {
+                    return Self.evidenceSavedBefore(interpretation, version)
+                }
+                return (interpretation.str("at") ?? "") < (version.str("at") ?? "")
+            }
         } ?? false
         return GoalCriterionEvidence(attempts: attempts, read: read, newerEvidence: newer)
     }

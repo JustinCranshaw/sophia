@@ -55,3 +55,35 @@ func goalEvidenceKeepsReadOrderAndHonestUnlinkedAttempts() throws {
     expect(try Data(contentsOf: log) == before && Data(contentsOf: meta) == metadata)
     expect(store.isProvisional(store.goals[0]))
 }
+
+func goalEvidenceSeparatesCheckpointBatchOrderFromPersonCorrections() throws {
+    let store = try tempStore()
+    let goal = try store.writeGoal(text: "Modes", criteria: ["Explain shape"], revising: nil, quote: nil, session: "s-1")
+    let ref = goal.str("id")! + "#1"
+    let read = try store.appendLearning(["kind": .string("read"), "text": .string("Tentative batch read"), "refs": .array([.string(ref)])], by: "sophia", session: "s-1")
+    let attempt = try store.appendLearning(["kind": .string("attempt"), "text": .string("Same checkpoint batch, later JSON position"), "refs": .array([.string(ref)])], by: "sophia", session: "s-1")
+    // Pin batch timestamps, rather than relying on test speed across a second boundary.
+    let log = store.url.appendingPathComponent("learning.jsonl")
+    var records = store.learning
+    for i in records.indices {
+        records[i]["at"] = .string("2026-01-01T00:00:00Z")
+        if records[i]["id"] == read["id"] { records[i]["refs"] = .array([attempt["id"]!, .string(ref)]) }
+        if records[i]["id"] == attempt["id"] { records[i]["refs"] = .array([]) }
+    }
+    try records.map { JSON.object($0).line + "\n" }.joined().write(to: log, atomically: true, encoding: .utf8)
+    store.reload()
+    expect(!store.evidence(forCriterion: ref).newerEvidence)
+    let correction = try store.appendLearning(["kind": .string("correction"), "text": .string("Person limits this attempt"), "replaces": attempt["id"]!], by: "person", session: "s-1")
+    var corrected = store.learning
+    for i in corrected.indices { corrected[i]["at"] = .string("2026-01-01T00:00:00Z") }
+    try corrected.map { JSON.object($0).line + "\n" }.joined().write(to: log, atomically: true, encoding: .utf8)
+    store.reload()
+    expect(store.evidence(forCriterion: ref).newerEvidence)
+    let later = try store.appendLearning(["kind": .string("read"), "text": .string("Read cites the person correction explicitly"), "refs": .array([correction["id"]!, .string(ref)])], by: "sophia", session: "s-1")
+    _ = try store.deleteLearning(read.str("id")!) // Only the correction-id path remains.
+    let projected = store.evidence(forCriterion: ref)
+    expect(projected.attempts.map { $0["id"] } == [attempt["id"]])
+    expect(projected.read == later && !projected.newerEvidence)
+    expect(!store.attemptsWithoutCriterionLinks.contains { $0["id"] == attempt["id"] })
+    expect(read["id"] != later["id"])
+}

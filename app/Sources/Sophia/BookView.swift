@@ -584,18 +584,18 @@ struct GoalsView: View {
     }
 
     @ViewBuilder
-    func attemptEvidence(_ attempt: JSONObject) -> some View {
+    func attemptEvidence(_ attempt: JSONObject, criterion: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Captured attempt · \(shortDate(attempt.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            let refs = (attempt["refs"]?.array ?? []).compactMap(\.string)
+            let quoteEntry = attempt["quote"]?["entry"]?.string
+            let sources = (quoteEntry.map { [$0] } ?? []) + refs.filter { $0 != quoteEntry && $0 != criterion }
             if let quote = attempt["quote"]?["text"]?.string {
                 PersonQuote(text: quote).textSelection(.enabled)
             } else {
-                Text("No exact quote saved with this attempt note; inspect its cited material.").font(.caption).foregroundStyle(.secondary)
+                Text(sources.isEmpty ? "No exact words or exchange were saved with this attempt note." : "No exact quote saved with this attempt note; inspect its cited material.").font(.caption).foregroundStyle(.secondary)
             }
             interpretation(attempt, label: "Sophia's read · tentative")
-            let refs = (attempt["refs"]?.array ?? []).compactMap(\.string)
-            let quoteEntry = attempt["quote"]?["entry"]?.string
-            let sources = (quoteEntry.map { [$0] } ?? []) + refs.filter { $0 != quoteEntry }
             EvidenceLinks(session: session, refs: sources)
         }.padding(.vertical, 6)
     }
@@ -610,7 +610,7 @@ struct GoalsView: View {
             if evidence.attempts.isEmpty {
                 Text("No saved attempt linked to this criterion.").font(.caption).italic().foregroundStyle(.secondary)
             } else {
-                ForEach(evidence.attempts, id: \.self.line) { attempt in attemptEvidence(attempt) }
+                ForEach(evidence.attempts, id: \.self.line) { attempt in attemptEvidence(attempt, criterion: ref) }
                 if evidence.read == nil { Text("No criterion-level read saved yet.").font(.caption).foregroundStyle(.secondary) }
             }
             if let read = evidence.read {

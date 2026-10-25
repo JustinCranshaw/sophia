@@ -1036,6 +1036,7 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("goalEvidenceSeparatesCheckpointBatchOrderFromPersonCorrections", goalEvidenceSeparatesCheckpointBatchOrderFromPersonCorrections),
     ("providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages", providerRouteFailureRetainsRecoveryBytesWithoutRepeatedMessages),
     ("goalEvidenceFollowsOnlyExplicitAttemptChains", goalEvidenceFollowsOnlyExplicitAttemptChains),
     ("goalEvidenceKeepsReadOrderAndHonestUnlinkedAttempts", goalEvidenceKeepsReadOrderAndHonestUnlinkedAttempts),
