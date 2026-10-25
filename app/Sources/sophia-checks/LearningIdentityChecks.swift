@@ -78,3 +78,19 @@ func legacyDuplicateMemoryRefusesUpdateWithoutAWrite() throws {
     expect(try Data(contentsOf: file) == before)
     expect(try Data(contentsOf: store.url.appendingPathComponent("notebook.json")) == meta)
 }
+
+
+func legacyDeletionReservesIDsBeforeAnyNewAppend() throws {
+    let store = try tempStore()
+    let a: JSONObject = ["id": .string("n-1"), "kind": .string("background"), "text": .string("Legacy A")]
+    let b: JSONObject = ["id": .string("n-2"), "kind": .string("background"), "text": .string("Legacy B")]
+    try Data((JSON.object(a).line + "\n" + JSON.object(b).line + "\n").utf8).write(to: store.url.appendingPathComponent("learning.jsonl"))
+    expect(store.meta["learning_ids"] == nil)
+    let removed = try store.deleteLearning("n-2")
+    let reopened = try NotebookStore(url: store.url)
+    let correction = try reopened.appendLearning(["kind": .string("correction"), "replaces": .string("n-1"), "text": .string("Corrected legacy A")], by: "person", session: "s-1")
+    expect(correction.str("id") == "n-3")
+    try reopened.restoreLearning(removed)
+    expect(reopened.record("n-2") == b && reopened.correction(of: "n-1") == correction)
+    expect(Set(reopened.learning.compactMap { $0.str("id") }).count == reopened.learning.count)
+}

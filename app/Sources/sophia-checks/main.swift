@@ -1032,6 +1032,7 @@ func scenario10IntentionalEngineExit() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("legacyDeletionReservesIDsBeforeAnyNewAppend", legacyDeletionReservesIDsBeforeAnyNewAppend),
     ("legacyDuplicateMemoryRefusesUpdateWithoutAWrite", legacyDuplicateMemoryRefusesUpdateWithoutAWrite),
     ("aFailedLearningAppendKeepsExistingEvidence", aFailedLearningAppendKeepsExistingEvidence),
     ("learningIdentitiesSurviveDeletionCorrectionAndUndo", learningIdentitiesSurviveDeletionCorrectionAndUndo),

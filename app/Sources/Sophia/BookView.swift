@@ -364,6 +364,12 @@ struct NotesView: View {
         Sheet {
             Text("Sophia's notes").font(.system(size: 28, weight: .semibold, design: .serif))
             Intro("Sophia keeps these as you talk, and adds to them when you come back after a break or end a session. She uses them to follow up and to pick up where you left off. They aren't pages and they aren't a score. Every note rests on something you said or did. Correct or delete anything.")
+            if let problem = session.learningProblem {
+                HStack(alignment: .top) {
+                    Banner(tone: .problem, text: problem)
+                    Button("Dismiss") { session.learningProblem = nil }.controlSize(.small)
+                }
+            }
             if let removed = session.lastDeleted {
                 HStack { Banner(tone: .plain, text: "Deleted \(removed.count) record\(removed.count == 1 ? "" : "s"). Your words are still in the conversation."); Button("Undo") { session.undoDelete() } }
             }
