@@ -449,17 +449,26 @@ struct GoalsView: View {
 
     var body: some View {
         let store = session.store
-        Sheet {
-            Text("Goals").font(.system(size: 28, weight: .semibold, design: .serif))
-            Intro("What you want from this notebook. Sophia notes goals as you talk; they stay provisional until you confirm them. Under each goal: what you've done toward it and what Sophia makes of it. There's no score, and only you mark a goal met or drop it.")
-            VStack(alignment: .leading, spacing: 8) {
-                Text("New goal").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                TextField("What do you want from this notebook?", text: $newGoal, axis: .vertical)
-                    .font(.system(size: 17, design: .serif)).textFieldStyle(.roundedBorder)
-                    .onSubmit { session.addGoal(newGoal); newGoal = "" }
-                Button("Add goal") { session.addGoal(newGoal); newGoal = "" }.disabled(newGoal.trimmingCharacters(in: .whitespaces).isEmpty)
+        ScrollViewReader { proxy in
+            Sheet {
+                Text("Goals").font(.system(size: 28, weight: .semibold, design: .serif))
+                Intro("What you want from this notebook. Sophia notes goals as you talk; they stay provisional until you confirm them. Under each goal: what you've done toward it and what Sophia makes of it. There's no score, and only you mark a goal met or drop it.")
+                if let problem = session.goalProblem, session.goalReviewID == nil {
+                    HStack { Banner(tone: .problem, text: problem); Button("Dismiss") { session.goalProblem = nil } }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("New goal").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    TextField("What do you want from this notebook?", text: $newGoal, axis: .vertical)
+                        .font(.system(size: 17, design: .serif)).textFieldStyle(.roundedBorder)
+                        .onSubmit { if session.addGoal(newGoal) { newGoal = "" } }
+                    Button("Add goal") { if session.addGoal(newGoal) { newGoal = "" } }.disabled(newGoal.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                VStack(spacing: 14) { ForEach(store.goals.reversed(), id: \.self.line) { g in goalCard(g).id(g.str("id") ?? "") } }
             }
-            VStack(spacing: 14) { ForEach(store.goals.reversed(), id: \.self.line) { g in goalCard(g) } }
+            .onChange(of: session.goalReviewID, initial: true) { _, id in
+                guard let id else { return }
+                DispatchQueue.main.async { proxy.scrollTo(id, anchor: .top) }
+            }
         }
     }
 
@@ -478,41 +487,55 @@ struct GoalsView: View {
                     Text("· PROVISIONAL · \(g.str("replaces") == nil ? "noted" : "revised") by Sophia").font(.caption2.weight(.bold)).foregroundStyle(.orange)
                 }
             }
+            if let problem = session.goalProblem, session.goalReviewID == id {
+                HStack { Banner(tone: .problem, text: problem); Button("Dismiss") { session.goalProblem = nil } }
+            }
             if editing == id {
                 TextField("Goal", text: $text, axis: .vertical).font(.system(size: 19, design: .serif)).textFieldStyle(.roundedBorder)
-                HStack { Button("Save") { session.updateGoal(g, text: text); editing = nil }.buttonStyle(.borderedProminent); Button("Cancel") { editing = nil } }
+                HStack { Button("Save") { if session.updateGoal(g, text: text) { editing = nil } }.buttonStyle(.borderedProminent); Button("Cancel") { editing = nil } }
             } else {
                 Text(MarkdownView.scripts(AttributedString(g.str("text") ?? ""), size: 20, design: .serif)).font(.system(size: 20, weight: .semibold, design: .serif))
             }
             if provisional, let q = g["quote"]?.object?.str("text") { PersonQuote(text: q) }
-            if provisional, let prevID = g.str("replaces"), let prev = store.record(prevID), prev.str("text") != g.str("text") {
-                Text("Was: \(prev.str("text") ?? "")").font(.system(size: 12)).foregroundStyle(.secondary)
-            }
-            if provisional {
-                HStack {
-                    Button("Confirm") { session.confirmGoal(g) }.buttonStyle(.borderedProminent)
-                    Button(g.str("replaces") == nil ? "Not my goal" : "Keep the earlier version") { session.discardGoal(g) }
-                }.controlSize(.small)
+            if provisional, let prevID = g.str("replaces"), let prev = store.record(prevID) {
+                Text("Earlier version: \(prev.str("text") ?? "")").font(.system(size: 12)).foregroundStyle(.secondary)
+                Text("\(store.isProvisional(prev) ? "Provisional" : "Confirmed by you") · \(prev["criteria"]?.array?.count ?? 0) criteria").font(.caption).foregroundStyle(.secondary)
             }
             let criteria = (g["criteria"]?.array ?? []).compactMap(\.string)
             ForEach(Array(criteria.enumerated()), id: \.offset) { i, c in
                 criterionRow(root: root, index: i + 1, text: c)
             }
-            HStack {
-                TextField("Add what “there” looks like…", text: $criterion).textFieldStyle(.roundedBorder)
-                    .onSubmit { session.updateGoal(g, addCriterion: criterion); criterion = "" }
-            }
-            HStack {
-                if status == "working" {
-                    Button("Mark as met") { session.updateGoal(g, status: "met") }
-                    Button("Reword") { text = g.str("text") ?? ""; editing = id }
-                    Button("Drop") { session.updateGoal(g, status: "dropped") }
+            if provisional {
+                HStack {
+                    Button("Confirm") { session.confirmGoal(g) }.buttonStyle(.borderedProminent)
+                    let previous = g.str("replaces").flatMap { store.record($0) }
+                    let compatible = previous.map { ($0["criteria"]?.array ?? []) == (g["criteria"]?.array ?? []) } ?? false
+                    Button(g.str("replaces") == nil ? "Not my goal" : "Keep the earlier version") { session.discardGoal(g) }
+                        .disabled(g.str("replaces") != nil && !compatible)
+                }.controlSize(.small)
+                if let previousID = g.str("replaces"), let previous = store.record(previousID), (previous["criteria"]?.array ?? []) != (g["criteria"]?.array ?? []) {
+                    Text("Earlier criteria differ. Keeping that version could reassign saved or undoable evidence; leave this provisional or choose a separate narrower goal.").font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Button("Reopen") { session.updateGoal(g, status: "working") }
+                    Text("You can leave this provisional and keep talking without confirming.").font(.caption).foregroundStyle(.secondary)
                 }
-                Spacer()
-                ShowRecord(record: g)
-            }.controlSize(.small)
+            } else {
+                HStack {
+                    TextField("Add what “there” looks like…", text: $criterion).textFieldStyle(.roundedBorder)
+                        .onSubmit { if session.updateGoal(g, addCriterion: criterion) { criterion = "" } }
+                }
+                HStack {
+                    if status == "working" {
+                        Button("Mark as met") { session.updateGoal(g, status: "met") }
+                        Button("Reword") { text = g.str("text") ?? ""; editing = id }
+                        Button("Drop") { session.updateGoal(g, status: "dropped") }
+                    } else {
+                        Button("Reopen") { session.updateGoal(g, status: "working") }
+                    }
+                    Spacer()
+                    ShowRecord(record: g)
+                }.controlSize(.small)
+            }
+            if provisional { ShowRecord(record: g).controlSize(.small) }
         }
         .card()
     }

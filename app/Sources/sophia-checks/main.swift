@@ -1033,6 +1033,11 @@ func scenario10IntentionalEngineExit() throws {
 
 let all: [(String, () throws -> Void)] = [
     ("failedSourcesAreNotReintroducedAsExtractedPassages", failedSourcesAreNotReintroducedAsExtractedPassages),
+    ("deletedCriterionEvidenceCannotBeRetargetedBeforeUndo", deletedCriterionEvidenceCannotBeRetargetedBeforeUndo),
+    ("decliningReferencedCriteriaCannotRetargetTheirEvidence", decliningReferencedCriteriaCannotRetargetTheirEvidence),
+    ("goalConfirmationKeepsAllReviewedCriteriaAndProvenance", goalConfirmationKeepsAllReviewedCriteriaAndProvenance),
+    ("staleGoalDecisionsRefuseWithoutMutation", staleGoalDecisionsRefuseWithoutMutation),
+    ("wholeGoalDeclinePreservesEarlierScopeAndEvidencePositions", wholeGoalDeclinePreservesEarlierScopeAndEvidencePositions),
     ("legacyDeletionReservesIDsBeforeAnyNewAppend", legacyDeletionReservesIDsBeforeAnyNewAppend),
     ("legacyDuplicateMemoryRefusesUpdateWithoutAWrite", legacyDuplicateMemoryRefusesUpdateWithoutAWrite),
     ("aFailedLearningAppendKeepsExistingEvidence", aFailedLearningAppendKeepsExistingEvidence),
