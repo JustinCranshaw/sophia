@@ -40,7 +40,7 @@ private struct EvidenceDetail: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(evidence.heading).font(.headline)
                     if let date = evidence.date { Text(shortDate(date)).font(.caption).foregroundStyle(.secondary) }
-                    if let quote = evidence.quote { Text("Your exact words").font(.caption.weight(.bold)); PersonQuote(text: quote) }
+                    if let quote = evidence.quote { Text("Your exact words").font(.caption.weight(.bold)); PersonQuote(text: quote).textSelection(.enabled) }
                     if let correction = evidence.correction {
                         Text("Your correction").font(.caption.weight(.bold))
                         Text(correction).textSelection(.enabled)

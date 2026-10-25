@@ -38,7 +38,8 @@ public struct EvidenceReference: Equatable {
             let goals = store.goals.filter { store.rootID(of: $0.str("id") ?? "") == store.rootID(of: base) }
             guard goals.count == 1, let goal = goals.first, let title = goal.str("text") else { return unavailable() }
             let criteria = goal["criteria"]?.array ?? []
-            let status = store.isProvisional(goal) ? "provisional" : goal.str("status") == "dropped" ? "dropped" : goal.str("status") == "met" ? "marked met by you" : "confirmed by you"
+            let storedStatus = goal.str("status") == "dropped" ? "dropped" : goal.str("status") == "met" ? "marked met by you" : "working"
+            let status = store.isProvisional(goal) ? "provisional · " + storedStatus : storedStatus == "working" ? "confirmed by you" : storedStatus
             if parts.count == 2 {
                 guard let position = Int(parts[1]), position > 0, position <= criteria.count, let criterion = criteria[position - 1].string else { return unavailable() }
                 return result(.goal, criterion, "Goal criterion · " + status + " · " + title, criterion, date: goal.str("at"))
@@ -47,6 +48,8 @@ public struct EvidenceReference: Equatable {
         }
         guard parts.count == 1, let text = record.str("text") else { return unavailable() }
         let heading = record.str("by") == "person" ? "Your record" : record.str("kind") == "memory" ? "Sophia's working memory" : "Sophia's interpretation"
-        return result(.note, heading + ": " + excerpt(store.correction(of: base)?.str("text") ?? text), heading, text, date: record.str("at"), quote: record["quote"]?["text"]?.string, correction: store.correction(of: base)?.str("text"))
+        let correction = store.correction(of: base)?.str("text")
+        let label = correction.map { "Your correction: " + excerpt($0) } ?? heading + ": " + excerpt(text)
+        return result(.note, label, heading, text, date: record.str("at"), quote: record["quote"]?["text"]?.string, correction: correction)
     }
 }

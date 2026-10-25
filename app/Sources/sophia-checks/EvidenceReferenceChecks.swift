@@ -19,6 +19,14 @@ func evidenceReferencesRevealActualLocalMaterialWithoutWrites() throws {
     expect(criterion.kind == .goal && criterion.label == "Use a numerical example" && criterion.heading.contains("Understand modes"))
     expect(EvidenceReference.resolve(goal.str("id")!, in: store).text.contains("1. Explain fixed shape"))
     expect(try Data(contentsOf: log) == before && Data(contentsOf: learn) == learning)
+    let confirmed = try store.confirmGoalProposal(goal.str("id")!, session: "s-1")
+    let met = try store.updatePersonGoal(confirmed.str("id")!, status: "met", session: "s-1")
+    let revisedMet = try store.writeGoal(text: "Refined modes goal", criteria: [], revising: met.str("id"), quote: nil, session: "s-2")
+    expect(EvidenceReference.resolve(goal.str("id")! + "#2", in: store).heading.contains("provisional · marked met by you"))
+    let accepted = try store.confirmGoalProposal(revisedMet.str("id")!, session: "s-2")
+    let dropped = try store.updatePersonGoal(accepted.str("id")!, status: "dropped", session: "s-2")
+    _ = try store.writeGoal(text: "Another wording", criteria: [], revising: dropped.str("id"), quote: nil, session: "s-3")
+    expect(EvidenceReference.resolve(goal.str("id")!, in: store).heading == "Goal · provisional · dropped")
 }
 
 func evidenceReferencesDistinguishOriginalInterpretationAndCorrection() throws {
@@ -30,7 +38,7 @@ func evidenceReferencesDistinguishOriginalInterpretationAndCorrection() throws {
     let resolved = EvidenceReference.resolve(id, in: store)
     expect(resolved.heading == "Sophia's interpretation" && resolved.text == note.str("text"))
     expect(resolved.quote == person.str("text") && resolved.correction == "My challenge was valid; the original explanation was wrong.")
-    expect(resolved.label.contains("My challenge was valid"))
+    expect(resolved.label == "Your correction: My challenge was valid; the original explanation was wrong.")
     let memory = try store.appendLearning(["kind": .string("memory"), "text": .string("Keep track of the corrected account."), "refs": .array([.string(id)])], by: "sophia", session: "s-1")
     expect(EvidenceReference.resolve(memory.str("id")!, in: store).heading == "Sophia's working memory")
 }

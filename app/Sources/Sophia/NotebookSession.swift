@@ -22,6 +22,7 @@ final class NotebookSession: ObservableObject {
 
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
+        if oldValue != place { pendingSection = nil }
         switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
         pendingSource = engines[activeThread]?.pendingSource
