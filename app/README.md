@@ -41,6 +41,25 @@ SOPHIA_SNAPSHOT=/tmp/shots SOPHIA_LIBRARY=<library with one notebook> \
 
 Add `SOPHIA_SNAPSHOT_SECTION="<section title>"` to render the first page scrolled to that section, as following a deep link does, or `SOPHIA_SNAPSHOT_EDIT="<section title>"` (or `(opening)`, `(page)`) to render it with that section open in the editor.
 
+### Native UX simulations
+
+The opt-in debug harness drives the same native window, accessibility actions, text editors, menus, and scroll views as the app. It never calls `NotebookSession`, stores, or the engine directly. Build a debug bundle first; from the repository root:
+
+```sh
+app/scripts/make-app.sh debug
+python3 app/scripts/ux.py app/build/ux-sim/example launch
+python3 app/scripts/ux.py app/build/ux-sim/example inspect
+python3 app/scripts/ux.py app/build/ux-sim/example press --id 41
+```
+
+Use IDs from the latest response, not the example above. Every command preserves its UI tree and window PNG under the run's `results/`. `set --id N --text '…'` replaces native field text through its editor; `type --text '…'` inserts at the focused editor's caret. `key --code 53` sends Escape, `key --code 36 --modifiers command` commits an open page editor, and `menu` lists the actual menu commands. Other key codes need `--text` with the actual character (for example `--code 12 --modifiers command --text q` for Quit). `scroll --id N --dy 500` operates an `AXScrollArea` (negative goes up). `click --x X --y Y` and `hover` use coordinates from the top left of the window screenshot; coordinates are window points; on a Retina capture, divide PNG pixel coordinates by its display scale. `resize --width 1440 --height 850` changes the window size.
+
+Each run uses its own disposable `library/`; the debug bridge starts only when both `SOPHIA_UX_HARNESS` and a nested `SOPHIA_LIBRARY` are explicitly set. Release builds omit it, and the driver refuses to launch a release bundle. Launch clears stale queued actions and refuses a second app for the same run directory. It needs no cross-app Accessibility permission. Screenshots cover only Sophia's own window or attached sheet; rendered reader content may require visual inspection rather than accessibility text. Commands are not topic answers, and the harness supplies no simulated model responses. Sending through the composer uses the installed Claude connection and normal provider usage. It never copies authentication files or introduces an API fallback.
+
+The normal return threshold is six hours. After closing an idle run with `key --code 12 --modifiers command --text q` (⌘Q), relaunch the same directory with `launch --return-gap 60` to exercise an explicitly accelerated return after a one-minute pause. This tests the UI path, not delayed retention. Preserve notebook data and distinguish harness interruptions from product failures. The October 24 four-persona study and its Linear findings are recorded in `../research/2026-10-24-ux-simulation/`.
+
+For a first-time setup walkthrough, `launch --without-claude` injects unavailable executable discovery in the debug process and exercises the app's real missing-install error. It does not remove the person's installation or change their login. Relaunching without that flag supplies the machine's existing connection; it does not prove a fresh installation, account creation, sign-in, or billing attribution. Native Help/menu tracking is not supported by this driver; use `menu` to inspect menu commands. The study includes a fourth, onboarding-focused learner.
+
 ## Layout
 
 - `Sources/SophiaCore`: notebook files (`NotebookStore`), the client checks on everything Sophia writes (`RecordChecks`), the Claude Code process (`ClaudeEngine`), and the text the app adds to Sophia's instructions (`Prompts`).
