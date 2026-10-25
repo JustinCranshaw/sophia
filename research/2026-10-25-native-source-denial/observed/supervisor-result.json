@@ -1,0 +1,12 @@
+{
+  "returncode": 0,
+  "capturedCount": 4,
+  "liveCapturedProcesses": [],
+  "zombies": [],
+  "emergencySignals": [],
+  "protectedFilesExact": true,
+  "changedFiles": [
+    "transcript.jsonl"
+  ],
+  "cliResolvedAfter": "/Users/justincranshaw/.local/share/claude/versions/2.1.304"
+}

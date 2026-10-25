@@ -1,0 +1,33 @@
+[
+  {
+    "pid": 47508,
+    "parent": 47506,
+    "uid": 501,
+    "birth": "Sun Oct 25 07:49:13 2026",
+    "state": "Rs"
+  },
+  {
+    "pid": 47517,
+    "parent": 47508,
+    "uid": 501,
+    "birth": "Sun Oct 25 07:49:13 2026",
+    "state": "S",
+    "executable": "/Users/justincranshaw/.local/share/claude/versions/2.1.304"
+  },
+  {
+    "pid": 47533,
+    "parent": 47517,
+    "uid": 501,
+    "birth": "Sun Oct 25 07:49:13 2026",
+    "state": "S",
+    "executable": "/private/tmp/sophia-native-source-verification/app/build/Sophia.app/Contents/MacOS/sophia-mcp"
+  },
+  {
+    "pid": 47534,
+    "parent": 47517,
+    "uid": 501,
+    "birth": "Sun Oct 25 07:49:13 2026",
+    "state": "S",
+    "executable": "/private/tmp/sophia-native-source-verification/app/build/Sophia.app/Contents/MacOS/sophia-mcp"
+  }
+]
