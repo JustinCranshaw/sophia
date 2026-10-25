@@ -33,3 +33,11 @@ The broad Contents/action checks ran on a62c946. For these fixtures the final fi
 The mapper groups only explicit emitted success shapes: a note record identity, or nonnegative integer memory counters with at least one actual change, with no refusal/error marker and a known session/person origin. It matches thread/session and stops at every noneligible raw record, including filtered checkpoints and other-thread entries. A missing/deleted learning record does not rewrite history; its event remains with an unavailable label. All raw IDs/anchors survive, and member IDs—not just the shared group ID—drive activity detection.
 
 No Session, Engine, store, prompt, reader bridge, source permission/evidence or goal behavior changed. Full follow geometry is unchanged. Disclosure state is local view state; no persistent expansion/scroll registry was added. VoiceOver/human comprehension were not tested.
+
+## Review follow-up and main integration
+
+The initial three-scope review at3b31536 centrally passed79 core and29 presentation checks with no BLOCK/FIX NOW. Its small test-fidelity observation is fixed: mixed note/memory fixtures now use the real Contents shape, and an explicit P[note, global memory, note] case verifies the split. There are now30 focused checks.
+
+Landedscope48 base b69dd14 was integrated mechanically; the grouping implementation is unchanged, and all86 current core checks plus30 focused checks and debug build pass. The targeted release Sophia product passed again (15.15s). No native/provider rerun was used solely for this unrelated base integration.
+
+One low residual remains: after an errored general-thread turn with no replied marker, a later successful checkpoint memory write can join its preceding note run because the raw checkpoint record is appended afterward. The memory detail and See action remain available and the count remains update events. The existing mapper filters client checkpoint rows, so no visible checkpoint row is claimed. Distinguishing checkpoint-origin memory would need new metadata, outside this presentation slice; revisit if observed in use.
