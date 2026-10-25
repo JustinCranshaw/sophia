@@ -14,6 +14,8 @@ func researchOffersMatchTheExposedWebCapability() throws {
         expect(prompt.contains("available notebook pages with read_page"))
         expect(prompt.contains("search result, summary or remembered quotation is not verified source text"))
         expect(prompt.contains("find openable links"))
+        expect(prompt.contains("Search links are unverified candidates"))
+        expect(prompt.contains("without offering a page write"))
     }
     expect(briefing.contains("do not imply external passages are already inspected or ready"))
 }
