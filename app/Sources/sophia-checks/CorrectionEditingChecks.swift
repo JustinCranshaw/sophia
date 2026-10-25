@@ -8,14 +8,16 @@ func editedCorrectionsKeepOriginalEvidenceAndReachNextTurn() throws {
     try store.setMemory([.init(id: nil, text: "Prefers no chronology.", refs: [note.str("id")!])], session: "s-1")
     for original in [note, store.memory[0]] {
         let id = original.str("id")!
-        for text in ["First person correction.", "Refined person correction."] {
+        let first = "First person correction for " + id
+        let refined = "Refined person correction for " + id
+        for text in [first, refined] {
             try store.appendLearning(["kind": .string("correction"), "replaces": .string(id), "text": .string(text)], by: "person", session: "s-1")
         }
-        expect(store.correction(of: id)?.str("text") == "Refined person correction.")
+        expect(store.correction(of: id)?.str("text") == refined)
         expect(store.record(id) == original)
         for prompt in [Prompts.context(store), Prompts.turnPrefix(store, thread: "")] {
-            expect(prompt.contains("Refined person correction."))
-            expect(!prompt.contains("First person correction."))
+            expect(prompt.contains(refined))
+            expect(!prompt.contains(first))
             expect(prompt.contains(original.str("text")!))
             for ref in original["refs"]!.array! { expect(prompt.contains(ref.string!)) }
         }
@@ -23,6 +25,6 @@ func editedCorrectionsKeepOriginalEvidenceAndReachNextTurn() throws {
         expect(removed.count == 3 && store.correction(of: id) == nil)
         try store.restoreLearning(removed)
         expect(store.record(id) == original)
-        expect(store.correction(of: id)?.str("text") == "Refined person correction.")
+        expect(store.correction(of: id)?.str("text") == refined)
     }
 }
