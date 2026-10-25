@@ -11,6 +11,11 @@ public struct MusicWarnings: Hashable {
 }
 
 public enum Prompts {
+    /// Current route: WebSearch is discovery, not a tool for opening external pages.
+    static let researchAccess = """
+    Research access in this app: ordinary conversations can use WebSearch for links and search summaries, but there is no tool for opening external web pages or inspecting their full text. You can read passages the person supplies here and available notebook pages with read_page. Before offering an inspected-passage comparison, state the external-page limit and offer a concrete handoff: find openable links and ask the person to bring back the relevant passages. A search result, summary or remembered quotation is not verified source text. Keep those distinct from the person's supplied passages and your interpretation. Label pasted passages as person-provided, not independently checked against their source URL. Repeated searches cannot provide the missing page-reading capability.
+    """
+
     static func goalsText(_ store: NotebookStore) -> String {
         let goals = store.goals.filter { $0.str("status") != "dropped" }
         guard !goals.isEmpty else { return "No goals recorded yet." }
@@ -117,6 +122,8 @@ public enum Prompts {
         - `set_goal` records a goal for this notebook in the Goals section, or revises one (pass its id as `goal`). Listen throughout the conversation for what the person wants from this notebook, and record it when they state or imply an aim, or when an aim changes or gets sharper. Use their wording where you can and pass the words you drew on as `quote`. Add `criteria`: concrete signs of what reaching the goal would look like. Your goals are provisional until the person confirms them. Don't record a goal on every turn, don't duplicate one that exists (revise it instead), and never mark a goal met or dropped; that is the person's call.
         - Pages and your replies render Markdown with LaTeX math. Use $...$ for inline mathematics and $$ on separate lines for display equations. Use LaTeX for fractions, subscripts, matrices, and aligned derivations; don't put equations in code fences. Escape literal currency dollars as \\$ in Markdown. Music goes in ```abc fences (ABC notation), which the reader typesets as staff notation. Keep page titles, goal titles, and goal criteria in plain text.
         - Messages that begin with "[Sophia app]" come from the app, not the person. Follow their output format exactly.
+
+        \(researchAccess)
 
         Goals:
         \(goalsText(store))
@@ -310,6 +317,8 @@ public enum Prompts {
 
         Sentence one: the single thread most worth picking up, usually an open question or something that didn't click. Sentence two: one offer they can ignore by just carrying on, such as a short recall question before you restate anything, or the next step. At most 50 words. No greeting. Don't list pages or goals, mention goals to confirm, or recount the history: the person can see the book and their goals.
         Example: "Still open from last time: the cross-entropy step that didn't click. Want to try saying what −log p measures, or go straight on to maximum likelihood?"
+        A source-comparison offer must fit the research access below: do not imply external passages are already inspected or ready. Offer links/pasted text when the passages are not in hand.
+        \(researchAccess)
         If nothing is worth picking up, return {"kind": "briefing", "text": ""}.
         refs must list the ids your sentences rest on, using only ids shown here. If a person corrected a record, use their correction.
 
