@@ -80,6 +80,7 @@ final class AlmanacModel: ObservableObject {
         worker = next
         preferences.set(next.url.lastPathComponent, forKey: targetKey)
         next.onReady = { [weak self] entry in
+            self?.problem = nil
             self?.onSaved?(entry)
             self?.notifications.entrySaved(id: entry.id)
         }
@@ -246,7 +247,11 @@ struct AlmanacStatusView: View {
         VStack(alignment: .leading, spacing: 7) {
             Text(status).font(.caption).foregroundStyle(.secondary).accessibilityLabel("Almanac status: \(status)")
             if let text = worker.activity { Text(text).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
-            if let problem = worker.problem ?? snapshot.problem ?? almanac.problem { Text(problem).font(.caption).foregroundStyle(.red) }
+            if let entry = snapshot.waitingEntry ?? snapshot.latestEntry {
+                Text(entry.title).font(.caption.weight(.medium)).lineLimit(2).help(entry.title)
+                Text("Prepared \(shortDate(entry.preparedAt))").font(.caption).foregroundStyle(.secondary)
+            }
+            if let problem = almanac.problem ?? worker.problem ?? snapshot.problem { Text(problem).font(.caption).foregroundStyle(.red) }
             HStack(spacing: 8) {
                 if let entry = snapshot.waitingEntry ?? snapshot.latestEntry { Button("Read entry") { read(entry) } }
                 if snapshot.phase == .preparing {
@@ -288,13 +293,22 @@ struct AlmanacToolbarView: View {
     let read: (AlmanacEntry) -> Void
     @State private var shown = false
     var body: some View {
-        Button(worker.snapshot.phase == .preparing ? "Almanac · Preparing" : worker.snapshot.waitingEntry != nil ? "Almanac · Ready" : "Almanac") { shown.toggle() }
+        Button(label) { shown.toggle() }
             .popover(isPresented: $shown) {
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Sophia’s Almanac").font(.headline)
                     AlmanacStatusView(worker: worker, almanac: almanac) { entry in shown = false; read(entry) }
                 }.padding(16).frame(width: 350)
             }
+    }
+    private var label: String {
+        if worker.snapshot.settings?.enabled == false { return "Almanac · Off" }
+        switch worker.snapshot.phase {
+        case .preparing: return "Almanac · Preparing"
+        case .failed, .needsThemes: return "Almanac · Needs attention"
+        case .paused: return "Almanac · Paused"
+        default: return worker.snapshot.waitingEntry != nil ? "Almanac · Ready" : "Almanac"
+        }
     }
 }
 
