@@ -33,7 +33,9 @@ final class AppModel: ObservableObject {
         Snapshot.run(model: self)
     }
 
-    func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil) {
+    @discardableResult
+    func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil) -> Bool {
+        guard library.notebooks.contains(url) else { problem = "This notebook is no longer available."; return false }
         if open?.store.url != url {
             // A page/Open action counts as choosing the book; an untouched empty default does not.
             if let current = open, current.bookShown { bookVisibility[current.store.url.path] = true }
@@ -42,14 +44,32 @@ final class AppModel: ObservableObject {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged)
                 next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
                 open = next
-            } catch { problem = error.localizedDescription; return }
+            } catch { problem = error.localizedDescription; return false }
         }
         if let place { open?.show(place) }
+        return true
     }
 
     /// Follows a link to a page in another notebook.
     func follow(notebook name: String, page: String?, section: String? = nil) {
-        openNotebook(library.root.appendingPathComponent(name), at: page.map { .page($0) } ?? .contents)
+        guard let url = library.notebooks.first(where: { $0.lastPathComponent == name }) else {
+            problem = "This notebook is no longer available."; return
+        }
+        if let page {
+            // Inspect metadata without constructing a store (which can create missing files).
+            guard let data = try? Data(contentsOf: url.appendingPathComponent("notebook.json")),
+                  let meta = (try? JSONDecoder().decode(JSON.self, from: data))?.object else {
+                problem = "This notebook is no longer available."; return
+            }
+            let files = (meta["unfiled"]?.array ?? []) + (meta["chapters"]?.array ?? []).flatMap { $0["pages"]?.array ?? [] }
+            let pages = url.appendingPathComponent("pages", isDirectory: true).resolvingSymlinksInPath()
+            let destination = pages.appendingPathComponent(page).resolvingSymlinksInPath()
+            guard files.compactMap(\.string).contains(page), destination.deletingLastPathComponent() == pages,
+                  FileManager.default.fileExists(atPath: destination.path) else {
+                problem = "This page is no longer available."; return
+            }
+        }
+        guard openNotebook(url, at: page.map { .page($0) } ?? .contents), open?.store.url == url else { return }
         open?.pendingSection = section
     }
 

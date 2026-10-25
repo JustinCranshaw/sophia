@@ -45,8 +45,34 @@ final class NotebookSession: ObservableObject {
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
     @Published var lastDeleted: [JSONObject]?        // records; Undo lasts until the next message
-    @Published var pendingSection: String? { didSet { pendingSectionID = UUID() } }
-    private(set) var pendingSectionID = UUID() // distinguishes repeated same-title requests
+    struct SectionNavigation {
+        let id = UUID()
+        let target: SectionTarget?
+    }
+    @Published private(set) var sectionNavigation = SectionNavigation(target: nil)
+    @Published var navigationProblem: String?
+    // Snapshot and confirmed cross-notebook links still use title-based requests.
+    var pendingSection: String? {
+        get { if case .title(let title) = sectionNavigation.target?.selector { return title }; return nil }
+        set {
+            let target: SectionTarget?
+            if let title = newValue, case .page(let file) = place {
+                target = SectionTarget(notebook: store.url, file: file, selector: .title(title))
+            } else { target = nil }
+            sectionNavigation = SectionNavigation(target: target)
+        }
+    }
+    var pendingSectionID: UUID { sectionNavigation.id }
+    @discardableResult
+    func openSection(_ target: SectionTarget) -> Bool {
+        switch target.resolve(in: store) {
+        case .failure(let error): navigationProblem = error.localizedDescription; return false
+        case .success:
+            show(.page(target.file))
+            sectionNavigation = SectionNavigation(target: target)
+            return true
+        }
+    }
 
     private var engine: ClaudeEngine?
     private var engines: [String: ClaudeEngine] = [:]
@@ -324,7 +350,7 @@ final class NotebookSession: ObservableObject {
     // MARK: Pages Sophia writes
 
     /// Shows a place in the book, opening the book if it is hidden.
-    func show(_ p: Place) { pendingSection = nil; place = p; bookShown = true }
+    func show(_ p: Place) { pendingSection = nil; navigationProblem = nil; place = p; bookShown = true }
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
     func undoWrite(_ entryID: String) {

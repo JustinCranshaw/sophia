@@ -225,6 +225,31 @@ struct PageView: View {
         let body: String
     }
     @State private var previous: PreviousVersion?
+    @State private var headingCount = 0
+    private func navigate(_ proxy: ScrollViewProxy) {
+        guard session.place == .page(file), let target = session.sectionNavigation.target else { return }
+        let request = session.pendingSectionID
+        switch target.resolve(in: session.store) {
+        case .failure(let error):
+            session.navigationProblem = error.localizedDescription
+            session.pendingSection = nil
+        case .success(let index):
+            guard headingCount > 0 else { return } // wait for the actual renderer's anchors
+            guard headingCount == session.store.editRanges(of: file).filter({ $0.index != nil }).count,
+                  index < headingCount else {
+                session.navigationProblem = "This section could not be located in the rendered page. You can still read the page."
+                session.pendingSection = nil
+                return
+            }
+            DispatchQueue.main.async {
+                guard session.place == .page(file), session.pendingSectionID == request else { return }
+                proxy.scrollTo("section-\(index)", anchor: .top)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                if session.place == .page(file), session.pendingSectionID == request { session.pendingSection = nil }
+            }
+        }
+    }
     var body: some View {
         if let page = session.store.readPage(file) {
             ScrollViewReader { proxy in
@@ -269,27 +294,17 @@ struct PageView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(updated).font(.system(size: 12)).foregroundStyle(.secondary)
+                if let notice = session.navigationProblem {
+                    Text(notice).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+
                 let hidden = NotebookStore.repeatedHeadingLines(in: page.body, title: page.title, chapter: chapter)
                 let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
                 MarkdownView(text: page.body.components(separatedBy: "\n").dropFirst(hidden).joined(separator: "\n"), anchors: true,
                              sections: ranges.filter { $0.key != "(page)" }.map { reader($0, hidden) },
                              editor: editor(ranges, hidden), onEdit: { session.handle($0, file: file) }, onHeadings: { headings in
-                    // A link into a section: scroll there once the reader has placed the headings.
-                    // Headings move as fonts and math finish loading, so follow them for a moment.
-                    guard session.place == .page(file), let title = session.pendingSection else { return }
-                    let request = session.pendingSectionID
-                    guard let sec = store.section(title, of: file) else {
-                        if session.pendingSectionID == request { session.pendingSection = nil }
-                        return
-                    }
-                    guard sec.index < headings.count else { return }
-                    DispatchQueue.main.async {
-                        guard session.place == .page(file), session.pendingSectionID == request else { return }
-                        proxy.scrollTo("section-\(sec.index)", anchor: .top)
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                        if session.place == .page(file), session.pendingSectionID == request { session.pendingSection = nil }
-                    }
+                    headingCount = headings.count
+                    navigate(proxy)
                 }, onMusic: { tunes in
                     // Name each tune's section: the innermost one holding the line its fence starts on.
                     session.noteMusic(file: file, warnings: tunes.filter { !$0.warnings.isEmpty }.map { t in
@@ -307,6 +322,7 @@ struct PageView: View {
                     LinksList(session: session, links: links)
                 }
             }
+            .onChange(of: session.pendingSectionID) { _, _ in navigate(proxy) }
             }
             .sheet(item: $previous) { snapshot in
                 VStack(alignment: .leading, spacing: 12) {

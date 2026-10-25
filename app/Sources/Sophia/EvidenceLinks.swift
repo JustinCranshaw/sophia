@@ -50,11 +50,22 @@ private struct EvidenceDetail: View {
                     Text("Record: " + reference).font(.caption2).foregroundStyle(.secondary).textSelection(.enabled)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.frame(maxHeight: 300)
+            if let notice = session.navigationProblem { Text(notice).font(.callout).foregroundStyle(.secondary) }
             HStack {
-                if evidence.page != nil {
+                if let file = evidence.page {
                     Button("Open page") {
-                        if let file = EvidenceReference.resolve(reference, in: session.store).page { session.show(.page(file)) }
-                        close()
+                        if EvidenceReference.resolve(reference, in: session.store).page == file {
+                            session.show(.page(file)); close()
+                        } else { session.navigationProblem = "This page is no longer available." }
+                    }
+                    let sections = session.store.editRanges(of: file).filter { $0.index != nil }
+                    if !sections.isEmpty {
+                        Menu("Open section") {
+                            ForEach(sections, id: \.key) { range in
+                                let target = SectionTarget.exact(notebook: session.store.url, file: file, range: range)
+                                Button(range.label + " · " + range.section) { if session.openSection(target) { close() } }
+                            }
+                        }
                     }
                 }
                 Button("Close evidence", action: close)
