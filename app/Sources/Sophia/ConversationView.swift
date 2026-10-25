@@ -65,8 +65,19 @@ struct ConversationView: View {
                         // also must not turn following off or manufacture unread activity.
                         if let previous, abs(position.frame.minY - previous.frame.minY) > 0.5,
                            abs(position.viewport - previous.viewport) < 0.5 {
-                            followsLatest = position.frame.maxY <= position.viewport + 32
-                            if followsLatest { hasNewActivity = false }
+                            let upward = position.frame.minY - previous.frame.minY
+                            let shrink = max(0, previous.frame.height - position.frame.height)
+                            // Even a small deliberate upward move stops following. A shorter
+                            // document can also clamp the origin upward without a scroll.
+                            if upward > shrink + 0.5 {
+                                followsLatest = false
+                            } else if upward < -0.5 {
+                                followsLatest = position.frame.maxY <= position.viewport + 32
+                                if followsLatest { hasNewActivity = false }
+                            } else {
+                                // An automatic clamp keeps the person's existing follow choice.
+                                followIfNeeded(proxy)
+                            }
                         } else {
                             followIfNeeded(proxy)
                         }
