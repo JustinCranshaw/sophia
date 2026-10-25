@@ -38,6 +38,8 @@ final class NotebookSession: ObservableObject {
     @Published var activity: String?
     @Published var pendingSource: SourcePermissionBridge.Request?
     @Published var problem: String?
+    @Published var goalReviewID: String?
+    @Published var goalProblem: String?
     @Published var learningProblem: String? // Notes feedback must not replace an unsaved page-edit recovery message.
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
@@ -424,44 +426,67 @@ final class NotebookSession: ObservableObject {
 
     // MARK: The person's records
 
-    func addGoal(_ text: String) {
+    @discardableResult
+    func addGoal(_ text: String) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
-        try? store.appendLearning(["kind": .string("goal"), "text": .string(t), "status": .string("working"), "criteria": .array([])], by: "person", session: session)
-        changed()
+        guard !t.isEmpty else { return false }
+        do {
+            let saved = try store.appendLearning(["kind": .string("goal"), "text": .string(t), "status": .string("working"), "criteria": .array([])], by: "person", session: session)
+            goalReviewID = saved.str("id"); goalProblem = nil; changed(); return true
+        } catch { goalReviewID = nil; goalProblem = error.localizedDescription; changed(); return false }
     }
 
-    /// Rewording, adding a criterion, or changing status is a new goal record that replaces the old one.
-    func updateGoal(_ goal: JSONObject, text: String? = nil, status: String? = nil, addCriterion: String? = nil) {
-        var next: JSONObject = ["kind": .string("goal"), "replaces": goal["id"]!,
-                                "text": .string(text ?? goal.str("text") ?? ""),
-                                "status": .string(status ?? goal.str("status") ?? "working")]
-        var criteria = goal["criteria"]?.array ?? []
-        if let c = addCriterion?.trimmingCharacters(in: .whitespacesAndNewlines), !c.isEmpty { criteria.append(.string(c)) }
-        next["criteria"] = .array(criteria)
-        try? store.appendLearning(next, by: "person", session: session)
-        changed()
+    func reviewGoal(_ recordID: String) {
+        store.reload()
+        let root = store.rootID(of: recordID)
+        let current = store.goals.first { store.rootID(of: $0.str("id") ?? "") == root }
+        goalReviewID = current?.str("id")
+        goalProblem = current?.str("id") == recordID ? nil : "That goal changed. Review its current version before deciding."
+        show(.goals)
     }
 
-    /// The person confirms a goal Sophia recorded: the same goal, now theirs.
+    /// Person edits apply only to the current confirmed version, never an unseen proposal.
+    @discardableResult
+    func updateGoal(_ goal: JSONObject, text: String? = nil, status: String? = nil, addCriterion: String? = nil) -> Bool {
+        guard let id = goal.str("id") else { return false }
+        do {
+            let saved = try store.updatePersonGoal(id, text: text, status: status, addCriterion: addCriterion, session: session)
+            goalReviewID = saved.str("id"); goalProblem = nil; changed(); return true
+        } catch { goalActionFailed(goal, error: error); return false }
+    }
+
     func confirmGoal(_ goal: JSONObject) {
-        var next: JSONObject = ["kind": .string("goal"), "replaces": goal["id"]!]
-        for k in ["text", "status", "criteria"] { if let v = goal[k] { next[k] = v } }
-        try? store.appendLearning(next, by: "person", session: session)
+        guard let id = goal.str("id") else { return }
+        do {
+            let saved = try store.confirmGoalProposal(id, session: session)
+            goalReviewID = saved.str("id"); goalProblem = nil
+        } catch { goalActionFailed(goal, error: error) }
         changed()
     }
 
-    /// The person turns down a goal Sophia recorded. A new goal is removed; a revision of a goal
-    /// goes back to the version before it.
+    func dropGoalProposal(_ goal: JSONObject) {
+        guard let id = goal.str("id") else { return }
+        do {
+            let saved = try store.dropGoalProposal(id, session: session)
+            goalReviewID = saved.str("id"); goalProblem = nil
+        } catch { goalActionFailed(goal, error: error) }
+        changed()
+    }
+
     func discardGoal(_ goal: JSONObject) {
         guard let id = goal.str("id") else { return }
-        if let prevID = goal.str("replaces"), let prev = store.record(prevID) {
-            var back: JSONObject = ["kind": .string("goal"), "replaces": .string(id)]
-            for k in ["text", "status", "criteria"] { if let v = prev[k] { back[k] = v } }
-            try? store.appendLearning(back, by: prev.str("by") ?? "person", session: session)
-        } else {
-            if let removed = try? store.deleteLearning(id) { lastDeleted = removed }
-        }
+        do {
+            let removed = try store.declineGoalProposal(id, session: session)
+            if !removed.isEmpty { lastDeleted = removed }
+            goalProblem = nil
+        } catch { goalActionFailed(goal, error: error) }
+        changed()
+    }
+
+    private func goalActionFailed(_ goal: JSONObject, error: Error) {
+        let root = store.rootID(of: goal.str("id") ?? "")
+        goalReviewID = store.goals.first { store.rootID(of: $0.str("id") ?? "") == root }?.str("id")
+        goalProblem = error.localizedDescription
         changed()
     }
 

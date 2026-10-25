@@ -318,7 +318,7 @@ struct PageWriteCard: View {
     }
 }
 
-/// A goal Sophia recorded from the conversation, with Confirm while it is still provisional.
+/// A goal Sophia recorded from the conversation, with full review before confirmation.
 struct GoalNotedCard: View {
     @ObservedObject var session: NotebookSession
     let recordID: String
@@ -335,13 +335,15 @@ struct GoalNotedCard: View {
                 Text(noted?.str("text") ?? "").font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
                 if current == nil {
                     Text("Removed").font(.caption).foregroundStyle(.secondary)
-                } else if let c = current, !store.isProvisional(c) {
-                    Text("Confirmed").font(.caption).foregroundStyle(.secondary)
+                } else if let c = current, !store.isProvisional(c), c["text"] == noted?["text"], c["criteria"] == noted?["criteria"] {
+                    Text(c.str("status") == "dropped" ? "Dropped" : c.str("status") == "met" ? "Marked met" : "Confirmed").font(.caption).foregroundStyle(.secondary)
+                } else if current?.str("id") != recordID {
+                    Text("See current version in Goals").font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 8)
             if let c = current, store.isProvisional(c), c.str("id") == recordID {
-                Button("Confirm") { session.confirmGoal(c) }
+                Button("Review") { session.reviewGoal(recordID) }
             }
             Button("Goals") { session.show(.goals) }
         }
