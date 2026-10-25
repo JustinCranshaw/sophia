@@ -24,6 +24,7 @@ final class AppModel: ObservableObject {
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
     @Published var problem: String?
+    private var bookVisibility: [String: Bool] = [:]
 
     init() {
         notebooks = library.notebooks
@@ -33,8 +34,13 @@ final class AppModel: ObservableObject {
 
     func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil) {
         if open?.store.url != url {
+            if let current = open { bookVisibility[current.store.url.path] = current.bookShown }
             open?.shutdown()
-            do { open = try NotebookSession(url: url) } catch { problem = error.localizedDescription; return }
+            do {
+                let next = try NotebookSession(url: url)
+                next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
+                open = next
+            } catch { problem = error.localizedDescription; return }
         }
         if let place { open?.show(place) }
     }
@@ -93,15 +99,14 @@ struct RootView: View {
     @State private var naming = false
     @State private var newName = ""
     @State private var startingText = ""
-    @State private var openingDraft = ""
-    @State private var entryID = UUID()
+    @State private var drafts: [String: String] = [:]
 
     var body: some View {
         NavigationSplitView {
             SidebarView()
                 .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 420)
         } detail: {
-            if let s = model.open { NotebookView(session: s, initialDraft: openingDraft).id(entryID) } else { EmptyLibraryView(naming: $naming) }
+            if let s = model.open { NotebookView(session: s, drafts: $drafts) } else { EmptyLibraryView(naming: $naming) }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -140,7 +145,17 @@ struct RootView: View {
     var suggestedName: String {
         let supplied = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         let firstLine = startingText.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
-        var base = String((supplied.isEmpty ? firstLine : supplied).prefix(64))
+        var title = supplied
+        if title.isEmpty {
+            title = firstLine
+            if let end = title.firstIndex(where: { "?!.".contains($0) }) {
+                title = String(title[...end])
+            }
+        }
+        var base = String(title.prefix(64))
+        if title.count > 64, let boundary = base.lastIndex(where: \.isWhitespace) {
+            base = String(base[..<boundary])
+        }
         for separator in ["/", "\\", ":", "\n", "\r"] { base = base.replacingOccurrences(of: separator, with: " ") }
         base = base.trimmingCharacters(in: .whitespacesAndNewlines)
         if base.isEmpty || base == "." || base == ".." { base = "New inquiry" }
@@ -154,19 +169,27 @@ struct RootView: View {
 
     func createNotebook() {
         guard model.create(suggestedName) else { return }
-        openingDraft = startingText
-        entryID = UUID()
+        if let session = model.open { drafts[NotebookView.draftKey(session)] = startingText }
         naming = false
         startingText = ""
         newName = ""
     }
 }
 
-/// The conversation in the middle, the book on the right. The book can be hidden; it reopens
-/// when Sophia proposes a draft or the person picks something in the sidebar.
+/// The book sits beside the conversation when both readable columns fit, and below it otherwise.
+/// Empty notebooks begin with the conversation; explicit book visibility remains the person's choice.
 struct NotebookView: View {
     @ObservedObject var session: NotebookSession
-    var initialDraft = ""
+    @Binding var drafts: [String: String]
+
+    init(session: NotebookSession, drafts: Binding<[String: String]> = .constant([:])) {
+        self.session = session
+        _drafts = drafts
+    }
+
+    static func draftKey(_ session: NotebookSession) -> String {
+        session.store.url.path + "/" + session.activeThread
+    }
 
     /// The book takes about 60% of the space, within a comfortable range for a 660pt text column;
     /// the conversation takes the rest and never drops below 360.
@@ -175,13 +198,18 @@ struct NotebookView: View {
     }
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                ConversationView(session: session, initialDraft: initialDraft)
-                    .frame(maxWidth: .infinity)
+            let key = Self.draftKey(session)
+            let draft = Binding(get: { drafts[key] ?? "" }, set: { drafts[key] = $0 })
+            let narrow = geo.size.width < 821
+            let layout = narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
+            layout {
+                ConversationView(session: session, draft: draft)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if session.bookShown {
                     Divider()
                     BookView(session: session)
-                        .frame(width: Self.bookWidth(geo.size.width))
+                        .frame(width: narrow ? nil : Self.bookWidth(geo.size.width),
+                               height: narrow ? geo.size.height * 0.55 : nil)
                 }
             }
         }
