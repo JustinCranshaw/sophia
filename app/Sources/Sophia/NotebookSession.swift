@@ -35,6 +35,7 @@ final class NotebookSession: ObservableObject {
     @Published var isResponding = false
     @Published var activity: String?
     @Published var problem: String?
+    @Published var learningProblem: String? // Notes feedback must not replace an unsaved page-edit recovery message.
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
     @Published var lastDeleted: [JSONObject]?        // records; Undo lasts until the next message
@@ -474,21 +475,26 @@ final class NotebookSession: ObservableObject {
 
     func setSeparate(_ on: Bool) { try? store.setSeparate(on); changed() }
 
-    func correct(_ recordID: String, text: String) {
+    @discardableResult
+    func correct(_ recordID: String, text: String) -> Bool {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
-        try? store.appendLearning(["kind": .string("correction"), "replaces": .string(recordID), "text": .string(t)], by: "person", session: session)
-        changed()
+        guard !t.isEmpty else { return false }
+        do {
+            try store.appendLearning(["kind": .string("correction"), "replaces": .string(recordID), "text": .string(t)], by: "person", session: session)
+            learningProblem = nil; changed(); return true
+        } catch { learningProblem = "Couldn't save your correction: " + error.localizedDescription; changed(); return false }
     }
 
     func delete(_ recordID: String) {
-        if let removed = try? store.deleteLearning(recordID) { lastDeleted = removed }
+        do { lastDeleted = try store.deleteLearning(recordID); learningProblem = nil }
+        catch { learningProblem = "Couldn't delete that record: " + error.localizedDescription }
         changed()
     }
 
     func undoDelete() {
-        if let r = lastDeleted { try? store.restoreLearning(r) }
-        lastDeleted = nil
+        guard let records = lastDeleted else { return }
+        do { try store.restoreLearning(records); lastDeleted = nil; learningProblem = nil }
+        catch { learningProblem = "Couldn't restore those records: " + error.localizedDescription }
         changed()
     }
 }

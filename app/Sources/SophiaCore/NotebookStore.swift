@@ -179,19 +179,22 @@ public final class NotebookStore {
 
     func append(_ obj: JSONObject, to url: URL) throws {
         let line = Data((obj.line + "\n").utf8)
-        if let h = try? FileHandle(forWritingTo: url) {
-            defer { try? h.close() }
-            let end = try h.seekToEnd()
-            if end > 0, let read = try? FileHandle(forReadingFrom: url) {
-                try read.seek(toOffset: end - 1)
-                let last = try read.read(upToCount: 1)
-                try? read.close()
-                if last != Data([0x0a]) { try h.write(contentsOf: Data([0x0a])) }
-            }
-            try h.write(contentsOf: line)
-        } else {
+        guard FileManager.default.fileExists(atPath: url.path) else {
             try line.write(to: url, options: .atomic)
+            return
         }
+        // An existing log that cannot be opened must stay intact, never become one new line.
+        let h = try FileHandle(forWritingTo: url)
+        defer { try? h.close() }
+        let end = try h.seekToEnd()
+        if end > 0 {
+            let read = try FileHandle(forReadingFrom: url)
+            defer { try? read.close() }
+            try read.seek(toOffset: end - 1)
+            let last = try read.read(upToCount: 1)
+            if last != Data([0x0a]) { try h.write(contentsOf: Data([0x0a])) }
+        }
+        try h.write(contentsOf: line)
     }
 
     /// Next id with the given prefix, e.g. "t-" -> "t-0042", "n-" -> "n-12".
@@ -230,8 +233,7 @@ public final class NotebookStore {
         var obj = fields
         for k in ["id", "at", "by", "session"] { obj.removeValue(forKey: k) }
         let prefix = obj.str("kind") == "goal" ? "g-" : "n-"
-        let all = learning
-        obj["id"] = .string(nextID(prefix, in: all))
+        obj["id"] = .string(try reserveLearningID(prefix: prefix, fields: obj))
         obj["at"] = .string(Self.now())
         obj["by"] = .string(by)
         obj["session"] = .string(session)
@@ -247,6 +249,8 @@ public final class NotebookStore {
     }
 
     func deleteLearningLocked(_ id: String) throws -> [JSONObject] {
+        try checkLearningIdentities(learning)
+        try preserveLearningIDFloor()
         var doomed: Set<String> = [id]
         var changed = true
         while changed {
@@ -258,22 +262,23 @@ public final class NotebookStore {
             }
         }
         let removed = learning.filter { doomed.contains($0.str("id") ?? "") }
-        learning.removeAll { doomed.contains($0.str("id") ?? "") }
-        try rewriteLearning()
+        try rewriteLearning(learning.filter { !doomed.contains($0.str("id") ?? "") })
         return removed
     }
 
     public func restoreLearning(_ records: [JSONObject]) throws {
         try locked {
-            learning.append(contentsOf: records)
-            learning.sort { ($0.str("at") ?? "") < ($1.str("at") ?? "") }
-            try rewriteLearning()
+            try checkLearningIdentities(learning + records)
+            try preserveLearningIDFloor(adding: records)
+            let restored = (learning + records).sorted { ($0.str("at") ?? "") < ($1.str("at") ?? "") }
+            try rewriteLearning(restored)
         }
     }
 
-    func rewriteLearning() throws {
-        let text = learning.map { $0.line + "\n" }.joined()
+    func rewriteLearning(_ records: [JSONObject]) throws {
+        let text = records.map { $0.line + "\n" }.joined()
         try Data(text.utf8).write(to: learningURL, options: .atomic)
+        learning = records
     }
 
     // MARK: Sessions
@@ -601,8 +606,14 @@ public final class NotebookStore {
     public func pageWrite(toolUse id: String) -> JSONObject? { pageWrites.last { $0.str("tool_use") == id } }
 
     public enum StoreError: Error, LocalizedError {
-        case notFound
-        public var errorDescription: String? { "That change can't be undone any more." }
+        case notFound, learningIdentityConflict, learningIDLimit
+        public var errorDescription: String? {
+            switch self {
+            case .notFound: return "That change can't be undone any more."
+            case .learningIdentityConflict: return "Some note records have the same ID. The action wasn't applied; existing records were kept. Preserve the notebook and its backup before resolving those identities."
+            case .learningIDLimit: return "The notebook can't safely allocate another note ID. Existing records were kept."
+            }
+        }
     }
 
     /// Undoes a page write: removes a page Sophia added, or puts back the previous version after
@@ -784,5 +795,52 @@ public final class NotebookStore {
     /// What a correction replaced, if the record was corrected by the person.
     public func correction(of id: String) -> JSONObject? {
         learning.last { $0.str("kind") == "correction" && $0.str("replaces") == id }
+    }
+}
+
+extension NotebookStore {
+    /// References survive deletion, so legacy notebooks must reserve their identities too.
+    private func learningIDFloor(adding records: [JSONObject]) -> [String: Int] {
+        var floor = ["n": 0, "g": 0]
+        for prefix in ["n", "g"] {
+            if let text = meta["learning_ids"]?[prefix]?.string, let value = Int(text), value >= 0 { floor[prefix] = value }
+            else if case .number(let number) = meta["learning_ids"]?[prefix], let value = Int(exactly: number), value >= 0 { floor[prefix] = value }
+        }
+        func include(_ text: String?) {
+            guard let text else { return }
+            let root = text.split(separator: "#", maxSplits: 1).first.map(String.init) ?? text
+            guard root.hasPrefix("n-") || root.hasPrefix("g-"), let value = Int(root.dropFirst(2)), value >= 0 else { return }
+            let prefix = String(root.prefix(1))
+            floor[prefix] = max(floor[prefix] ?? 0, value)
+        }
+        for record in learning + transcript + records {
+            for key in ["id", "replaces", "record", "goal", "through"] { include(record.str(key)) }
+            for key in ["refs", "kept"] { for ref in record[key]?.array ?? [] { include(ref.string) } }
+            include(record["quote"]?["entry"]?.string)
+        }
+        return floor
+    }
+
+    func checkLearningIdentities(_ records: [JSONObject]) throws {
+        let ids = records.compactMap { $0.str("id") }
+        guard ids.count == Set(ids).count else { throw StoreError.learningIdentityConflict }
+    }
+
+    /// Reserve under the existing notebook lock, before changing the learning log.
+    /// A failed append can leave a harmless gap, but an identity is never recycled.
+    func reserveLearningID(prefix: String, fields: JSONObject) throws -> String {
+        try checkLearningIdentities(learning)
+        var floor = learningIDFloor(adding: [fields])
+        let key = String(prefix.prefix(1)), current = floor[key] ?? 0
+        guard current < Int.max else { throw StoreError.learningIDLimit }
+        floor[key] = current + 1
+        meta["learning_ids"] = .object(floor.mapValues { .string(String($0)) })
+        try writeMeta()
+        return prefix + String(current + 1)
+    }
+
+    func preserveLearningIDFloor(adding records: [JSONObject] = []) throws {
+        let floor = JSON.object(learningIDFloor(adding: records).mapValues { .string(String($0)) })
+        if meta["learning_ids"] != floor { meta["learning_ids"] = floor; try writeMeta() }
     }
 }

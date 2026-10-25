@@ -364,6 +364,12 @@ struct NotesView: View {
         Sheet {
             Text("Sophia's notes").font(.system(size: 28, weight: .semibold, design: .serif))
             Intro("Sophia keeps these as you talk, and adds to them when you come back after a break or end a session. She uses them to follow up and to pick up where you left off. They aren't pages and they aren't a score. Every note rests on something you said or did. Correct or delete anything.")
+            if let problem = session.learningProblem {
+                HStack(alignment: .top) {
+                    Banner(tone: .problem, text: problem)
+                    Button("Dismiss") { session.learningProblem = nil }.controlSize(.small)
+                }
+            }
             if let removed = session.lastDeleted {
                 HStack { Banner(tone: .plain, text: "Deleted \(removed.count) record\(removed.count == 1 ? "" : "s"). Your words are still in the conversation."); Button("Undo") { session.undoDelete() } }
             }
@@ -404,10 +410,13 @@ struct NotesView: View {
             if correcting == id {
                 TextEditor(text: $draft).font(.system(size: 15, design: .serif)).frame(height: 70)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-                HStack { Button("Save correction") { session.correct(id, text: draft); correcting = nil }.buttonStyle(.borderedProminent); Button("Cancel") { correcting = nil } }
+                HStack { Button("Save correction") { if session.correct(id, text: draft) { correcting = nil } }.buttonStyle(.borderedProminent); Button("Cancel") { correcting = nil } }
             } else {
                 HStack {
-                    if correction == nil { Button("Correct") { draft = ""; correcting = id } }
+                    Button(correction == nil ? "Correct" : "Edit correction") {
+                        draft = correction?.str("text") ?? r.str("text") ?? ""
+                        correcting = id
+                    }
                     Button("Delete", role: .destructive) { session.delete(id) }
                     ShowRecord(record: r)
                 }.controlSize(.small)

@@ -82,6 +82,8 @@ Pages may also contain music as ABC notation in ```` ```abc ```` fences ([MUSIC.
   "unfiled": ["roadmap.md"] }
 ```
 
+`learning_ids` is a small per-prefix high watermark, for example `{"n": "37", "g": "4"}` (decimal strings avoid JSON number precision loss). Learning writes reserve the next ID here under the notebook lock before appending; failed writes may leave gaps. Deletion preserves the watermark, and reopening never recycles an issued identity. Legacy notebooks seed the floor from existing learning IDs and known structured references, not prose. Restore refuses an ID collision before changing records and keeps the pending Undo available with an error. Existing duplicated identities are not guessed apart or repaired automatically; preserve the notebook and a known-good backup before resolving past ambiguity.
+
 This is the only place chapter membership and order live. A page's header holds its title and sources, not its chapter.
 - **Chapter number:** optional. Numbered chapters are kept in number order.
 - **Page numbers:** a page's section number, if any, is part of its title ("0.1 Entropy"); the app sets it apart in the header and contents.
