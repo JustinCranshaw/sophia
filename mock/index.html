@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sophia UI mock</title>
+<title>Sophia: current direction and historical UI explorations</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -18,7 +18,7 @@
 <body>
 
 <div class="mockbar">
-  <b>Sophia · UI mock</b>
+  <b>Historical interactive mock · current native direction is in Overview</b>
   <nav class="nav" aria-label="Mock screens">
     <a href="#overview">Overview</a>
     <a href="#knowledge">How knowledge is kept</a>
@@ -41,9 +41,10 @@
 <section class="screen frame" id="overview">
 <div class="over">
   <div>
-    <h1>Sophia: the experience</h1>
+    <h1>Current direction, historical UI explorations</h1>
   </div>
-  <p class="lead">Each notebook is an emergent textbook. You guide every step, and the book grows to your needs one accepted page at a time. Beside it runs a conversation with Sophia that does two jobs: it makes the book, and it walks you back through it.</p>
+  <p class="what"><b>Current native prototype:</b> conversation beside a local book; Sophia saves and revises pages directly, with Undo for the latest eligible page action. Sophia records provisional goals; only the person confirms them or marks them met or dropped. Entry carries a question or material into an unsent draft, with an optional name. <b>The interactive screens below are historical explorations, not the current app:</b> Accept queues, chapter proposals, guided-passage controls and the executable viewer retain their earlier behavior. An Accept button here still simulates that historical state; it is not relabeled as a current saved write. See <a href="../app/README.md">the native app</a>, <a href="../PLAN.md">plan and evidence</a> and <a href="../DATA-MODEL.md">current data rules</a>.</p>
+  <p class="lead">Each notebook is an emergent textbook. You guide every step, and the book grows to your needs one useful page at a time. Beside it runs a conversation with Sophia that does two jobs: it makes the book, and it walks you back through it.</p>
 
   <div class="three four">
     <div class="card">
@@ -53,26 +54,26 @@
     </div>
     <div class="card">
       <h3>The conversation</h3>
-      <div>One running thread per notebook, in dated sessions.</div>
+      <div>One conversation for Contents and one per page, stored together in the notebook transcript.</div>
       <ul>
-        <li><b>Making the book:</b> explaining, challenging, researching, drafting pages and revisions.</li>
-        <li><b>Guiding through the book:</b> reading a page with you, stopping to ask, answering questions about a passage.</li>
+        <li><b>Making the book:</b> explaining, challenging, researching, writing and revising pages directly.</li>
+        <li><b>Discussing the book:</b> ask about a page or bring a passage into the conversation. Guided-selection controls below are historical.</li>
       </ul>
       <div class="file">transcript.jsonl</div>
     </div>
     <div class="card">
       <h3>Goals</h3>
-      <div>What you want from the notebook, in your words, and what "there" looks like. Progress is shown as evidence from your attempts and pages, not as a score. Sophia can propose a goal; only you accept one or mark it met.</div>
-      <div class="file">learning.jsonl · goal entries you've confirmed</div>
+      <div>What you want from the notebook, in your words, and what "there" looks like. Progress is shown as evidence from your attempts and pages, not as a score. Sophia records a provisional goal; only you confirm it or mark it met or dropped.</div>
+      <div class="file">learning.jsonl · provisional and confirmed goals</div>
     </div>
     <div class="card">
       <h3>Sophia's notes</h3>
-      <div>Your attempts in your words, Sophia's tentative read of them, open questions, and the next step. Sophia uses them to brief you when you return. You can see and delete every one, and they never reach a page unless you accept that page.</div>
+      <div>Your attempts in your words, Sophia's tentative read of them, open questions, and the next step. Sophia uses them to brief you when you return. You can see and delete every one, with your words distinct from her interpretation. Saving a page does not require Accept.</div>
       <div class="file">learning.jsonl</div>
     </div>
   </div>
 
-  <h2 class="sec">The journey · <a href="#knowledge" style="text-transform:none;letter-spacing:0;font-weight:500">how knowledge is kept →</a></h2>
+  <h2 class="sec">Historical journey exploration · <a href="#knowledge" style="text-transform:none;letter-spacing:0;font-weight:500">how knowledge is kept →</a></h2>
   <div class="journey">
     <a class="jstep" href="#library"><span class="n">1 · Library</span><b>Start or continue</b><span>Notebooks are described by their open questions, not their chat history. Includes first run.</span></a>
     <a class="jstep" href="#research"><span class="n">2 · Oct 12</span><b>A question with no book</b><span>Research with live tool activity, a permission request, a denial, and Stop. No page needed.</span></a>
@@ -91,28 +92,28 @@
   <h2 class="sec">Decisions</h2>
   <div class="decs">
     <div class="card">
-      <h3>Settled</h3>
+      <h3>Current native direction</h3>
       <ul>
-        <li>The book and the conversation are separate surfaces. Once a notebook has a page, the book takes the middle of the window (PLAN.md §5).</li>
-        <li>Emergent textbook: Sophia may suggest directions, but drafts nothing until you choose.</li>
-        <li>Drafts and revisions appear in the book where they'd go. You accept the exact text; only Accept saves.</li>
-        <li>One conversation per notebook, in dated sessions.</li>
-        <li>Attempts are recorded quietly as notes you can review and delete, and are never put on a page without Accept.</li>
-        <li>Reading together is its own activity.</li>
-        <li>Each notebook has Goals in your words. Progress is evidence from attempts and pages, never a score, and only you add, reword, or close a goal.</li>
+        <li>Book and conversation are separate surfaces. Empty notebooks start with the book hidden; an opened book stacks below at narrow sizes or sits beside the conversation at wider sizes.</li>
+        <li>The person directs the inquiry; pages emerge when useful, without a compulsory lesson or page-creation sequence.</li>
+        <li>Sophia writes and revises pages directly. The latest eligible recorded page action has one-way Undo and one previous version.</li>
+        <li>Contents and every page have their own conversations; a write does not automatically change the selection.</li>
+        <li>Actual words, Sophia’s interpretation and the person’s correction remain distinct and inspectable.</li>
+        <li>Guided passage selection remains a design idea; ordinary page discussion is available.</li>
+        <li>Each notebook has Goals in your words. Progress is evidence from attempts and pages, never a score, and only you confirm or mark a goal met or dropped.</li>
         <li>One record shape for everything learned, with the author stamped by the app and links to evidence that must exist (<a href="#knowledge">how knowledge is kept</a>).</li>
-        <li>Sophia writes notes at the end of a session, not live; your words are kept only if they match the conversation exactly.</li>
+        <li>Sophia can write live notes and checkpoint records; quotes must match actual stored words.</li>
       </ul>
     </div>
     <div class="card open">
-      <h3>Proposed here, not yet decided</h3>
+      <h3>Earlier questions and current boundaries</h3>
       <ul>
-        <li><b>When a notebook forms.</b> Here, your first question creates one (How LLMs Work has no pages). The alternative is to keep a conversation unfiled until its first accepted page.</li>
-        <li><b>How often Sophia drafts.</b> Here, at a natural pause, with at most one draft waiting. Test this in the CLI experiment.</li>
-        <li><b>How long Undo lasts.</b> Here, until your next message. After that, use the previous version or ask for a revision.</li>
-        <li><b>Goal proposals.</b> Deferred: in this version Sophia suggests a goal in conversation and you add it.</li>
-        <li><b>Chapter proposals.</b> Here, Sophia may propose grouping pages into a chapter; it changes only the contents (screen 9).</li>
-        <li><b>Experiments.</b> Shown here for completeness; PLAN.md adds the restricted viewer only once an inquiry needs one.</li>
+        <li><b>When a notebook forms.</b> Current entry accepts a question, interest or material with an optional name; the draft remains unsent for review.</li>
+        <li><b>How often Sophia drafts.</b> The historical Accept queue below is superseded by direct writes and Undo.</li>
+        <li><b>How long Undo lasts.</b> Recorded page Undo survives messages and relaunch until a later action on that page. Unknown-provenance changes offer inspection, not destructive Undo.</li>
+        <li><b>Goal proposals.</b> Provisional goal recording and person confirmation are implemented.</li>
+        <li><b>Chapter proposals.</b> Current set_chapter files existing pages directly. The Accept-chapter screen below is historical.</li>
+        <li><b>Experiments.</b> The executable viewer is not implemented. Notebook code is not permission to run it.</li>
       </ul>
     </div>
   </div>
@@ -121,6 +122,7 @@
 
 <!-- =================================================================== KNOWLEDGE -->
 <section class="screen frame" id="knowledge" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="over">
   <div>
     <h1>How knowledge is kept</h1>
@@ -237,6 +239,7 @@
 
 <!-- =================================================================== 1 LIBRARY -->
 <section class="screen frame" id="library" data-view="populated" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> each notebook is described by what's open in it and what its book holds. First run explains the loop in three lines and asks one question.</div>
   <div class="states" data-key="view"><span>State</span><button data-val="populated">Returning</button><button data-val="first">First run</button></div>
@@ -276,6 +279,7 @@
 
 <!-- =================================================================== 2 RESEARCH -->
 <section class="screen frame" id="research" data-phase="answered" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> with no pages, the book is a thin rail and the conversation fills the window. Tool activity is visible while it happens. Sophia asks before fetching from a new site, says what the denial cost, and doesn't propose a page for a quick factual answer.</div>
   <div class="states" data-key="phase"><span>State</span><button data-val="searching">Searching</button><button data-val="asking">Asking to fetch</button><button data-val="answered">Answered</button><button data-val="stopped">You stopped it</button></div>
@@ -362,8 +366,9 @@
 
 <!-- =================================================================== 3 FIRST PAGE -->
 <section class="screen frame" id="first" data-state="pending" data-rev="1" data-chap="spectral" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
-  <div class="what"><b>Try it:</b> use the buttons under the draft, change its chapter, or push back. The draft sits in the book where it would go, so you accept the exact text. The conversation only points to it. <b>Look at:</b> Sophia's figures, the "Noted" captions on your attempts, and Sophia disagreeing with you.</div>
+  <div class="what"><b>Historical exploration · Try it:</b> use the buttons under the draft, change its chapter, or push back. The draft sits in the book where it would go, so you accept the exact text. The conversation only points to it. <b>Look at:</b> Sophia's figures, the "Noted" captions on your attempts, and Sophia disagreeing with you.</div>
   <div style="display:flex;flex-direction:column;gap:6px">
     <div class="states" data-key="state"><span>Draft</span><button data-val="pending">Waiting for you</button><button data-val="undone">Undone after Accept</button><button data-val="accepted">Accepted</button><button data-val="deferred">Not now</button><button data-val="rejected">Discarded</button></div>
     <div class="states" data-key="rev"><span>Text</span><button data-val="1">As first drafted</button><button data-val="2">After you pushed back</button></div>
@@ -493,6 +498,7 @@
 
 <!-- =================================================================== 4 READING A PAGE -->
 <section class="screen frame" id="page" data-mode="reading" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> the book on its own, with the conversation hidden. Selecting text offers "Ask Sophia about this," which opens the conversation with the passage quoted. The page itself never changes from a question. The previous version is kept and can be compared or restored.</div>
   <div class="states" data-key="mode"><span>State</span><button data-val="reading">Reading</button><button data-val="selected">Text selected</button><button data-val="asked">Asked about it</button><button data-val="previous">Previous version</button></div>
@@ -581,6 +587,7 @@
 
 <!-- =================================================================== 5 READING TOGETHER -->
 <section class="screen frame" id="guided" data-stop="1" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> the conversation guiding you through a saved page. Its stops are numbered in the book's margin and the current passage is highlighted. Your answers stay in the conversation and Sophia's notes; the page doesn't change. At the end, Sophia offers what might be worth keeping, and you choose.</div>
   <div class="states" data-key="stop"><span>Progress</span><button data-val="1">Stop 1</button><button data-val="2">Stop 2</button><button data-val="done">Finished</button></div>
@@ -651,6 +658,7 @@
 
 <!-- =================================================================== 6 REVISING -->
 <section class="screen frame" id="revise" data-rev="1" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> a revision is a proposal too. It appears in the book as tracked changes against the saved page. Pushing back replaces it; the earlier revision collapses in the conversation. Accepting keeps the old version for comparison and undo.</div>
   <div class="states" data-key="rev"><span>State</span><button data-val="1">Revision 1</button><button data-val="2">After you pushed back</button><button data-val="stale">Page changed</button><button data-val="accepted">Accepted</button></div>
@@ -719,6 +727,7 @@
 
 <!-- =================================================================== 7 RETURN -->
 <section class="screen frame" id="return" data-basis="session" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> coming back opens the book at its contents and the conversation at a briefing that links to what each claim rests on. "Continue where we left off" comes first. You can correct the briefing; Sophia changes its note, not the page. If the engine can't resume, Sophia says what it rebuilt from.</div>
   <div class="states" data-key="basis"><span>State</span><button data-val="session">Resumed</button><button data-val="reconstructed">Couldn't resume</button><button data-val="corrected">You corrected it</button></div>
@@ -798,8 +807,9 @@
 
 <!-- =================================================================== 8 EXPERIMENT -->
 <section class="screen frame" id="experiment" data-run="proposed" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
-  <div class="what"><b>Look at:</b> Sophia proposes an experiment as code plus stated inputs and a known case to check against. Nothing runs until you choose to run it, and then only in a viewer with no network or file access. Keeping it in the book is a separate Accept. <b>Try it:</b> run it and drag the slider; the values are computed live.</div>
+  <div class="what"><b>Look at:</b> Sophia proposes an experiment as code plus stated inputs and a known case to check against. Nothing runs until you choose to run it, and then only in a viewer with no network or file access. Keeping it in the book is a separate Accept. <b>Historical exploration · Try it:</b> run it and drag the slider; the values are computed live.</div>
   <div class="states" data-key="run"><span>State</span><button data-val="proposed">Proposed, not run</button><button data-val="running">Running</button></div>
 </div>
 <div class="win">
@@ -880,6 +890,7 @@
 
 <!-- =================================================================== 9 CONTENTS -->
 <section class="screen frame" id="contents" data-struct="proposed" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> three weeks in, the book has four pages. Two of them are about turning the vector into a cut, so Sophia proposes a chapter for them. A structure proposal changes only the contents, never page text, and needs the same Accept.</div>
   <div class="states" data-key="struct"><span>State</span><button data-val="before">Before</button><button data-val="proposed">Chapter proposed</button><button data-val="accepted">Accepted</button></div>
@@ -962,6 +973,7 @@
 
 <!-- =================================================================== 10 GOALS -->
 <section class="screen frame" id="goals" data-g="tracking" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> each criterion shows the evidence behind it: your attempts, Sophia's dated read of them (which names what it's based on), and your own take beside it. Nothing is a stored score. When a newer attempt arrives after Sophia's read, the read is marked out of date. Only you add, reword, or close a goal; Sophia can only suggest one in conversation, and nothing is stored until you write it.</div>
   <div class="states" data-key="g"><span>State</span><button data-val="tracking">Tracking</button><button data-val="proposed">Adding a goal Sophia suggested</button><button data-val="met">You mark one met</button></div>
@@ -1098,8 +1110,9 @@
 
 <!-- =================================================================== 11 NOTES -->
 <section class="screen frame" id="notes" data-n="list" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
-  <div class="what"><b>Look at:</b> every note keeps three things apart: your exact words (checked against the conversation), Sophia's read (labelled, dated, with what it's based on), and your corrections (in your voice, with "Was:" beneath). A quote that couldn't be checked shows as Sophia's paraphrase, without quotation marks. <b>Try it:</b> correct a read, show the raw record, or delete a note and undo.</div>
+  <div class="what"><b>Look at:</b> every note keeps three things apart: your exact words (checked against the conversation), Sophia's read (labelled, dated, with what it's based on), and your corrections (in your voice, with "Was:" beneath). A quote that couldn't be checked shows as Sophia's paraphrase, without quotation marks. <b>Historical exploration · Try it:</b> correct a read, show the raw record, or delete a note and undo.</div>
   <div class="states" data-key="n"><span>State</span><button data-val="list">Reading</button><button data-val="correcting">Correcting a read</button></div>
 </div>
 <div class="win">
@@ -1184,6 +1197,7 @@
 
 <!-- =================================================================== 12 PROBLEMS -->
 <section class="screen frame" id="problems" data-kind="engine" hidden>
+<p class="what"><b>Historical UI exploration.</b> These illustrative controls and states are not a current native-app acceptance claim. The current prototype uses direct page writes and Undo, with provisional goals confirmed by the person; see the current-direction overview above.</p>
 <div class="brief">
   <div class="what"><b>Look at:</b> each failure says what happened, what's safe, and what you can do. Sophia never switches to API billing on its own, never claims a save that didn't happen, and says when a source couldn't be checked.</div>
   <div class="states" data-key="kind"><span>Failure</span><button data-val="engine">Engine stopped</button><button data-val="billing">Subscription unavailable</button><button data-val="save">Save failed</button><button data-val="source">Source unreadable</button></div>

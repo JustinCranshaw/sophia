@@ -6,8 +6,8 @@ Sophia is a personal research and learning notebook: a wise teacher, Socratic th
 
 Read these before changing the product or its architecture:
 
-- [PLAN.md](PLAN.md): requirements, proposed architecture, experiment, evidence, and unresolved decisions.
-- [SOPHIA.md](SOPHIA.md): the product companion's initial system-prompt candidate.
+- [PLAN.md](PLAN.md): current product direction, implementation/evidence boundaries, historical experiments, and unresolved decisions.
+- [SOPHIA.md](SOPHIA.md): the effective product companion instructions loaded by the app; changing this file changes runtime behavior.
 - [DATA-MODEL.md](DATA-MODEL.md): the notebook's files and record shapes, who may write each, and the checks the client enforces.
 - [mock/index.html](mock/index.html): HTML/CSS mock of the intended experience. It is a design reference, not application code.
 
@@ -29,9 +29,9 @@ The user's latest instructions take precedence over earlier proposals. PLAN.md i
 
 The Mac app is in [app/](app/README.md), which documents its build, run, and check commands. Inspect the actual tree as implementation develops; do not invent existing commands or infrastructure.
 
-The next milestone is the small Claude-only command-line experiment in PLAN.md. Prove effective companion instructions and an actual model call to Sophia's HTTP MCP proposal handler before investing in SwiftUI, Codex parity, or additional persistence machinery.
+The native Claude-only prototype already exists. Follow the current scoped issue and inspect its actual implementation before adding features. Verify concrete inquiry, direct page write/revision and Undo, source evidence, cancellation/recovery, and useful return behavior with disposable material. The original ACP/HTTP proposal experiment in PLAN.md is historical, not a prerequisite to rebuild before native work. Codex parity, clean-Mac distribution, paid demand and commercial access remain separate decisions or validation work.
 
-Use the exact package baselines in PLAN.md and retain a lockfile when dependencies are introduced. Record the actual adapter, SDK, Node, and launched engine versions. Do not assume the globally installed CLI is the binary an adapter uses. Avoid deprecated adapter packages, unpinned `latest`, and preview dependencies unless the task specifically requires evaluating them.
+Keep the checked-in reader assets and their exact lockfile baselines; retain a lockfile if dependencies are introduced. PLAN.md labels the older adapter baselines as historical alternatives, not current app dependencies. Record the actual launched engine/version and any adapter, SDK or build-tool versions used by an experiment; the current app directly launches the installed official Claude CLI. Do not substitute a globally installed version for the executable actually launched. Avoid deprecated adapter packages, unpinned `latest`, and preview dependencies unless the task specifically requires evaluating them.
 
 ## Implementation boundaries
 

@@ -1,4 +1,6 @@
-# Notebook data model plan
+# Notebook data model and implementation boundaries
+
+Documentation reconciled October 25, 2026. Current store behavior is described below; historical proposal rationale and remaining verification are labeled explicitly. This document is not evidence that every scenario has passed.
 
 ## Purpose
 
@@ -11,31 +13,31 @@ A notebook holds knowledge that both Justin and Sophia read, rely on, and correc
 
 ## Requirements and constraints
 
-- Sophia saves pages directly with `write_page`; there are no drafts to accept (the person's decision, 2026-10-14). Every page write is recorded in the transcript, a revision keeps the version it replaced, and the person can undo either. Tools never delete pages.
-- The person's actual words, Sophia's interpretations, and source material stay distinguishable. (AGENTS.md product principles; SOPHIA.md:33, SOPHIA.md:37)
-- Progress toward goals is shown as evidence, never as a score. Sophia records goals she hears in the conversation (`set_goal`); they are provisional until the person confirms them, and only the person marks a goal met or dropped. (SOPHIA.md:67)
-- Reading or agreeing is not evidence of understanding; assessments stay tentative. (PLAN.md:44; SOPHIA.md:33)
+- Sophia saves pages directly with `write_page`; there are no drafts to accept (the person's decision, 2026-10-14). Authored content-changing page writes are recorded, a revision keeps the version it replaced, and the latest eligible action can be undone. An unchanged request has no Undo; unknown-provenance interrupted disk states are preserved for inspection instead of inferred destructive Undo. Tools never delete pages.
+- The person's actual words, Sophia's interpretations, and source material stay distinguishable. (AGENTS.md product principles; SOPHIA.md, teaching and evidence)
+- Progress toward goals is shown as evidence, never as a score. Sophia records goals she hears in the conversation (`set_goal`); they are provisional until the person confirms them, and only the person marks a goal met or dropped. (SOPHIA.md, goals)
+- Reading or agreeing is not evidence of understanding; assessments stay tentative. (PLAN.md, companion requirements; SOPHIA.md:33)
 - Attempts are recorded quietly, reviewable and deletable. A page may quote the person's words, as a block quote.
-- Notes reference the conversation instead of copying it; the client requests a checkpoint at session end. (PLAN.md:131)
-- Storage stays small; complexity is added only for a demonstrated failure or workflow. (AGENTS.md; PLAN.md:133)
+- Notes reference the conversation instead of copying it; the native client requests a checkpoint through Finish for now or catch-up on return; quitting does not save notes. (PLAN.md, saving and return)
+- Storage stays small; complexity is added only for a demonstrated failure or workflow. (AGENTS.md; PLAN.md, minimal storage)
 - "Specified, but flexible" and "understandable by both the agents and the humans." (User constraint.)
 
 ## Evidence used
 
 - PLAN.md §4 defines the current files: notebook.json, pages, one previous page version, transcript.jsonl, learning.jsonl. This plan keeps those files and adds none.
-- The MCP tools are `read_page`, `write_page`, `set_chapter`, `set_goal`, `note`, `set_memory`, `recall`, `about_you`, and `link`. They write through the same store code as the app, under a lock on the notebook. There is no tool that writes notes, so notes can only come from the client's checkpoint request.
-- The UI mock (mock/index.html) shows every object below in use and exposed two conflicts this plan resolves: two different "next steps" on Goals and Notes, and goal criteria with "Done once / Partly / Not tried" labels that work like a stored score.
+- The MCP tools are `read_page`, `write_page`, `set_chapter`, `set_goal`, `note`, `set_memory`, `recall`, `about_you`, and `link`. They write through the same store code as the app, under a lock on the notebook. The live `note` and `set_memory` handlers and the client-requested checkpoint all use the store checks; they have distinct timing and quotas described below.
+- The historical UI mock (mock/index.html) explored these objects and exposed two earlier design conflicts: two different "next steps" on Goals and Notes, and goal criteria with "Done once / Partly / Not tried" labels that work like a stored score.
 
-## Proposed design
+## Current files and record rules
 
 ### The files
 
 ```text
 notebook/
   notebook.json            structure: chapters and page order
-  pages/<file>.md          accepted pages (Markdown with a small header)
+  pages/<file>.md          current pages (Markdown with a title header)
   pages/<file>.previous.md one previous version per page, for undo
-  transcript.jsonl         the conversation, proposals, and decisions, one entry per line
+  transcript.jsonl         conversation, tool outcomes and client actions, one entry per line
   learning.jsonl           goals, notes, Sophia's memory, reads, takes, corrections, briefings
   .editing.json            what the person has open in the page editor, if anything (cleared on commit, revert, and launch)
 
@@ -94,19 +96,13 @@ This is the only place chapter membership and order live. A page's header holds 
 ```markdown
 ---
 title: Why the Fiedler vector splits a graph
-sources:
-  - title: A Tutorial on Spectral Clustering
-    author: U. von Luxburg
-    location: "§5.1, Approximating RatioCut for k = 2"
-    summary: The cut indicator is relaxed to real values; the solution is the second eigenvector of L.
-    inspected: true        # false when Sophia could not read it
 ---
 Prose and mathematics.
 
 > "The bridge is the only edge across the cut…"  <!-- quote: t-0412 -->
 ```
 
-A quoted attempt on a page carries the transcript entry it came from, so the page shows the person's words exactly.
+The current `write_page` API writes title frontmatter and a Markdown body; citations, source locations and inspection limits belong in the body, not a client-validated `sources` header. Older or hand-authored extra frontmatter is not a source-verification schema. The example quote above is illustrative; a real quoted attempt names its actual transcript entry so its attribution remains inspectable.
 
 ### The conversation log: transcript.jsonl
 
@@ -128,7 +124,7 @@ Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ...
   An outside edit or outside-added page can match these states too. The entry records unknown provenance, never an authored Sophia revision or conversation activity, and offers no destructive Undo. Current and previous bytes remain available for inspection and manual restoration through the page editor until a later content-changing recorded write or edit replaces the single previous slot.
 - An undo is a `client` entry: `{ "purpose": "undo_page", "entry": "t-0042", "file", "page", "hash"? }`. `hash` is the SHA-256 of the restored page; there is none when the undo removed a new page.
 - When Sophia records a goal, the app adds `{ "role": "client", "purpose": "goal_noted", "record": "g-3", "page" }` so the conversation shows it where it happened.
-- **Clearing a thread.** `{ "role": "client", "purpose": "clear", "page" }`. The app first runs a checkpoint and writes the entry only once the checkpoint has succeeded, so what mattered before a clear is in Sophia's notes. A fresh start is offered only between turns. If the checkpoint fails, no entry is written, the thread is unchanged, and the app says it couldn't start fresh. A message typed while the notes are being written is sent after the clear; if the clear fails, it stays unsent in the composer.
+- **Legacy/proposed clear boundary.** `{ "role": "client", "purpose": "clear", "page" }`. Existing context readers recognize this boundary, but no current source writes it and no native fresh-start action is implemented. The historical design called for a successful checkpoint before clearing; its queued-message and failure behavior below is proposed, not shipped.
 - **An interrupted app/session shutdown.** `{ "role": "client", "purpose": "interrupted", "page" }` keeps the saved question eligible for explicit Retry after reopening. It does not claim a delivered reply or successful checkpoint. An explicit Stop keeps its existing intentional `stopped` boundary and does not become an unanswered question automatically.
 - **A finished reply.** `{ "role": "client", "purpose": "replied", "page" }`, written when Sophia's turn in that thread ends normally.
 - The person's edit to a page (EDITING.md) is `{ "role": "person", "purpose": "edit_page", "file", "page": <file>, "title", "section", "index"?, "hunks": [{ "before", "after" }], "hash" }`.
@@ -140,8 +136,8 @@ Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ...
 
 **What a thread shows and what Sophia receives.** Nothing below is stored; each is worked out from the entries above when the thread is shown or a message is sent. A thread's "messages" are its person and Sophia entries without a `purpose`.
 - **What Sophia has word for word.** A thread's messages from just after the latest checkpoint's `through`, counted from the position of `through` rather than of the checkpoint entry, because a message sent while notes were being written falls between the two. Before that point she has her notes. She also gets the thread's last 6 messages at or before `through` (the carried exchanges). Nothing before the thread's latest `clear` is sent again. The message being answered is not repeated in the context; it arrives as the turn itself. Her context also shows, where they happened, one line for each page write, refused write and release in the thread, plus each WebFetch response (failed/declined requests are labeled as outcomes, not extracted passages); these are not messages. None of this is marked for the person: a thread reads as one conversation, and the exact words of anything older come back through `recall`.
-- **Earlier on this page.** A thread's entries before its latest `clear`, folded up.
-- **"Started from."** A new page's card comes from the `write_page` entry that created it, and is kept for good. Its `page` names the thread; the person's message before it in that thread is the question; Sophia's first text in that same turn, before the next person message, is her first line, and if there is none the card shows the question alone. The card's link opens that exchange in the originating conversation, revealing it if it has been folded. A page with no creating entry (older notebooks) has no card.
+- **Earlier on this page (proposed UI).** Fold a thread's entries before its latest legacy/proposed `clear`; the current native app does not show this control.
+- **Creating exchange (implemented context helper; proposed card UI).** A page's origin is derived from the `write_page` entry that created it, and remains in the transcript. Its `page` names the thread; the person's message before it in that thread is the question; Sophia's first text in that same turn, before the next person message, is her first line, and if there is none the card shows the question alone. The derived exchange is supplied in that page thread's context. A persistent “Started from” card/link and folded-history reveal are not present in the current native UI; a page with no creating entry has no derived exchange.
 - **Opened source evidence.** A `role: "tool", tool: "WebFetch"` transcript entry retains the exact provider `content`, `is_error`, requested `url` and `tool_use_id` in the originating conversation. `returned_url`, `http_status` and `location` are included only when the actual tool result reports them. The viewer shows plain selectable extraction text, distinct from Sophia's interpretation; it does not execute HTML or claim raw full text/independently verified quotation. Approval itself is temporary process state, never a notebook allowlist. Denied/failed tool outcomes are evidence too.
 - **An unfinished question.** The latest person question in a thread without a later `replied`, `stopped` or `clear` boundary is eligible for explicit **Retry** when that thread has no running or queued reply. It shows **Not answered yet**, or **Reply interrupted** if partial Sophia text exists. Retry reuses the exact saved id/text and stores no new person entry. Older questions without a `page` field are eligible when they have no later reply or tool output, or when page-stamped reply or tool output identifies a newer retry attempt (shared-memory housekeeping is excluded); genuinely old output is ambiguous because old clients wrote no completion markers. A crash after a complete-looking reply but before `replied` is recorded still counts as interrupted.
 
@@ -199,7 +195,7 @@ The kinds used now:
 | `take` | person | `refs` to a goal or criterion | "Your take" beside Sophia's read |
 | `correction` | person | `replaces` a Sophia record | Person's text in place of Sophia's, with "Was: …" beneath; the original record's `quote` and `refs` still show |
 | `attempt` | Sophia | a verified `quote`; `text` is Sophia's read of it | Note: your words, then Sophia's read |
-| `read` | Sophia | `refs` to at least one `attempt` record or person transcript entry; about a criterion, also `refs` to it | "Sophia: partly · based on Oct 14, Oct 16" |
+| `read` | Sophia | `refs` to at least one `attempt` record or person transcript entry; about a criterion, also `refs` to it | Sophia's dated interpretation, with its actual evidence |
 | `question` | Sophia | `refs` to where it arose | Open questions |
 | `follow_up` | Sophia | a verified `quote` or `refs` | Something to check on later; Sophia revises it to close it |
 | `background` | Sophia | a verified `quote` or `refs` | What Sophia learned about the person in relation to this topic (what they know, what's rusty, how they like to work on it); never a general judgment of ability |
@@ -236,13 +232,12 @@ A goal's history is its chain of `replaces`: rewording, adding criteria, confirm
    - **The return briefing:** one `briefing` record.
    - **Checkpoint scope:** a checkpoint covers the person's messages since the previous checkpoint, in every thread and across sessions. A session is one app launch, and one sitting can span several.
    - **When it runs:**
-     - at End session;
-     - before a clear, which happens only if the checkpoint succeeds;
+     - at Finish for now;
      - when the person comes back to a notebook whose last messages have no notes, before the briefing;
-     - after a turn ends in a thread that then has 30 or more messages after the latest `through` and its latest clear.
-   - **How it runs:** in its own short-lived conversation process, never in a thread's. Its entries belong to the Contents thread. It is not limited by the `note` quota. Nothing about it is shown to the person.
+     - automatic long-thread checkpointing remains a design direction; the current native callers are Finish for now and return catch-up.
+   - **How it runs:** in its own short-lived conversation process, never in a thread's. Its entries belong to the Contents thread. It is not limited by the `note` quota. The UI can show checking activity or connection failure; no private provider context is presented as saved notebook data.
    - **What it is shown:** the request lists each message with its page, and every record written since the previous checkpoint entry, whatever the session, as already noted. A crash between saving a checkpoint's records and its entry can still leave repeated records, which the person can delete.
-   - **If it fails:** a checkpoint fails when the request ends in an error or the reply can't be read. Then it writes no records, no memory and no entry, so nothing moves; the next turn tries again, and a clear that was waiting on it doesn't happen.
+   - **If it fails:** an engine error, unreadable reply or wholly rejected reply writes no accepted learning records, memory or successful checkpoint/cursor entry. A persistence exception is different: earlier notes or memory may already be on disk when a later write or completion marker fails. The boundary does not advance; explicit Finish reports the uncertainty and asks the person to inspect Sophia's notes before trying again. Retry is not transactional or idempotent and can repeat a note. Automatic return failures stay quiet. No current clear producer exists. See [SOP54 checks](app/checks/sop54-finish-feedback.md).
 
      A reply with no records is valid: Sophia found nothing worth noting, and the entry is written. A reply whose records the checks all reject is a failure, and nothing moves.
    - **The checkpoint's transcript entry** names the last message it covered in `through` and marks `catch_up` when it ran on return. Messages a checkpoint covered are never offered to a later one. Every thread's word-for-word context starts just after `through`.
@@ -254,9 +249,9 @@ A goal's history is its chain of `replaces`: rewording, adding criteria, confirm
    - accepts only the kinds `attempt`, `read`, `question`, `follow_up`, `background`, `next_step`, and `briefing`;
    - drops any reference that does not resolve to an existing transcript entry, record, page, or goal criterion, and applies the next two checks to what remains;
    - rejects a record with no `quote` and no `refs` (an interpretation with nothing behind it cannot be stored), and rejects a `read` that does not reference an attempt or a person's message (reading a page is not evidence of understanding);
-   - rejects a `briefing` over 60 words; the app shows nothing in its place;
+   - rejects a `briefing` over 60 words; no unchecked briefing text is shown;
    - accepts a `quote` only if its entry is one of the `person` messages the checkpoint covers and the quoted text appears in it exactly (ignoring differences in whitespace). Otherwise the quote is removed, and the app shows that record as "Sophia's paraphrase", without quotation marks;
-   - stores nothing about what it dropped or rejected. The command-line client prints the reasons; the app shows nothing.
+   - does not save rejected checkpoint items as learning records. The CLI can print rejection reasons; separate connection/tool failure evidence is not a successful checkpoint or accepted interpretation.
 4. **Page writes** follow the transcript rules above.
 
 These checks are what make "Sophia never marks a goal met", "your words are quoted exactly", and "no summaries of you" true in code, not only in the prompt.
@@ -270,7 +265,7 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 ### How each side reads the state back
 
 - **The person** sees each page's thread beside the page. They also see:
-  - after each session, one line such as "Sophia noted 3 attempts · Review" (counted from that session's records);
+  - successful note/memory update lines or compact groups during conversation, with the original details/actions available;
   - goals with their criteria, evidence, Sophia's dated reads and their own takes;
   - notes with quote, read and correction, and one next step.
 
@@ -280,7 +275,7 @@ Page writes and edits are undone by the rule in "The conversation log", not this
   - for a page thread:
     - that page's body;
     - her notes that cite the page or a message in its thread;
-    - if the page was written from another conversation, the exchange that created it, the same one its "Started from" card shows;
+    - if the page was written from another conversation, the derived exchange that created it;
   - the thread's carried exchanges and its later messages, word for word.
 
   Other pages come through `read_page`, and older exchanges through `recall`.
@@ -295,13 +290,11 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 
 ## Why each retained part is needed
 
-- **One envelope with an open `kind`:** needed so new knowledge needs no migration while authorship and evidence stay checkable. A fixed list of note types would require a migration per new type; free-form notes would lose authorship.
+- **One kind-tagged envelope:** keeps authorship and evidence checkable across goals, notes and corrections. The client still allowlists accepted kinds; extending those checks need not introduce another storage format.
 - **Client-stamped `by`, kind allowlist, and evidence-required rule with references that must resolve:** needed because the model's output is untrusted (AGENTS.md). Without them, Sophia could store a statement as the person's, mark a goal met, or store a free-floating judgment of the person. A list of forbidden kinds was rejected: with an open `kind`, a renamed kind evades it.
-- **Verified quotes:** needed so "your words" is true (PLAN.md:44). Cost: one substring check per quote. Risk: typographic substitutions may drop valid quotes; see Verification.
-- **Proposals in the transcript, with payload and base hashes:** needed so Accept saves exactly what was proposed (PLAN.md:52) and a stale revision cannot overwrite newer text. A separate proposals file was rejected because the transcript already persists entries in order. Cost: two hash fields and one comparison.
-- **Fixed Accept order and the `undo` decision:** needed so the pending list and the book agree after Undo or a crash (PLAN.md:105, PLAN.md:133). Cost: one extra decision value and a check on opening.
-- **`replaces` on records and proposals:** needed for corrections ("Was: …"), goal history, and marking a superseded draft, without a separate history store.
-- **Briefing records:** needed so the return test (PLAN.md §5, correcting a mistaken account) can show whether a correction carries forward. A separate checkpoint record was rejected: the session stamp already tells which records a checkpoint produced.
+- **Verified quotes:** needed so "your words" is true (PLAN.md, companion requirements). Cost: one substring check per quote. Risk: typographic substitutions may drop valid quotes; see Verification.
+- **`replaces` on current learning records:** needed for corrections, goal history and provisional confirmation without a separate history store. Old proposal chains use the same field only for compatibility.
+- **Briefing records:** needed so the return test (PLAN.md §5, correcting a mistaken account) can show whether a correction carries forward. A transcript checkpoint entry separately records the covered message boundary; the session stamp alone cannot establish that boundary.
 - **Session stamp and `through`:** needed so quotes can be limited to the messages a checkpoint covers (which prevents a deleted attempt being recreated) and so the app can count what each checkpoint noted.
 - **Chapter structure only in notebook.json:** one source of truth for structure; a chapter field in each page header would duplicate it.
 - **`page` on transcript entries, stamped where each entry is written:** needed so each page's thread shows only its own conversation, refusals and edit markers, and so a page Sophia writes from another page's thread names where it started. Two simpler options were rejected:
@@ -309,7 +302,7 @@ Page writes and edits are undone by the rule in "The conversation log", not this
   - A file per thread was rejected because the transcript already orders everything.
 
   A missing `page` means Contents, so older notebooks need no migration.
-- **The `clear` entry:** needed so a fresh start on a page keeps its history and notes. A new session was rejected: a session is an app launch, and quotes and the note quota depend on it.
+- **The legacy/proposed `clear` entry:** retained in context readers for historical records. A future fresh-start producer would need an explicit workflow; changing the app-launch session alone would not express its thread boundary.
 - **The `replied` entry:** needed so a reply cut off by a crash shows as interrupted, while a turn that ends in a page write does not. Two simpler options were rejected:
   - Judging by the last entry's author fails both cases, and also when checkpoint entries follow a message.
   - Keeping it in memory loses it in exactly the crash.
@@ -319,7 +312,11 @@ Page writes and edits are undone by the rule in "The conversation log", not this
   - Automatic restoration would require additional durable intent evidence. A write-ahead journal is deferred; the current boundary is inspection and manual restoration, not automatic interrupted-write Undo.
 - **No stored provider session, cursor, or undo state:** Sophia's context is rebuilt from these records whenever a thread's conversation starts, so storage stays independent of provider sessions. A map from threads to provider sessions waits on the test in PLAN.md §4.
 
-## Delivery sequence
+## Historical proposal rationale and delivery sequence
+
+The original ACP/HTTP design persisted page proposals and payload/base hashes, then used Accept/Defer/Reject and a fixed Accept order. That rationale described a different page workflow. Current pages use direct `write_page`, current/previous hashes and the Undo rules above. Older `proposal`/`decision` entries remain readable; the existing `fileUndecidedDrafts` compatibility path files undecided legacy drafts on opening. No current native Accept queue or HTTP proposal server is required.
+
+The following original CLI delivery sequence is retained as history, not instructions for new implementation:
 
 1. Give every transcript entry an id and session; append person and Sophia messages. Exit: a session produces a readable transcript.jsonl.
 2. `propose_page` writes a proposal entry; Accept, Defer, and Reject write decision entries; Accept writes the stored payload. Exit: PLAN.md's tool delivery and saving check passes; a deferred or undone proposal is still pending after restart; killing the client during Accept loses no page.
@@ -327,15 +324,18 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 4. The session-end checkpoint with all client checks. Exit: a print command shows attempts with verified quotes, and the client prints any rejected records with the reason.
 5. The return briefing reads goals, recent records, pages, and pending proposals, and is stored as a `briefing`; the person corrects one claim with `/correct`. Exit: the next briefing references the correction record and reflects it.
 
-## Verification
+## Verification: current checks and remaining observations
+
+The commands in [app/README.md](app/README.md) exercise the existing core/store and reader checks. Their existence is not a passing run: [the package report](research/2026-10-25-packaged-release/README.md) and the issue-specific native reports pin actual source epochs and limits. The list below mixes source-supported checks and still-required workflow/human observations; it is not a completed acceptance report. `/correct`, Accept and pending-proposal scenarios refer only to the historical CLI design, not current native controls.
+
 
 - A model-supplied `by: person`, a goal `status`, or a decision field in Sophia's output is discarded; a record of an unlisted kind, with no quote and no refs, or a `read` that cites only pages, is rejected.
 - A correction made with `/correct` is referenced by the next briefing.
 - A fabricated reference (an id that does not exist) is dropped, and a `read` left with no valid evidence is rejected.
 - A quote that is not in the referenced person entry, or comes from an earlier session, is removed and the record is shown as a paraphrase.
-- Accept writes exactly the stored payload; a revision against a changed page is refused.
-- Undo after accepting a revision restores the previous version; Undo after accepting a new page removes it; in both cases the proposal is pending again after a restart.
-- Killing the client during Accept and reopening leaves no page lost: a written page missing from notebook.json appears as unfiled.
+- A recorded direct revision keeps its previous version; protected/open edits are refused. Undo is available only for the latest eligible authored action with matching disk hashes.
+- Undo of a recorded new page removes it; undo of a revision restores the previous version. It does not create a pending proposal.
+- An interruption before recording is unknown provenance: preserve current/previous bytes and index an orphan as unfiled, without destructive Undo.
 - Deleting an attempt removes its corrections; Undo restores them before the next message; a later checkpoint cannot recreate it.
 - Entries from two threads, interleaved, are shown each in their own thread. Entries with `page: ""` or no `page` show in Contents. An edit, a refusal and an undo show in the page they act on.
 - A message sent while notes are being written stays in its thread's word-for-word context, and the message being answered is not also in the context.
@@ -351,23 +351,21 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 - A page written from another conversation still has its creating exchange in context after a checkpoint, and its card's first line never comes from a later turn.
 - A page write succeeds, the turn is cut off, and Ask again produces no duplicate page.
 - In a long mathematical exchange, after an automatic checkpoint, the next step is still right and one exact older attempt comes back through `recall`; record the delay.
-- First model-backed run: measure the share of checkpoint quotes that pass the exact check. If fewer than about 90% pass, add Unicode normalization before considering a live note tool.
+- Measure checkpoint quote fidelity separately from whether the live `note` tool exists (it is implemented). Whitespace is normalized for quote matching; broader Unicode normalization needs a demonstrated quote failure, not an old pre-note-tool gate.
 - End to end: after a week away, Justin can see what Sophia recorded and why, correct one claim, and the next briefing reflects it without rereading the whole chat.
 
 ## Deferred until triggered
 
-- Goal proposals from Sophia: add when Justin wants Sophia to draft goals after the CLI run.
 - Undo of a record deletion that survives a restart: add if Justin needs to undo a deletion after reopening the app. (Page undo already survives restart; see "The conversation log".)
 - A map from threads to provider sessions in notebook.json: add only if all of these are shown:
   - a resumed session receives fresh context;
   - a bad session id fails detectably;
   - a rebuilt thread loses a step a resumed one kept (PLAN.md §4).
-- Chapter and experiment proposals: add when the native app introduces them; they would be new proposal targets with the same rules.
+- A proposal/Accept interface for chapters or executable artifacts is not implemented. Current `set_chapter` directly files existing pages without changing their bytes; execution/viewer work requires its own demonstrated workflow and restricted boundary.
 - Hand-editable goal or note files: reconsider if Justin edits them outside the app or asks to.
 - Deleting words from the transcript itself: add if Justin wants a deleted attempt gone from the conversation too.
 
 ## Risks and unresolved decisions
 
-- Whether goal proposals belong in the first run. Owner: Justin. Default here: deferred.
 - Sophia's `read` texts could still make ability claims while carrying refs. Measure in the first run; the response is labeled rendering plus deletion by the person, not more filtering.
 - The quote check may reject quotes that differ only in punctuation. Measured in the first run as above.
