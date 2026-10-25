@@ -1,0 +1,9 @@
+/tmp/sophia-sop53-final-5ed469f/archive/main.swift:100:9: warning: result of 'try?' is unused [#no-usage]
+ 98 |     case .assistantText(let text):
+ 99 |         reply += text; emit("assistant_text", ["text": .string(text)])
+100 |         try? store.appendTranscript(["role": .string("sophia"), "page": .string(""), "session": .string(session), "text": .string(text)])
+    |         `- warning: result of 'try?' is unused [#no-usage]
+101 |     case .turnDone(let error, let message, _):
+102 |         turnCompleted = !error
+swift-driver version: 1.127.14.1 {"at":"2026-10-25T14:49:03Z","event":"prepared"}
+/tmp/sophia-sop53-final-5ed469f

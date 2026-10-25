@@ -1,0 +1,148 @@
+Building for production...
+[0/7] Write sources
+[3/7] Copying Reader
+[4/7] Write swift-version--1AB21518FC5DEDBE.txt
+[6/9] Compiling SophiaCore ClaudeEngine.swift
+/private/tmp/sophia-native-source-verification/app/Sources/SophiaCore/GoalActions.swift:41:21: warning: result of call to 'appendLearningLocked(_:by:session:)' is unused [#no-usage]
+39 |                 guard let previous = record(previousID), previous.str("kind") == "goal" else { throw GoalActionError.changed }
+40 |                 guard (previous["criteria"]?.array ?? []) == (goal["criteria"]?.array ?? []) else { throw GoalActionError.criteriaDiffer }
+41 |                 try appendLearningLocked(goalVersion(previous, replacing: id), by: previous.str("by") ?? "person", session: session)
+   |                     `- warning: result of call to 'appendLearningLocked(_:by:session:)' is unused [#no-usage]
+42 |                 return []
+43 |             }
+
+/private/tmp/sophia-native-source-verification/app/Sources/SophiaCore/NotebookStore.swift:165:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+163 |             for rec in out.kept { kept.append(try appendLearningLocked(rec, by: "sophia", session: session)["id"]!) }
+164 |             if let memory { _ = try setMemory(memory, session: session) }
+165 |             try appendTranscriptLocked(["role": .string("client"), "page": .string(""), "session": .string(session),
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+166 |                                         "purpose": .string("checkpoint"), "through": .string(through),
+167 |                                         "catch_up": .bool(catchUp), "kept": .array(kept)])
+
+/private/tmp/sophia-native-source-verification/app/Sources/SophiaCore/NotebookStore.swift:649:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+647 |                                         "page": .string(e["revised"] == .bool(true) || e.str("purpose") == "edit_page" ? file : Self.thread(of: e))]
+648 |             if let hash = pageHash(file) { undo["hash"] = .string(hash) }
+649 |             try appendTranscriptLocked(undo)
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+650 |         }
+651 |     }
+
+/private/tmp/sophia-native-source-verification/app/Sources/SophiaCore/NotebookStore.swift:672:21: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+670 |                 let w = try writePage(title: payload.str("title") ?? "Untitled", content: payload.str("content") ?? "",
+671 |                                       revising: nil, session: session, toolUseID: e.str("tool_use") ?? "")
+672 |                 try appendTranscriptLocked(["role": .string("client"), "session": .string(session), "purpose": .string("filed_draft"),
+    |                     `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+673 |                                             "proposal": .string(pid), "file": w["file"] ?? .null])
+674 |             }
+
+/private/tmp/sophia-native-source-verification/app/Sources/SophiaCore/NotebookStore.swift:703:17: warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+701 |             if let last = personMessages.last?.str("id") { record["refs"] = .array([.string(last)]) }
+702 |             let saved = try appendLearningLocked(record, by: "sophia", session: session)
+703 |             try appendTranscriptLocked(["role": .string("client"), "purpose": .string("goal_noted"),
+    |                 `- warning: result of call to 'appendTranscriptLocked' is unused [#no-usage]
+704 |                                         "record": saved["id"]!, "page": .string(thread), "session": .string(session)])
+705 |             return saved
+[7/9] Compiling SophiaReader MarkdownReader.swift
+[8/10] Compiling Sophia BookView.swift
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:167:13: warning: result of 'try?' is unused [#no-usage]
+165 |         pendingSource = nil; commitEdit()
+166 |         if let turn = running {
+167 |             try? store.appendTranscript(["role": .string("client"), "page": .string(turn.thread), "session": .string(session), "purpose": .string("interrupted")])
+    |             `- warning: result of 'try?' is unused [#no-usage]
+168 |         }
+169 |         running = nil; briefAfterNotes = false
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:199:13: warning: result of 'try?' is unused [#no-usage]
+197 |             defer { turnTexts.append(t) }
+198 |             if Prompts.isRestatement(t, of: turnTexts) { streaming = ""; changed(); return }
+199 |             try? store.appendTranscript(["role": .string("sophia"), "page": .string(thread), "session": .string(session), "text": .string(t)])
+    |             `- warning: result of 'try?' is unused [#no-usage]
+200 |             streaming = ""; changed()
+201 |         case .sourcePermission(let pending):
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:211:13: warning: result of 'try?' is unused [#no-usage]
+209 |             if let status = metadata["code"] { record["http_status"] = status }
+210 |             if let location = metadata["location"] { record["location"] = location }
+211 |             try? store.appendTranscript(record); activity = nil; changed()
+    |             `- warning: result of 'try?' is unused [#no-usage]
+212 |         case .toolUse(let id, let name, let input):
+213 |             guard current else { return }
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:218:17: warning: result of 'try?' is unused [#no-usage]
+216 |                 let q = input["query"]?.string ?? ""
+217 |                 activity = "Searching: \(q)"
+218 |                 try? store.appendTranscript(["role": .string("tool"), "page": .string(thread), "session": .string(session), "tool": .string("WebSearch"), "query": .string(q)])
+    |                 `- warning: result of 'try?' is unused [#no-usage]
+219 |             } else if name == "WebFetch" { activity = "Opening source: " + (input["url"]?.string ?? "")
+220 |             } else if name == "mcp__sophia__write_page" { activity = "Sophia is writing…" }
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:234:21: warning: result of 'try?' is unused [#no-usage]
+232 |             else {
+233 |                 if !isError && !source.stopRequested, running != nil {
+234 |                     try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("replied")])
+    |                     `- warning: result of 'try?' is unused [#no-usage]
+235 |                 }
+236 |                 running = nil
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:324:9: warning: result of 'try?' is unused [#no-usage]
+322 |         engines[turn.thread] = nil; engine?.cancel(); engine = nil
+323 |         isResponding = false; running = nil; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
+324 |         try? store.appendTranscript(["role": .string("client"), "page": .string(turn.thread), "session": .string(session), "purpose": .string("stopped")])
+    |         `- warning: result of 'try?' is unused [#no-usage]
+325 |         dispatchNext(); changed()
+326 |     }
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:387:21: warning: result of 'try?' is unused [#no-usage]
+385 |                 let out = RecordChecks(store: store).check([.object(obj)], allowedKinds: RecordChecks.briefingKinds, session: session)
+386 |                 if let rec = out.kept.first, let saved = try? store.appendLearning(rec, by: "sophia", session: session) {
+387 |                     try? store.appendTranscript(["role": .string("sophia"), "page": .string(""), "session": .string(session), "purpose": .string("briefing"), "record": saved["id"]!, "text": saved["text"]!, "refs": saved["refs"] ?? .array([])])
+    |                     `- warning: result of 'try?' is unused [#no-usage]
+388 |                 }
+389 |             }
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:584:9: warning: result of 'try?' is unused [#no-usage]
+582 | 
+583 |     func confirmAbout(_ line: JSONObject) {
+584 |         try? library.setAbout(text: line.str("text") ?? "", replacing: line.str("id"), notebook: nil)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+585 |         changed()
+586 |     }
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:591:9: warning: result of 'try?' is unused [#no-usage]
+589 |         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+590 |         guard !t.isEmpty else { return }
+591 |         try? library.setAbout(text: t, replacing: line?.str("id"), notebook: line == nil ? store.name : nil)
+    |         `- warning: result of 'try?' is unused [#no-usage]
+592 |         changed()
+593 |     }
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/NotebookSession.swift:596:38: warning: result of 'try?' is unused [#no-usage]
+594 | 
+595 |     func deleteAbout(_ id: String) { try? library.deleteAbout(id); changed() }
+596 |     func confirmLink(_ id: String) { try? library.confirmLink(id); changed() }
+    |                                      `- warning: result of 'try?' is unused [#no-usage]
+597 |     func removeLink(_ id: String) { try? library.deleteLink(id); changed() }
+598 | 
+
+/private/tmp/sophia-native-source-verification/app/Sources/Sophia/Snapshot.swift:39:33: warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+37 |                 }
+38 |                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+39 |                     if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+   |                                 `- warning: 'CGWindowListCreateImage' was deprecated in macOS 14.0: Please use ScreenCaptureKit instead. [#DeprecatedDeclaration]
+40 |                         let rep = NSBitmapImageRep(cgImage: cg)
+41 |                         try? rep.representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(places[i].0 + ".png"))
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[8/10] Write Objects.LinkFileList
+[9/10] Linking Sophia
+Build of product 'Sophia' complete! (35.31s)
+[0/1] Planning build
+Building for production...
+[0/4] Write sources
+[1/4] Write swift-version--1AB21518FC5DEDBE.txt
+[3/5] Compiling sophia_mcp main.swift
+[3/5] Write Objects.LinkFileList
+[4/5] Linking sophia-mcp
+Build of product 'sophia-mcp' complete! (1.60s)
+build/Sophia.app: replacing existing signature
+Built build/Sophia.app
