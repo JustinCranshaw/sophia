@@ -64,14 +64,14 @@ final class NotebookSession: ObservableObject {
     private var editDraft: String?          // the editor's live text; not published, so typing doesn't redraw the window
     private var terminating: Any?
 
-    init(url: URL) throws {
+    init(url: URL, allowAutomaticReturn: Bool = true) throws {
         store = try NotebookStore.open(url: url)
         library = LibraryStore(root: url.deletingLastPathComponent())
         session = store.newSessionID()
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
         store.endEdit()
         store.fileUndecidedDrafts(session: session)
-        if Snapshot.outDir == nil, store.isReturn(after: Self.returnGap) {
+        if allowAutomaticReturn, Snapshot.outDir == nil, store.isReturn(after: Self.returnGap) {
             DispatchQueue.main.async { [weak self] in self?.pickUp() }
         }
         terminating = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in

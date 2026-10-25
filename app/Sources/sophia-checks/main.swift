@@ -1034,6 +1034,8 @@ func scenario10IntentionalEngineExit() throws {
 let all: [(String, () throws -> Void)] = [
     ("wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites", wholeNotebookCopyPreservesBytesEvidenceAndContinuedWrites),
     ("wholeLibraryCopyIncludesSharedBackgroundAndLinks", wholeLibraryCopyIncludesSharedBackgroundAndLinks),
+    ("localConnectionStatusIsAllowlistedAndRouteSpecific", localConnectionStatusIsAllowlistedAndRouteSpecific),
+    ("localConnectionProcessIsBoundedAndScrubbed", localConnectionProcessIsBoundedAndScrubbed),
     ("droppingAReviewedRevisionPreservesCriteriaAndRejectsStaleActions", droppingAReviewedRevisionPreservesCriteriaAndRejectsStaleActions),
     ("failedSourcesAreNotReintroducedAsExtractedPassages", failedSourcesAreNotReintroducedAsExtractedPassages),
     ("deletedCriterionEvidenceCannotBeRetargetedBeforeUndo", deletedCriterionEvidenceCannotBeRetargetedBeforeUndo),
