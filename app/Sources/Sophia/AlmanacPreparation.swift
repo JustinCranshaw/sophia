@@ -17,6 +17,7 @@ final class AlmanacPreparation: ObservableObject {
     private var evidence: [AlmanacSearchEvidence] = []
     private var terminating: Any?
     private var closed = false
+    private static let reopenAfterStorageFailure = "Preparation stopped, but its state could not be saved. After resolving the storage problem, quit and reopen Sophia before preparing again."
     private let session: String
 
     init(url: URL) throws {
@@ -45,7 +46,10 @@ final class AlmanacPreparation: ObservableObject {
         guard !closed else { return }
         store.reload()
         if let run, !store.almanacRunIsCurrent(run) { cancel() }
-        do { try store.reconcileAlmanac(); snapshot = store.almanacSnapshot; problem = nil }
+        do {
+            try store.reconcileAlmanac(); snapshot = store.almanacSnapshot
+            problem = snapshot.phase == .preparing && engine == nil && run == nil ? Self.reopenAfterStorageFailure : nil
+        }
         catch { problem = "Could not refresh Almanac preparation state." }
     }
     func tick(acknowledged: Bool, now: Date = Date(), calendar: Calendar = .current) {
@@ -122,7 +126,7 @@ final class AlmanacPreparation: ObservableObject {
         run = nil; engine?.cancel(); engine = nil; activity = nil; text = ""; evidence = []
         if let pending {
             do { try store.failAlmanac(pending, message: message, cancelled: cancelled) }
-            catch { problem = "Preparation stopped, but its state could not be saved. Inspect the Almanac before retrying." }
+            catch { problem = Self.reopenAfterStorageFailure }
         }
         snapshot = store.almanacSnapshot
         if problem == nil { problem = message }
