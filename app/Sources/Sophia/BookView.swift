@@ -584,12 +584,10 @@ struct GoalsView: View {
     }
 
     @ViewBuilder
-    func attemptEvidence(_ attempt: JSONObject, criterion: String? = nil) -> some View {
+    func attemptEvidence(_ attempt: JSONObject) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Captured attempt · \(shortDate(attempt.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            let refs = (attempt["refs"]?.array ?? []).compactMap(\.string)
-            let quoteEntry = attempt["quote"]?["entry"]?.string
-            let sources = (quoteEntry.map { [$0] } ?? []) + refs.filter { $0 != quoteEntry && $0 != criterion }
+            let sources = session.store.attemptSourceReferences(attempt)
             if let quote = attempt["quote"]?["text"]?.string {
                 PersonQuote(text: quote).textSelection(.enabled)
             } else {
@@ -610,7 +608,7 @@ struct GoalsView: View {
             if evidence.attempts.isEmpty {
                 Text("No saved attempt linked to this criterion.").font(.caption).italic().foregroundStyle(.secondary)
             } else {
-                ForEach(evidence.attempts, id: \.self.line) { attempt in attemptEvidence(attempt, criterion: ref) }
+                ForEach(evidence.attempts, id: \.self.line) { attempt in attemptEvidence(attempt) }
                 if evidence.read == nil { Text("No criterion-level read saved yet.").font(.caption).foregroundStyle(.secondary) }
             }
             if let read = evidence.read {

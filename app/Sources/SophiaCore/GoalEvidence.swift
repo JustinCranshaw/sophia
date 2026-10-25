@@ -45,6 +45,15 @@ extension NotebookStore {
         return GoalCriterionEvidence(attempts: attempts, read: read, newerEvidence: newer)
     }
 
+    /// Criterion associations locate an attempt; they are not evidence of what was said.
+    public func attemptSourceReferences(_ attempt: JSONObject) -> [String] {
+        let quote = attempt["quote"]?["entry"]?.string
+        let refs = (attempt["refs"]?.array ?? []).compactMap(\.string)
+        return (quote.map { [$0] } ?? []) + refs.filter {
+            $0 != quote && !($0.contains("#") && EvidenceReference.resolve($0, in: self).kind == .goal)
+        }
+    }
+
     public var attemptsWithoutCriterionLinks: [JSONObject] {
         let linked = Set(goals.flatMap { goal -> [JSONObject] in
             let root = rootID(of: goal.str("id") ?? "")

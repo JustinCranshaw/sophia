@@ -10,6 +10,14 @@ func goalEvidenceFollowsOnlyExplicitAttemptChains() throws {
         if let replacing { fields["replaces"] = .string(replacing) }
         return try store.appendLearning(fields, by: "sophia", session: "s-1")
     }
+    let statement = try store.appendTranscript(["role": .string("person"), "text": .string("An actual saved statement")])
+    let onlyCriteria: JSONObject = ["refs": .array([.string(root + "#1"), .string(root + "#3")])]
+    expect(store.attemptSourceReferences(onlyCriteria).isEmpty)
+    var withStatement = onlyCriteria
+    withStatement["refs"] = .array([.string(root + "#1"), statement["id"]!, .string(root + "#3")])
+    expect(store.attemptSourceReferences(withStatement) == [statement.str("id")!])
+    withStatement["quote"] = .object(["entry": statement["id"]!, "text": statement["text"]!])
+    expect(store.attemptSourceReferences(withStatement) == [statement.str("id")!])
     let first = try note("attempt", "The shape stays proportional.", [])
     let unrelated = try note("attempt", "The shape stays proportional.", [])
     let revised = try note("attempt", "The ratio stays fixed while amplitude changes.", [], replacing: first.str("id")!)
