@@ -515,6 +515,13 @@ struct GoalsView: View {
                     }.card().id("unsaved-goal-wording")
                 }
                 VStack(spacing: 14) { ForEach(store.goals.reversed(), id: \.self.line) { g in goalCard(g).id(g.str("id") ?? "") } }
+                if !store.attemptsWithoutCriterionLinks.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Captured attempts not linked to a criterion").font(.headline)
+                        Text("These saved attempts have no current criterion link. They may have a read elsewhere; no relevance or completion is inferred here.").font(.caption).foregroundStyle(.secondary)
+                        ForEach(store.attemptsWithoutCriterionLinks, id: \.self.line) { attempt in attemptEvidence(attempt) }
+                    }.card()
+                }
             }
             .onChange(of: session.goalReviewID, initial: true) { _, id in
                 guard let target = hasStaleDraft ? "unsaved-goal-wording" : id else { return }
@@ -593,24 +600,49 @@ struct GoalsView: View {
     }
 
     @ViewBuilder
+    func interpretation(_ record: JSONObject, label: String) -> some View {
+        if let correction = session.store.correction(of: record.str("id") ?? "") {
+            Text("Your correction · \(shortDate(correction.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor)
+            Text(correction.str("text") ?? "").textSelection(.enabled)
+            Text("Was, Sophia's read: “\(record.str("text") ?? "")”").font(.caption).foregroundStyle(.secondary)
+        } else {
+            SophiaText(label: label, text: record.str("text") ?? "", trailing: "· " + shortDate(record.str("at")))
+        }
+    }
+
+    @ViewBuilder
+    func attemptEvidence(_ attempt: JSONObject) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Captured attempt · \(shortDate(attempt.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            let sources = session.store.attemptSourceReferences(attempt)
+            if let quote = attempt["quote"]?["text"]?.string {
+                PersonQuote(text: quote).textSelection(.enabled)
+            } else {
+                Text(sources.isEmpty ? "No exact words or exchange were saved with this attempt note." : "No exact quote saved with this attempt note; inspect its cited material.").font(.caption).foregroundStyle(.secondary)
+            }
+            interpretation(attempt, label: "Sophia's read · tentative")
+            EvidenceLinks(session: session, refs: sources)
+        }.padding(.vertical, 6)
+    }
+
+    @ViewBuilder
     func criterionRow(root: String, index: Int, text: String) -> some View {
         let store = session.store
         let ref = "\(root)#\(index)"
-        let linked = store.learning.filter { ($0["refs"]?.array ?? []).contains(.string(ref)) }
-        let attempts = linked.filter { $0.str("kind") == "attempt" }
-        let read = linked.last { $0.str("kind") == "read" }
-        VStack(alignment: .leading, spacing: 5) {
+        let evidence = store.evidence(forCriterion: ref)
+        VStack(alignment: .leading, spacing: 8) {
             Text(MarkdownView.scripts(AttributedString("\(index). \(text)"), size: 17, design: .serif)).font(.system(size: 17, design: .serif)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
-            if attempts.isEmpty && read == nil {
-                Text("No attempts yet.").font(.caption).italic().foregroundStyle(.secondary)
+            if evidence.attempts.isEmpty {
+                Text("No saved attempt linked to this criterion.").font(.caption).italic().foregroundStyle(.secondary)
             } else {
-                if !attempts.isEmpty {
-                    Text("Your attempts: " + attempts.map { shortDate($0.str("at")) }.joined(separator: " · ")).font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                if let read {
-                    let newer = attempts.contains { ($0.str("at") ?? "") > (read.str("at") ?? "") }
-                    SophiaText(label: "Sophia's read", text: read.str("text") ?? "", trailing: "· " + shortDate(read.str("at")))
-                    if newer { Text("Newer attempt since").font(.system(size: 11, weight: .semibold)).foregroundStyle(.orange).padding(.leading, 14) }
+                ForEach(evidence.attempts, id: \.self.line) { attempt in attemptEvidence(attempt) }
+                if evidence.read == nil { Text("No criterion-level read saved yet.").font(.caption).foregroundStyle(.secondary) }
+            }
+            if let read = evidence.read {
+                interpretation(read, label: "Sophia's criterion read · tentative")
+                EvidenceLinks(session: session, refs: (read["refs"]?.array ?? []).compactMap(\.string).filter { $0 != ref })
+                if evidence.newerEvidence {
+                    Text("Newer attempt or correction since this read.").font(.caption).foregroundStyle(.orange)
                 }
             }
         }
