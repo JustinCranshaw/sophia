@@ -271,7 +271,7 @@ struct EntryView: View {
                 if entry.str("purpose") == "briefing" {
                     let refs = (entry["refs"]?.array ?? []).compactMap(\.string)
                     if !refs.isEmpty {
-                        Text("Based on " + refs.joined(separator: ", ")).font(.caption2).foregroundStyle(.tertiary)
+                        EvidenceLinks(session: session, refs: refs)
                     }
                 }
             }

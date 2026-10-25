@@ -44,7 +44,8 @@ final class NotebookSession: ObservableObject {
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
     @Published var lastDeleted: [JSONObject]?        // records; Undo lasts until the next message
-    @Published var pendingSection: String?           // a section to scroll to once its page is laid out
+    @Published var pendingSection: String? { didSet { pendingSectionID = UUID() } }
+    private(set) var pendingSectionID = UUID() // distinguishes repeated same-title requests
 
     private var engine: ClaudeEngine?
     private var engines: [String: ClaudeEngine] = [:]
@@ -312,7 +313,7 @@ final class NotebookSession: ObservableObject {
     // MARK: Pages Sophia writes
 
     /// Shows a place in the book, opening the book if it is hidden.
-    func show(_ p: Place) { place = p; bookShown = true }
+    func show(_ p: Place) { pendingSection = nil; place = p; bookShown = true }
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
     func undoWrite(_ entryID: String) {
