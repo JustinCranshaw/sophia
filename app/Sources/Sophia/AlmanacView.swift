@@ -216,6 +216,10 @@ struct AlmanacSettingsView: View {
                     if let problem = almanac.problem { Text(problem).foregroundStyle(.red).font(.callout) }
                 }
             }
+            if almanac.worker != nil {
+                Text("Saving changes cancels any preparation in progress. Saved entries stay available.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
             HStack {
                 Button("Cancel") { almanac.settingsShown = false }.keyboardShortcut(.cancelAction)
                 Spacer()
@@ -274,7 +278,7 @@ struct AlmanacStatusView: View {
                 Button("Themes & timing…") { almanac.showSettings() }
                 if snapshot.settings?.enabled == true {
                     if snapshot.settings?.automatic == true {
-                        Button(snapshot.settings?.paused == true ? "Resume daily preparation" : "Pause daily preparation") { almanac.pauseDaily() }
+                        Button(dailyAction) { almanac.pauseDaily() }
                     } else { Text("Daily preparation is off").font(.caption).foregroundStyle(.secondary) }
                     Button("Disable Almanac") { almanac.disable() }
                 }
@@ -300,6 +304,14 @@ struct AlmanacStatusView: View {
         case .failed: return "New entry did not finish"
         case .cancelled: return "Preparation cancelled"
         }
+    }
+
+    private var dailyAction: String {
+        let paused = worker.snapshot.settings?.paused == true
+        if worker.snapshot.phase == .preparing {
+            return paused ? "Resume daily & cancel preparation" : "Pause daily & cancel preparation"
+        }
+        return paused ? "Resume daily preparation" : "Pause daily preparation"
     }
 }
 
