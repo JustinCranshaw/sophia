@@ -221,6 +221,7 @@ final class NotebookSession: ObservableObject {
             return
         }
         guard ensureEngine() else { return }
+        turnTexts = []
         isResponding = true
         engine?.send(outgoing)
     }
