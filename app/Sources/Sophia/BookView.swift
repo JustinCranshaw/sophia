@@ -407,7 +407,10 @@ struct NotesView: View {
                 HStack { Button("Save correction") { session.correct(id, text: draft); correcting = nil }.buttonStyle(.borderedProminent); Button("Cancel") { correcting = nil } }
             } else {
                 HStack {
-                    if correction == nil { Button("Correct") { draft = ""; correcting = id } }
+                    Button(correction == nil ? "Correct" : "Edit correction") {
+                        draft = correction?.str("text") ?? r.str("text") ?? ""
+                        correcting = id
+                    }
                     Button("Delete", role: .destructive) { session.delete(id) }
                     ShowRecord(record: r)
                 }.controlSize(.small)
