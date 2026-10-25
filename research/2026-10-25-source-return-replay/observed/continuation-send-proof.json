@@ -1,0 +1,6 @@
+{
+  "question": "For this controlled verification, please continue the comparison using the two source responses already returned. I stopped the last turn at an approval budget, not because those sources failed. If needed, request focused extraction from the same two URLs. Distinguish quotations from your interpretation and give only locators actually available. Leave every page unchanged.",
+  "sendStartedEpoch": 1792940285.8872871,
+  "deadlineEpoch": 1792940645.8872871,
+  "appPID": 56090
+}

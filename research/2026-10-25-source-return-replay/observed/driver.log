@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "/tmp/sophia-sop32-prep/replay.py", line 25, in <module>
+    capture(app);archive_bridges();x=ui.ui(run,'inspect');buttons=[a.get('label') for a in x['tree'] if a.get('role')=='AXButton']
+    ~~~~~~~^^^^^
+  File "/tmp/sophia-sop32-prep/replay.py", line 13, in capture
+    owned[n]=i;cmd=subprocess.run(['ps','-p',s,'-o','command='],capture_output=True,text=True).stdout.strip();args=shlex.split(cmd)
+                                                                                                                   ~~~~~~~~~~~^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.15/lib/python3.15/shlex.py", line 312, in split
+    return list(lex)
+  File "/Library/Frameworks/Python.framework/Versions/3.15/lib/python3.15/shlex.py", line 299, in __next__
+    token = self.get_token()
+  File "/Library/Frameworks/Python.framework/Versions/3.15/lib/python3.15/shlex.py", line 107, in get_token
+    raw = self.read_token()
+  File "/Library/Frameworks/Python.framework/Versions/3.15/lib/python3.15/shlex.py", line 189, in read_token
+    raise ValueError("No closing quotation")
+ValueError: No closing quotation
+decision Allow once https://cuny.manifoldapp.org/read/black-reconstruction-in-america-toward-a-history-of-the-part-which-black-folk-played-in-the-attempt-to-reconstruct-democracy-in-america-1860-1880/section/aa903055-6ea8-4a69-a130-5195b8a41832
+decision Allow once https://www.ericfoner.com/articles/011321NYer.html
+decision Allow once https://cuny.manifoldapp.org/read/black-reconstruction-in-america-toward-a-history-of-the-part-which-black-folk-played-in-the-attempt-to-reconstruct-democracy-in-america-1860-1880/section/aa903055-6ea8-4a69-a130-5195b8a41832
+decision Don't open https://www.ericfoner.com/articles/011321NYer.html
+Unexpected URL or approval cap
+{"appGone": true, "liveCaptured": [], "protectedExact": true, "changedFiles": ["transcript.jsonl"], "bridgesRemoved": true}
