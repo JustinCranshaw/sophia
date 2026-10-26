@@ -8,6 +8,7 @@ struct ConversationView: View {
     private let compact: Bool
     @FocusState private var focused: Bool
     @State private var expanded = false
+    @State private var seenSophiaID: String?
     @State private var followsLatest = true
     @State private var hasNewActivity = false
     @State private var scrollPosition: ConversationScrollPosition?
@@ -26,7 +27,7 @@ struct ConversationView: View {
                     .font(.subheadline.weight(.semibold)).lineLimit(2).help(session.conversationName)
                 Spacer(minLength: 8)
                 if compact {
-                    Button(expanded ? "Hide conversation" : "Show conversation") { expanded.toggle() }.buttonStyle(.borderless)
+                    Button(conversationToggleTitle) { expanded.toggle() }.buttonStyle(.borderless)
                 }
                 if !compact || expanded {
                     Button("Finish for now") { session.endSession() }
@@ -192,8 +193,16 @@ struct ConversationView: View {
             .padding(.horizontal, 24).padding(.vertical, 14)
             .frame(maxWidth: .infinity)
         }
-        .onAppear { focused = Snapshot.outDir == nil && !compact }
-        .onChange(of: session.activeThread) { _, _ in expanded = false }
+        .onAppear {
+            focused = Snapshot.outDir == nil && !compact
+            seenSophiaID = latestSophiaMessage?.str("id")
+        }
+        .onChange(of: conversationKey) { _, _ in
+            expanded = false
+            seenSophiaID = latestSophiaMessage?.str("id")
+        }
+        .onChange(of: expanded) { _, value in if value { seenSophiaID = latestSophiaMessage?.str("id") } }
+        .onChange(of: latestSophiaMessage?.str("id")) { _, id in if expanded { seenSophiaID = id } }
         .onChange(of: compact) { _, value in if value { focused = false } }
         .disabled(Snapshot.outDir != nil)
     }
@@ -206,6 +215,18 @@ struct ConversationView: View {
     }
 
     private var conversationKey: String { session.store.url.path + "/" + session.activeThread }
+    private var latestSophiaMessage: JSONObject? {
+        session.store.transcript.last {
+            $0.str("role") == "sophia" && NotebookStore.thread(of: $0) == session.activeThread && $0["recovered"] != .bool(true)
+                && ($0.str("purpose") == nil || $0.str("purpose") == "briefing")
+        }
+    }
+    private var conversationToggleTitle: String {
+        if expanded { return "Hide conversation" }
+        guard let entry = latestSophiaMessage, let id = entry.str("id"), id != seenSophiaID else { return "Show conversation" }
+        return entry.str("purpose") == "briefing" ? "Welcome back · Show conversation" : "New reply · Show conversation"
+    }
+
 
     private func followIfNeeded(_ proxy: ScrollViewProxy) {
         // Never animate automatic following: intermediate offsets can look like scrolling away.

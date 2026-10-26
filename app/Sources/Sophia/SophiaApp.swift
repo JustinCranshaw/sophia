@@ -79,6 +79,7 @@ final class AppModel: ObservableObject {
             do {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
                 open?.shutdown()
+                notebookSettings = nil
                 next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
                 open = next
             } catch { problem = error.localizedDescription; return false }
@@ -167,7 +168,7 @@ struct SophiaApp: App {
             CommandGroup(after: .appInfo) {
                 Button("Connection & Data…") { model.connection.detailsShown = true }
                 Button("Sophia’s Almanac…") {
-                    if let worker = model.almanac.worker { model.openNotebook(worker.url, allowAutomaticReturn: false) }
+                    if let worker = model.almanac.worker { model.openNotebook(worker.url, at: .contents, allowAutomaticReturn: false) }
                     else { model.almanac.showSettings() }
                 }
             }

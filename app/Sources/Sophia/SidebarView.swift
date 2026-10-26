@@ -86,7 +86,7 @@ struct OpenNotebookRows: View {
     }
 
     /// A page: its section number in a fixed column (or a page icon), then its title on one line.
-    func pageRow(_ p: NotebookStore.Page, indent: CGFloat, entry: AlmanacEntry?) -> some View {
+    func pageRow(_ p: NotebookStore.Page, indent: CGFloat, entry: NotebookPresentation.Publication?) -> some View {
         let (n, t) = pageNumber(session.store, p)
         let selected = session.place == .page(p.file)
         return Button { session.show(.page(p.file)) } label: {

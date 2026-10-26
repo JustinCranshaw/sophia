@@ -32,6 +32,11 @@ import SophiaCore
         let second = try save("An undone entry")
         try almanac.undoPageWrite(second.writeID, session: "controlled-check")
         require(NotebookPresentation.almanacEntries(almanac)[second.file] == nil, "Undone entries do not retain publication presentation")
+        let validCount = NotebookPresentation.almanacEntries(almanac).count
+        for flag in ["refused", "recovered"] {
+            _ = try almanac.appendTranscript(["tool": .string("write_page"), "tool_use": .string("almanac:ignored-" + flag), "file": .string(ordinary.str("file")!), flag: .bool(true)])
+        }
+        require(NotebookPresentation.almanacEntries(almanac).count == validCount, "Refused and unknown-provenance records cannot add publication dates")
         let transcript = almanac.url.appendingPathComponent("transcript.jsonl")
         let records = try String(contentsOf: transcript, encoding: .utf8).split(separator: "\n").map { line -> JSONObject in
             var value = JSON.parse(String(line))!.object!
