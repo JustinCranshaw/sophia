@@ -32,6 +32,10 @@ Preparation is manual or explicitly enabled daily at a local time while the app 
 
 A check executable's existence is source evidence, not a passing run. Follow each report's source/version, synthetic-vs-actual attribution and limits. New checks belong to the active issue. The paid offer, genuine delayed return, clean-Mac/release interaction, provider commercial route and customer demand below remain open; technical success does not close them.
 
+### Working identity in the native app
+
+The user selected DC Trued Channel in solid paired Plum, then Palatino for the Sophia wordmark with a tighter inline gap. [SOP68](https://linear.app/decomposer/issue/SOP-68) integrates that fixed identity into the native toolbar, selection and empty-Library treatment, plus a replaceable application-icon treatment. It does not change the companion prompt, provider route, reading/body fonts or notebook data. The design decisions and measured scope are recorded in [brand decisions](docs/brand-decisions.md) and [native checks](app/checks/sop68-native-brand.md); this is local implementation, not release/distribution or human preference validation. Notebook and Almanac surface refinement follows separately in SOP69.
+
 ### Notebook orientation and reading
 
 [SOP59](https://linear.app/decomposer/issue/SOP-59) makes navigation represent content: notebook Home gives the actual contents, confirmed working goals, an optional clearly historical inquiry and a labeled generic companion approach. It does not turn private memory/assessment notes into an introduction, infer mastery or add an intro schema. Goals/notes are management sheets, while About you retains explicit shared-Library scope. Page conversations and window-local drafts keep their existing thread ownership, made visible in every layout; no migration or new thread store is introduced.
