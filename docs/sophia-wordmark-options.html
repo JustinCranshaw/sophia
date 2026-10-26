@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en" data-show="both" data-word="ink">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sophia — wordmark typeface options</title>
+<style>
+/* page chrome (same neutral chrome as the earlier comparison pages) */
+:root{--c-bg:#f4f4f2;--c-ink:#18181a;--c-mut:#5c5c62;--c-rule:#d8d8dc;--c-card:#fff;--c-acc:#1f5fbf;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--c-bg:#101012;--c-ink:#ececee;--c-mut:#a2a2aa;--c-rule:#2c2c31;--c-card:#18181b;--c-acc:#8ab4ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--c-bg);color:var(--c-ink);font:15px/1.5 -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+a{color:var(--c-acc)}
+code{font:12px Menlo,ui-monospace,monospace;overflow-wrap:anywhere}
+.wrap{max-width:1320px;margin:0 auto;padding:0 28px}
+.top{padding-top:40px;padding-bottom:8px}
+.kick{margin:0 0 6px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-mut)}
+h1{font:600 30px/1.15 -apple-system,"Helvetica Neue",sans-serif;margin:0 0 10px;letter-spacing:-.01em}
+.lede{max-width:80ch;margin:0 0 14px;font-size:16px}
+.status{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 22px;margin:0 0 16px;font-size:13.5px}
+.status div{border-left:3px solid var(--c-rule);padding-left:12px}
+.status .locked{border-color:#6E2F55}
+.status b{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--c-mut);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px}
+.ctl-lab{font-size:12px;color:var(--c-mut);margin:0 4px 0 10px}.ctl-lab:first-child{margin-left:0}
+.controls button{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--c-rule);background:var(--c-card);color:var(--c-ink);cursor:pointer}
+.controls button[aria-pressed=true]{background:var(--c-ink);color:var(--c-bg);border-color:var(--c-ink)}
+.controls button:focus-visible,.jump a:focus-visible{outline:2px solid var(--c-acc);outline-offset:2px}
+.jump{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 6px;font-size:14px}
+.honest{max-width:92ch;font-size:13px;color:var(--c-mut);border-left:3px solid var(--c-rule);padding-left:12px;margin:10px 0 0}
+.honest b{color:var(--c-ink)}
+.board{border-top:1px solid var(--c-rule);margin-top:34px;padding-top:30px}
+.board>h2{font:600 24px/1.15 -apple-system,"Helvetica Neue",sans-serif;margin:0 0 8px}
+.premise{max-width:84ch;font-size:15px;margin:0 0 14px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* neutral specimen grounds: the same two grounds as the merged page's Plum row */
+.light{--bg:#fbfbf9;--surf:#ffffff;--ink:#18181a;--mut:#5c5c62;--rule:#e3e3e6;--plum:#6E2F55;--sel:#f3e6ee}
+.dark{--bg:#16171a;--surf:#1d1e22;--ink:#ececee;--mut:#a2a2aa;--rule:#2c2d33;--plum:#E3A9C8;--sel:#3a2433}
+.g,td.light,td.dark{background:var(--bg);color:var(--ink)}
+html[data-show=light] .dark,html[data-show=dark] .light{display:none}
+html[data-show=light] .pair,html[data-show=dark] .pair{grid-template-columns:minmax(0,1fr)}
+
+/* the locked mark: plum, solid. Paths fall back to currentColor; no --tv* is ever set on this page. */
+.mk{display:block;flex:none;fill:currentColor;color:var(--plum);overflow:visible}
+.mk.mono{color:inherit}
+
+/* lockup: mark box --m, word sized from it (per-option rules at the end) */
+.lk{display:inline-flex;align-items:center;gap:calc(var(--m)*.30);line-height:1;white-space:nowrap;vertical-align:middle}
+.lk .word{display:block;line-height:1;color:var(--ink);font-kerning:normal;font-variant-ligatures:none;font-synthesis:none}
+html[data-word=plum] .lk .word,.plumword .lk .word{color:var(--plum)}
+
+/* option cards */
+.opts{display:grid;gap:26px;margin-top:6px}
+.opt{background:var(--c-card);border:1px solid var(--c-rule);border-radius:12px;padding:18px 20px 16px;min-width:0}
+.oh h3{margin:0 0 4px;font-size:19px;font-weight:600}
+.oh h3 small{font-weight:400;color:var(--c-mut);font-size:15px}
+.num{display:inline-block;min-width:24px;margin-right:8px;padding:2px 7px;border-radius:6px;background:var(--c-ink);color:var(--c-bg);font-size:13px;text-align:center;vertical-align:2px}
+.spec{margin:0 0 2px;font-size:13px}
+.by{margin:0 0 14px;font-size:12.5px;color:var(--c-mut)}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:1080px){.pair{grid-template-columns:1fr}}
+.g{border-radius:10px;padding:14px 16px 16px;border:1px solid var(--rule);min-width:0}
+.gtag{margin:0 0 10px;font:600 10.5px/1 -apple-system,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.hero{padding:6px 0 16px}
+.row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 22px}
+.row figure{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+figcaption,.cap{font:10.5px/1.3 -apple-system,sans-serif;color:var(--mut)}
+.ico{margin-left:auto!important}
+.apps{display:grid;grid-template-columns:240px minmax(0,1fr);gap:12px;margin-top:16px}
+.apps .doc{grid-column:1/-1}
+@media (max-width:620px){.apps{grid-template-columns:minmax(0,1fr)}.ico{margin-left:0!important}}
+.side{width:240px;max-width:100%;background:var(--surf);border:1px solid var(--rule);border-radius:8px;padding:12px 10px 8px;font:13px/1.3 -apple-system,sans-serif}
+.side-h{padding:2px 6px 10px;border-bottom:1px solid var(--rule);margin-bottom:6px}
+.side ul{list-style:none;margin:0 0 8px;padding:0}
+.side li{padding:5px 6px;border-radius:5px;color:var(--ink)}
+.side li.on{background:var(--sel)}
+.alm{background:var(--surf);border:1px solid var(--rule);border-radius:8px;padding:12px 14px 8px;min-width:0}
+.alm-top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding-bottom:8px;margin-bottom:10px}
+.date{font:12px -apple-system,sans-serif;color:var(--mut)}
+.alm h4{font:600 26px/1.15 ui-serif,"New York",Georgia,serif;margin:0 0 6px;color:var(--ink)}
+.alm p{font:15px/1.5 ui-serif,"New York",Georgia,serif;margin:0 0 8px}
+.alm p.cap,.doc p.cap,.side p.cap{font:10.5px/1.3 -apple-system,sans-serif;margin:0}
+.doc{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--surf);border:1px solid var(--rule);border-radius:8px;padding:12px 14px}
+.doc p{margin:0;font:15px/1.4 -apple-system,sans-serif;color:var(--mut)}
+.doc p.cap{margin-left:auto}
+.fork{margin-top:14px;border-top:1px dashed var(--c-rule);padding-top:12px}
+.fork-h{margin:0 0 8px;font-size:13px}
+.fork .row{align-items:center}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 22px;margin:14px 0 0;font-size:13px}
+.facts dt{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--c-mut);margin-bottom:2px}
+.facts dd{margin:0}
+.fb{font-weight:600}
+.fb.miss{color:#b3261e}
+
+/* glance table */
+.glance-wrap{overflow-x:auto;border:1px solid var(--c-rule);border-radius:10px}
+.glance{border-collapse:collapse;width:100%;min-width:860px}
+.glance th,.glance td{padding:12px 14px;text-align:left;vertical-align:middle;border-bottom:1px solid var(--c-rule)}
+.glance thead th{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--c-mut);font-weight:600;background:var(--c-card)}
+.glance tbody th{font-size:13px;font-weight:600;background:var(--c-card);white-space:nowrap}
+.glance tbody th small{font-weight:400;color:var(--c-mut)}
+.glance tr.ref th,.glance tr.ref td{border-top:2px dashed var(--c-rule)}
+html[data-show=light] .glance .dark,html[data-show=dark] .glance .light{display:none}
+
+/* locked mark sheet */
+.sheet{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.sheet{grid-template-columns:1fr}}
+.sheet .g .row{align-items:flex-end}
+.foot{border-top:1px solid var(--c-rule);margin-top:40px;padding-top:24px;padding-bottom:60px;font-size:13px;color:var(--c-mut)}
+.foot h2{font-size:15px;color:var(--c-ink);margin:16px 0 4px}
+.foot ul{padding-left:18px;margin:4px 0}
+/* narrow windows: tighter frames so the 64px hero lockups fit without sideways scroll */
+@media (max-width:620px){.wrap{padding:0 14px}.opt{padding:14px 12px}.g{padding:12px}.status{grid-template-columns:1fr}}
+/* narrow windows: the glance table stacks, one option per block, light row then dark row */
+@media (max-width:620px){
+ .glance-wrap{overflow:visible;border:0}
+ .glance{min-width:0;display:block}
+ .glance thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+ .glance tbody{display:grid;gap:10px}
+ .glance tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--c-rule);border-radius:10px;overflow:hidden}
+ .glance tr.ref{border-style:dashed}
+ .glance tbody th{grid-column:1/-1;white-space:normal;border-bottom:1px solid var(--c-rule)}
+ .glance th,.glance td{padding:10px;border-bottom:0}
+ .glance tr.ref th,.glance tr.ref td{border-top:0}
+ .glance td:nth-of-type(3n){grid-column:1/-1}
+ .glance td::before{content:attr(data-l);display:block;margin-bottom:6px;font:10.5px/1.2 -apple-system,sans-serif;color:var(--mut)}
+}
+
+/* per-option word settings */
+.w-OP .word{font-family:Optima, sans-serif;font-weight:400;letter-spacing:.02em;font-size:calc(var(--m)*0.666);transform:translateY(.02em)}
+.w-PA .word{font-family:Palatino, serif;font-weight:400;letter-spacing:.01em;font-size:calc(var(--m)*0.665);transform:translateY(.07em)}
+.w-AV .word{font-family:"Avenir Next", sans-serif;font-weight:600;letter-spacing:-.005em;font-size:calc(var(--m)*0.64);transform:translateY(-.02em)}
+.w-GS .word{font-family:"Gill Sans", sans-serif;font-weight:600;letter-spacing:.14em;font-size:calc(var(--m)*0.675);transform:translateY(-.005em)}
+.w-NY .word{font-family:ui-serif, serif;font-weight:600;letter-spacing:0em;font-size:calc(var(--m)*0.652);transform:translateY(-.003em)}
+.w-OPB .word{font-family:Optima, sans-serif;font-weight:700;letter-spacing:.025em;font-size:calc(var(--m)*0.66);transform:translateY(.02em)}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="sDC" viewBox="0 0 32 32"><g transform="scale(0.16)"><path d="M123.13 19.25A84 84 0 0 1 158.37 39.59A15 15 0 0 1 155.45 63.37L129.46 78.37A15 15 0 0 1 113.93 78.05A26 26 0 0 0 112.05 76.96A15 15 0 0 1 104 63.67L104 33.67A15 15 0 0 1 123.13 19.25Z" style="fill:var(--tv1,currentColor)"/><path d="M181.5 79.66A84 84 0 0 1 181.5 120.34A15 15 0 0 1 159.45 129.7L133.46 114.7A15 15 0 0 1 125.98 101.09A26 26 0 0 0 125.98 98.91A15 15 0 0 1 133.46 85.3L159.45 70.3A15 15 0 0 1 181.5 79.66Z" style="fill:var(--tv3,currentColor)"/><path d="M158.37 160.41A84 84 0 0 1 123.13 180.75A15 15 0 0 1 104 166.33L104 136.33A15 15 0 0 1 112.05 123.04A26 26 0 0 0 113.93 121.95A15 15 0 0 1 129.46 121.63L155.45 136.63A15 15 0 0 1 158.37 160.41Z" style="fill:var(--tv5,currentColor)"/><path d="M76.87 180.75A84 84 0 0 1 41.63 160.41A15 15 0 0 1 44.55 136.63L70.54 121.63A15 15 0 0 1 86.07 121.95A26 26 0 0 0 87.95 123.04A15 15 0 0 1 96 136.33L96 166.33A15 15 0 0 1 76.87 180.75Z" style="fill:var(--tv5,currentColor)"/><path d="M18.5 120.34A84 84 0 0 1 18.5 79.66A15 15 0 0 1 40.55 70.3L66.54 85.3A15 15 0 0 1 74.02 98.91A26 26 0 0 0 74.02 101.09A15 15 0 0 1 66.54 114.7L40.55 129.7A15 15 0 0 1 18.5 120.34Z" style="fill:var(--tv3,currentColor)"/><path d="M41.63 39.59A84 84 0 0 1 76.87 19.25A15 15 0 0 1 96 33.67L96 63.67A15 15 0 0 1 87.95 76.96A26 26 0 0 0 86.07 78.05A15 15 0 0 1 70.54 78.37L44.55 63.37A15 15 0 0 1 41.63 39.59Z" style="fill:var(--tv1,currentColor)"/></g></symbol></defs></svg>
+<header class="wrap top">
+<p class="kick">Sophia · wordmark typeface · 26 October 2026 · static comparison</p>
+<h1>A typeface for “Sophia” beside the locked plum mark</h1>
+<p class="lede">The mark is decided for now. Only the word beside it is open. Every option uses the same locked mark, the same two grounds and the same three application mocks, so the difference you see is the typeface.</p>
+<div class="status">
+<div class="locked"><b>Locked working mark (the user's choice)</b>DC · Trued Channel, base orientation, solid, paired plum: <code>#6E2F55</code> light and <code>#E3A9C8</code> dark. Copied unchanged from <a href="soft-six-refinements.html">Soft Six refinements</a>. Recorded in <a href="brand-decisions.md">brand-decisions.md</a>.</div>
+<div><b>Open: wordmark typeface</b>Four options, plus the app's own serif as a reference. Nothing is chosen, and nothing is applied to the app, its icon or a release.</div>
+<div><b>Holding steady</b>Body and UI type are not part of this choice. The Mac app sets book, page and title text such as “Sophia’s Almanac” in SwiftUI’s system serif (<code>design: .serif</code>, New York on this Mac) and its reader chrome in <code>-apple-system</code>. The mocks below reuse those two.</div>
+</div>
+<div class="controls" role="group" aria-label="Display">
+<span class="ctl-lab" id="l-show">Grounds</span><button type="button" data-show="both" aria-pressed="true">Light and dark</button><button type="button" data-show="light" aria-pressed="false">Light</button><button type="button" data-show="dark" aria-pressed="false">Dark</button>
+<span class="ctl-lab" id="l-word">Word color</span><button type="button" data-word="ink" aria-pressed="true">Ink</button><button type="button" data-word="plum" aria-pressed="false">Plum, like the mark</button>
+</div>
+<nav class="jump" aria-label="Sections"><a href="#mark">Locked mark</a><a href="#glance">At a glance</a><a href="#o-OP">1 Optima</a><a href="#o-PA">2 Palatino</a><a href="#o-AV">3 Avenir Next</a><a href="#o-GS">4 Gill Sans</a><a href="#notes">How this was made</a></nav>
+<p class="honest"><b>Read this first.</b> All three charrette voices independently proposed Optima. Options 2–4 were built by the lead to test that consensus against different premises, and each card says so. The word is ink by default so the faces can be compared evenly; the Word color switch shows every option in plum.</p>
+</header>
+
+<main class="wrap">
+<section class="board" id="mark" aria-labelledby="h-mark">
+<h2 id="h-mark">Locked mark</h2>
+<p class="premise">The <code>sDC</code> symbol is byte-identical to the merged page (SHA-256 <code>b8479078953dc28ef4895e85a41f75443258417e674334021e402dc5ccc77522</code>), painted solid in plum. It looks the same in every option below. <b>*</b> The icon tile, reverse and monochrome sample are current specimen treatments, shown for context. The user has not separately chosen them.</p>
+<div class="sheet"><div class="g light"><p class="gtag">Light · #6E2F55</p><div class="row"><figure><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>64</figcaption></figure><figure><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#6E2F55"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#F4E4EC;fill:#F4E4EC;"><use href="#sDC"/></svg></svg><figcaption>Icon tile*</figcaption></figure><figure><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#6E2F55"/><svg x="6" y="6" width="20" height="20" viewBox="0 0 32 32" style="color:#ffffff;fill:#ffffff;"><use href="#sDC"/></svg></svg><figcaption>Reverse*</figcaption></figure><figure><span style="color:#18181a"><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg></span><figcaption>Mono*</figcaption></figure></div></div><div class="g dark"><p class="gtag">Dark · #E3A9C8</p><div class="row"><figure><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><figcaption>64</figcaption></figure><figure><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#16171a" stroke="#3c3f46" stroke-width="1.5"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#E3A9C8;fill:#E3A9C8;"><use href="#sDC"/></svg></svg><figcaption>Icon tile*</figcaption></figure></div></div></div>
+</section>
+
+<section class="board" id="glance" aria-labelledby="h-glance">
+<h2 id="h-glance">At a glance: small lockups at 16, 24 and 32</h2>
+<p class="premise">Reference and reading specimens use <code>ui-serif</code> (New York on the build Mac), with Georgia/serif fallbacks. <b>In this browser now:</b> <span class="fb" data-fam="ui-serif" data-w="600">not checked (script off)</span></p>
+<p class="premise">The mark box is 16, 24 or 32px. The word's cap height is about 0.46 of that box, roughly 0.56 of the drawn flower. The gap is 0.30 of the box, and the word is centred optically on the mark.</p>
+<div class="glance-wrap"><table class="glance"><thead><tr><th scope="col">Option</th><th scope="col" class="light">Light 16</th><th scope="col" class="light">24</th><th scope="col" class="light">32</th><th scope="col" class="dark">Dark 16</th><th scope="col" class="dark">24</th><th scope="col" class="dark">32</th></tr></thead>
+<tbody>
+<tr class=""><th scope="row">1 · Optima</th><td class="light" data-l="Light 16"><span class="lk w-OP" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="light" data-l="Light 24"><span class="lk w-OP" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="light" data-l="Light 32"><span class="lk w-OP" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 16"><span class="lk w-OP" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 24"><span class="lk w-OP" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 32"><span class="lk w-OP" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td></tr>
+<tr class=""><th scope="row">2 · Palatino</th><td class="light" data-l="Light 16"><span class="lk w-PA" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="light" data-l="Light 24"><span class="lk w-PA" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="light" data-l="Light 32"><span class="lk w-PA" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 16"><span class="lk w-PA" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 24"><span class="lk w-PA" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 32"><span class="lk w-PA" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td></tr>
+<tr class=""><th scope="row">3 · Avenir Next</th><td class="light" data-l="Light 16"><span class="lk w-AV" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></td><td class="light" data-l="Light 24"><span class="lk w-AV" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></td><td class="light" data-l="Light 32"><span class="lk w-AV" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></td><td class="dark" data-l="Dark 16"><span class="lk w-AV" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></td><td class="dark" data-l="Dark 24"><span class="lk w-AV" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></td><td class="dark" data-l="Dark 32"><span class="lk w-AV" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></td></tr>
+<tr class=""><th scope="row">4 · Gill Sans</th><td class="light" data-l="Light 16"><span class="lk w-GS" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></td><td class="light" data-l="Light 24"><span class="lk w-GS" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></td><td class="light" data-l="Light 32"><span class="lk w-GS" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></td><td class="dark" data-l="Dark 16"><span class="lk w-GS" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></td><td class="dark" data-l="Dark 24"><span class="lk w-GS" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></td><td class="dark" data-l="Dark 32"><span class="lk w-GS" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></td></tr>
+<tr class="ref"><th scope="row">Reference · New York Semibold <small>(the app’s serif; not proposed)</small></th><td class="light" data-l="Light 16"><span class="lk w-NY" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="light" data-l="Light 24"><span class="lk w-NY" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="light" data-l="Light 32"><span class="lk w-NY" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 16"><span class="lk w-NY" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 24"><span class="lk w-NY" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td><td class="dark" data-l="Dark 32"><span class="lk w-NY" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></td></tr>
+</tbody></table></div>
+</section>
+
+<section class="board" id="options" aria-labelledby="h-opts">
+<h2 id="h-opts">Four options</h2>
+<p class="premise">Each card shows a 64px hero lockup, small lockups at 16, 24 and 32, the specimen icon tile (no word, identical in all four), a 240px sidebar, an Almanac masthead above the unchanged New York title, and a README header, on light and on dark.</p>
+<div class="opts">
+<article class="opt" id="o-OP" aria-labelledby="h-OP">
+<header class="oh"><h3 id="h-OP"><span class="num">1</span>Optima <small>· Inscribed humanist</small></h3>
+<p class="spec"><code>Optima-Regular</code> · weight 400 · title case · tracking .02em · cap height ≈ 0.46 of the mark box</p>
+<p class="by">Proposed by all three voices in their independent openings (Marcus and Imani: Regular, ink; Mara: Bold, plum, shown as the fork below).</p></header>
+<div class="pair"><div class="g light"><p class="gtag">Light</p>
+<div class="hero"><span class="lk w-OP" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div>
+<div class="row sizes"><figure><span class="lk w-OP" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-OP" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-OP" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#6E2F55"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#F4E4EC;fill:#F4E4EC;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-OP" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-OP" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-OP" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div><div class="g dark"><p class="gtag">Dark</p>
+<div class="hero"><span class="lk w-OP" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div>
+<div class="row sizes"><figure><span class="lk w-OP" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-OP" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-OP" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#16171a" stroke="#3c3f46" stroke-width="1.5"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#E3A9C8;fill:#E3A9C8;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-OP" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-OP" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-OP" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div></div>
+<div class="fork"><p class="fork-h">Mara's fork: <code>Optima-Bold</code>, weight 700, +0.025em. Same face, heavier, to match the solid mark's mass. Mara proposed the word in plum. Here it follows the Word color switch, so weight and color can be judged separately.</p>
+<div class="pair"><div class="g light"><div class="row sizes"><span class="lk w-OPB" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figure><span class="lk w-OPB" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-OPB" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-OPB" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>32</figcaption></figure></div></div><div class="g dark"><div class="row sizes"><span class="lk w-OPB" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figure><span class="lk w-OPB" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-OPB" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-OPB" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>32</figcaption></figure></div></div></div></div>
+<dl class="facts"><div><dt>What it says</dt><dd>Carved-letter proportions in a sans. The flared strokes swell and taper the way the petals round off against their constant channels. It is clearly neither New York nor SF.</dd></div><div><dt>Live risk</dt><dd>All three named the same risk: it can read as cosmetics, spa or memorial lettering rather than a notebook. At 16px its thin joins may look spindly beside the solid plum.</dd></div>
+<div><dt>Availability</dt><dd><b>Installed on the Mac that built this page</b> (AppKit font catalog, 26 Oct 2026): Optima-Regular, Optima-Bold. <b>In this browser now:</b> <span class="fb" data-fam='Optima' data-w="400">not checked (script off)</span> CSS stack: <code>Optima, sans-serif</code>. If the face is missing, the browser draws the generic fallback, the check above says so, and the specimen is not a fair test. Native use would be SwiftUI <code>.custom("Optima-Regular", size:)</code>, a system font on the build Mac. Licence terms for outlining this face into a logo file have not been checked.</dd></div></dl>
+</article>
+<article class="opt" id="o-PA" aria-labelledby="h-PA">
+<header class="oh"><h3 id="h-PA"><span class="num">2</span>Palatino <small>· Calligraphic book serif</small></h3>
+<p class="spec"><code>Palatino-Roman</code> · weight 400 · title case · tracking .01em · cap height ≈ 0.46 of the mark box</p>
+<p class="by">Built by the lead to test the voices' shared premise that the wordmark must leave serifs behind. Not a voice proposal.</p></header>
+<div class="pair"><div class="g light"><p class="gtag">Light</p>
+<div class="hero"><span class="lk w-PA" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div>
+<div class="row sizes"><figure><span class="lk w-PA" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-PA" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-PA" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#6E2F55"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#F4E4EC;fill:#F4E4EC;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-PA" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-PA" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-PA" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div><div class="g dark"><p class="gtag">Dark</p>
+<div class="hero"><span class="lk w-PA" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div>
+<div class="row sizes"><figure><span class="lk w-PA" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-PA" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-PA" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#16171a" stroke="#3c3f46" stroke-width="1.5"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#E3A9C8;fill:#E3A9C8;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-PA" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-PA" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-PA" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">Sophia</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div></div>
+
+<dl class="facts"><div><dt>What it says</dt><dd>A serif with a pen in it: open, calligraphic and by the same designer as Optima. It says “book” without copying New York's rational, screen-tuned forms.</dd></div><div><dt>Live risk</dt><dd>It may still read as a near-miss of the New York titles (all three voices' main worry about serifs). Palatino is also very familiar.</dd></div>
+<div><dt>Availability</dt><dd><b>Installed on the Mac that built this page</b> (AppKit font catalog, 26 Oct 2026): Palatino-Roman. <b>In this browser now:</b> <span class="fb" data-fam='Palatino' data-w="400">not checked (script off)</span> CSS stack: <code>Palatino, serif</code>. If the face is missing, the browser draws the generic fallback, the check above says so, and the specimen is not a fair test. Native use would be SwiftUI <code>.custom("Palatino-Roman", size:)</code>, a system font on the build Mac. Licence terms for outlining this face into a logo file have not been checked.</dd></div></dl>
+</article>
+<article class="opt" id="o-AV" aria-labelledby="h-AV">
+<header class="oh"><h3 id="h-AV"><span class="num">3</span>Avenir Next <small>· Round geometric, lowercase</small></h3>
+<p class="spec"><code>AvenirNext-DemiBold</code> · weight 600 · lowercase · tracking -.005em · cap height ≈ 0.46 of the mark box</p>
+<p class="by">Built by the lead as a materially different premise: a companion tool rather than an inscription. Not a voice proposal.</p></header>
+<div class="pair"><div class="g light"><p class="gtag">Light</p>
+<div class="hero"><span class="lk w-AV" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></div>
+<div class="row sizes"><figure><span class="lk w-AV" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-AV" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-AV" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#6E2F55"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#F4E4EC;fill:#F4E4EC;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-AV" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-AV" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-AV" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div><div class="g dark"><p class="gtag">Dark</p>
+<div class="hero"><span class="lk w-AV" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></div>
+<div class="row sizes"><figure><span class="lk w-AV" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-AV" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-AV" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#16171a" stroke="#3c3f46" stroke-width="1.5"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#E3A9C8;fill:#E3A9C8;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-AV" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-AV" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-AV" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">sophia</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div></div>
+
+<dl class="facts"><div><dt>What it says</dt><dd>Round o, a and p counters echo the flower's six round petals. Demi Bold matches the mark's solid mass. Lowercase makes it informal and close.</dd></div><div><dt>Live risk</dt><dd>Imani argued for title case because Sophia is a person's name, and lowercase drops that. It may read as a generic app or startup.</dd></div>
+<div><dt>Availability</dt><dd><b>Installed on the Mac that built this page</b> (AppKit font catalog, 26 Oct 2026): AvenirNext-DemiBold. <b>In this browser now:</b> <span class="fb" data-fam='&quot;Avenir Next&quot;' data-w="600">not checked (script off)</span> CSS stack: <code>&quot;Avenir Next&quot;, sans-serif</code>. If the face is missing, the browser draws the generic fallback, the check above says so, and the specimen is not a fair test. Native use would be SwiftUI <code>.custom("AvenirNext-DemiBold", size:)</code>, a system font on the build Mac. Licence terms for outlining this face into a logo file have not been checked.</dd></div></dl>
+</article>
+<article class="opt" id="o-GS" aria-labelledby="h-GS">
+<header class="oh"><h3 id="h-GS"><span class="num">4</span>Gill Sans <small>· Spaced capitals</small></h3>
+<p class="spec"><code>GillSans-SemiBold</code> · weight 600 · capitals · tracking .14em · cap height ≈ 0.46 of the mark box</p>
+<p class="by">Built by the lead to test the excluded all-caps premise (Mara and Imani both excluded caps). Not a voice proposal.</p></header>
+<div class="pair"><div class="g light"><p class="gtag">Light</p>
+<div class="hero"><span class="lk w-GS" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></div>
+<div class="row sizes"><figure><span class="lk w-GS" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-GS" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-GS" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#6E2F55"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#F4E4EC;fill:#F4E4EC;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-GS" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-GS" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-GS" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div><div class="g dark"><p class="gtag">Dark</p>
+<div class="hero"><span class="lk w-GS" style="--m:64px"><svg class="mk" width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></div>
+<div class="row sizes"><figure><span class="lk w-GS" style="--m:16px"><svg class="mk" width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><figcaption>16</figcaption></figure><figure><span class="lk w-GS" style="--m:24px"><svg class="mk" width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><figcaption>24</figcaption></figure><figure><span class="lk w-GS" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><figcaption>32</figcaption></figure><figure class="ico"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.50" fill="#16171a" stroke="#3c3f46" stroke-width="1.5"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32" style="color:#E3A9C8;fill:#E3A9C8;"><use href="#sDC"/></svg></svg><figcaption>Icon tile · specimen · no word</figcaption></figure></div>
+<div class="apps">
+<div class="side" aria-label="Sidebar, 240px"><div class="side-h"><span class="lk w-GS" style="--m:18px"><svg class="mk" width="18" height="18" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span></div><ul><li class="on">Linear algebra</li><li>Guitar: Travis picking</li><li>Byzantine history</li></ul><p class="cap">Sidebar · 240px</p></div>
+<div class="alm"><div class="alm-top"><span class="lk w-GS" style="--m:20px"><svg class="mk" width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><span class="date">Monday 26 October</span></div><h4>Sophia’s Almanac</h4><p>Yesterday you left the eigenvector question open: why does the shear have only one direction it leaves unturned?</p><p class="cap">Almanac masthead · New York unchanged below</p></div>
+<div class="doc"><span class="lk w-GS" style="--m:32px"><svg class="mk" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#sDC"/></svg><span class="word" aria-label="Sophia">SOPHIA</span></span><p>A research and learning notebook.</p><p class="cap">README / docs header</p></div>
+</div></div></div>
+
+<dl class="facts"><div><dt>What it says</dt><dd>Letter-spaced capitals give the word the reading of a press or library imprint: a shelf, not a chat. The six spaced letters echo the mark's six evenly spaced pieces.</dd></div><div><dt>Live risk</dt><dd>Caps turn a name into an institution, which Imani argued against. At 16px the tracking may fall apart into separate letters.</dd></div>
+<div><dt>Availability</dt><dd><b>Installed on the Mac that built this page</b> (AppKit font catalog, 26 Oct 2026): GillSans-SemiBold. <b>In this browser now:</b> <span class="fb" data-fam='&quot;Gill Sans&quot;' data-w="600">not checked (script off)</span> CSS stack: <code>&quot;Gill Sans&quot;, sans-serif</code>. If the face is missing, the browser draws the generic fallback, the check above says so, and the specimen is not a fair test. Native use would be SwiftUI <code>.custom("GillSans-SemiBold", size:)</code> with tracking, a system font on the build Mac. Licence terms for outlining this face into a logo file have not been checked.</dd></div></dl>
+</article>
+</div>
+</section>
+</main>
+
+<footer class="wrap foot" id="notes">
+<h2>How this was made</h2>
+<ul>
+<li><b>Fonts.</b> Every face was checked against the installed-font catalog of the Mac that built this page, using AppKit (<code>NSFontManager</code>) on 26 October 2026. On that Mac, WebKit's drawing of each family is pixel-identical to the named PostScript face and differs from the generic fallback. Not installed there: Iowan Old Style, Athelas, Seravek, Superclarendon. The page uses only local fonts and loads nothing over the network. If a face is missing in the browser that opens this page, the card says so, because the specimen is then showing a fallback.</li>
+<li><b>Licensing.</b> On the build Mac all four faces are in the system font folder. Nobody has checked whether their licences allow outlining the word into an SVG or PNG logo for README or web use. That question is open.</li>
+<li><b>Sizing.</b> Each face's size and vertical shift come from its CoreText ascent, descent and cap height, so the cap heights match across options. Option 3 centres its lowercase between the x-height and the cap height.</li>
+<li><b>Process.</b> This was a three-voice charrette (Mara for design, Marcus for product, Imani for CEO) in divergent mode, with a model of claude-opus-5-5 configured at High effort. The voices reported claude-opus-5-5 from their own context and could not observe the effective effort. No voice and no lead picks a winner; the choice is the user's.</li>
+<li><b>Not done.</b> Nothing is applied to the Mac app. The wordmark has not been tested with people.</li>
+</ul>
+</footer>
+<script>
+(function(){var r=document.documentElement;
+function bind(attr){var bs=document.querySelectorAll('.controls button[data-'+attr+']');bs.forEach(function(b){b.addEventListener('click',function(){r.setAttribute('data-'+attr,b.getAttribute('data-'+attr));bs.forEach(function(x){x.setAttribute('aria-pressed',String(x===b))})})})}
+bind('show');bind('word');
+/* local-font presence: compare widths against a monospace fallback */
+var c=document.createElement('canvas').getContext('2d'),t='Sophia sophia SOPHIA mwil';
+document.querySelectorAll('.fb').forEach(function(s){var f=s.getAttribute('data-fam'),w=s.getAttribute('data-w');
+c.font=w+' 40px monospace';var a=c.measureText(t).width;c.font=w+' 40px '+f+', monospace';var b=c.measureText(t).width;
+var ok=Math.abs(a-b)>0.5;s.textContent=ok?f.replace(/"/g,'')+' found, so the specimen is drawn in it.':f.replace(/"/g,'')+' not found, so the specimen shows a fallback and is not a fair test.';if(!ok)s.classList.add('miss')})})();
+</script>
+</body>
+</html>
