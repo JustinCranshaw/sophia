@@ -15,7 +15,8 @@ enum NotebookPresentation {
     }
     struct Publication { let preparedAt: String }
     static func almanacEntries(_ store: NotebookStore) -> [String: Publication] {
-        guard Almanac.isConfigured(url: store.url) else { return [:] }
+        guard Almanac.isConfigured(url: store.url),
+              let book = ExistingNotebook(root: store.url.deletingLastPathComponent(), name: store.url.lastPathComponent) else { return [:] }
         // Project the loaded transcript once; notification-target lookup rereads it for each run.
         let undone = Set(store.transcript.filter { $0.str("purpose") == "undo_page" }.compactMap { $0.str("entry") })
         let listed = Set(store.pageFiles)
@@ -25,7 +26,7 @@ enum NotebookPresentation {
                   let tag = action.str("tool_use"), tag.hasPrefix("almanac:"), seenRuns.insert(tag).inserted,
                   let write = action.str("id"), !undone.contains(write),
                   let file = action.str("file"), listed.contains(file), entries[file] == nil,
-                  store.readPage(file) != nil else { continue }
+                  book.readPage(file) != nil else { continue }
             entries[file] = Publication(preparedAt: action.str("at") ?? "")
         }
         return entries

@@ -37,6 +37,19 @@ import SophiaCore
             _ = try almanac.appendTranscript(["tool": .string("write_page"), "tool_use": .string("almanac:ignored-" + flag), "file": .string(ordinary.str("file")!), flag: .bool(true)])
         }
         require(NotebookPresentation.almanacEntries(almanac).count == validCount, "Refused and unknown-provenance records cannot add publication dates")
+        let pageURL = almanac.pagesURL.appendingPathComponent(first.file)
+        let pageBytes = try Data(contentsOf: pageURL)
+        try FileManager.default.removeItem(at: pageURL)
+        require(NotebookPresentation.almanacEntries(almanac)[first.file] == nil, "Missing pages have no publication label")
+        let outside = root.appendingPathComponent("owned-symlink-canary.md")
+        try Data("DEVELOPER-OWNED outside-page canary".utf8).write(to: outside)
+        try FileManager.default.createSymbolicLink(at: pageURL, withDestinationURL: outside)
+        require(almanac.readPage(first.file) != nil, "Control: writable-store lookup follows this owned symlink")
+        require(Almanac.entry(id: first.id, url: almanac.url) == nil, "Core rejects a replaced page symlink")
+        require(NotebookPresentation.almanacEntries(almanac)[first.file] == nil, "Presentation preserves Core's symlink refusal")
+        try FileManager.default.removeItem(at: pageURL)
+        try pageBytes.write(to: pageURL)
+        require(NotebookPresentation.almanacEntries(almanac)[first.file]?.preparedAt == first.preparedAt, "Restored valid page retains its recorded date")
         let transcript = almanac.url.appendingPathComponent("transcript.jsonl")
         let records = try String(contentsOf: transcript, encoding: .utf8).split(separator: "\n").map { line -> JSONObject in
             var value = JSON.parse(String(line))!.object!
