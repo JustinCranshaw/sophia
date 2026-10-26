@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en" data-show="both">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sophia — brand round two (SOP61)</title>
+<style>/* page chrome */
+:root{--c-bg:#f4f4f2;--c-ink:#18181a;--c-mut:#5c5c62;--c-rule:#d8d8dc;--c-card:#fff;--c-acc:#1f5fbf;color-scheme:light dark}
+@media (prefers-color-scheme:dark){html[data-show=both]{--c-bg:#101012;--c-ink:#ececee;--c-mut:#a2a2aa;--c-rule:#2c2c31;--c-card:#18181b;--c-acc:#8ab4ff}}
+html[data-show=dark]{--c-bg:#101012;--c-ink:#ececee;--c-mut:#a2a2aa;--c-rule:#2c2c31;--c-card:#18181b;--c-acc:#8ab4ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--c-bg);color:var(--c-ink);font:15px/1.5 -apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
+a{color:var(--c-acc)}
+.top,.terr,.foot{max-width:1320px;margin:0 auto;padding:0 28px}
+.top{padding-top:40px;padding-bottom:12px}
+.kick{margin:0 0 6px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--c-mut)}
+h1{font:600 30px/1.15 -apple-system,"Helvetica Neue",sans-serif;margin:0 0 10px;letter-spacing:-.01em}
+.lede{max-width:78ch;margin:0 0 16px;font-size:16px}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}
+.ctl-lab{font-size:12px;color:var(--c-mut);margin-right:4px}
+.controls button{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--c-rule);background:var(--c-card);color:var(--c-ink);cursor:pointer}
+.controls button[aria-pressed=true]{background:var(--c-ink);color:var(--c-bg);border-color:var(--c-ink)}
+.controls button:focus-visible,.jump a:focus-visible{outline:2px solid var(--c-acc);outline-offset:2px}
+.jump{display:flex;flex-wrap:wrap;gap:14px;margin:0 0 12px;font-size:14px}
+.honest{max-width:92ch;font-size:13px;color:var(--c-mut);border-left:3px solid var(--c-rule);padding-left:12px;margin:0}
+.honest b{color:var(--c-ink)}
+.terr{padding-top:44px;padding-bottom:12px;border-top:1px solid var(--c-rule);margin-top:36px}
+.terr-head h2{font:600 26px/1.15 -apple-system,"Helvetica Neue",sans-serif;margin:0 0 8px}
+.premise{max-width:80ch;font-size:16px;margin:0 0 14px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 22px;margin:0 0 22px;font-size:13px}
+.facts dt{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--c-mut);margin-bottom:2px}
+.facts dd{margin:0}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:1080px){.pair{grid-template-columns:1fr}}
+html[data-show=light] .face.dark,html[data-show=dark] .face.light{display:none}
+html[data-show=light] .pair,html[data-show=dark] .pair{grid-template-columns:minmax(0,760px)}
+.foot{padding-top:28px;padding-bottom:60px;border-top:1px solid var(--c-rule);margin-top:44px;font-size:13px;color:var(--c-mut)}
+.foot h2{font-size:15px;color:var(--c-ink);margin:0 0 4px}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* generic face */
+.face{background:var(--bg);color:var(--ink);font-family:var(--body);border-radius:12px;padding:22px 24px 26px;border:1px solid var(--frame);--ma:var(--acc);min-width:0}
+.face ::selection{background:var(--selbg);color:var(--ink)}
+.mode-tag{margin:0 0 14px;font:600 10.5px/1 var(--ui);letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+.lockup{display:flex;align-items:center;gap:10px;color:var(--ink);margin-bottom:16px}
+.wm{font:var(--wmfont);color:var(--ink)}
+.pg,.convo,.alm{background:var(--surf);border:1px solid var(--rule);border-radius:var(--rad,8px);padding:16px 18px;margin-bottom:12px}
+.pg p,.alm p{margin:0 0 10px;font-size:15px;line-height:1.55}
+.crumb{font:12px/1.3 var(--ui)!important;color:var(--mut);margin:0 0 4px!important}
+.ptitle,.alm-t{font:var(--hfont);color:var(--ink);margin:0 0 12px}
+.lab{font:600 10.5px/1.2 var(--ui);letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.sel{background:var(--selbg);color:inherit;box-shadow:inset 0 -1.5px 0 var(--acc);border-radius:2px;padding:0 1px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.sel-tag{display:inline-block;vertical-align:2px;margin-left:5px;font:600 9px/1 var(--ui);font-variant:normal;letter-spacing:.06em;text-transform:uppercase;background:var(--acc);color:var(--onacc);padding:3px 4px;border-radius:2px;white-space:nowrap}
+.yours{margin:0 0 12px;padding:2px 0 2px 12px;border-left:3px solid var(--ink);color:var(--ink);font-size:15px}
+.yours .lab{display:block;margin-bottom:3px}
+.prot{display:block;font:11px/1.3 var(--ui);color:var(--mut);margin-top:3px}
+.meta{font:11.5px/1.3 var(--ui);color:var(--mut)}
+cite{font-style:italic}
+.prov{border-bottom:1px dashed var(--mut);padding-bottom:6px}
+.rev-row,.goal{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font:13px/1.3 var(--ui);color:var(--ink2);padding:8px 0;border-top:1px solid var(--rule)}
+.goal .lab{color:var(--ink2)}
+.face button{font:600 12px/1 var(--ui);padding:6px 10px;border-radius:5px;border:1px solid var(--rule);background:transparent;color:var(--ink);cursor:pointer}
+.face button:focus-visible,.face input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.err{margin-top:8px;font:13px/1.45 var(--ui);color:var(--ink);background:var(--errbg);border-left:3px solid var(--err);padding:8px 10px;border-radius:0 4px 4px 0}
+.err .lab{color:var(--err);margin-right:4px}
+.convo .turn{margin:0 0 10px}
+.convo .who{display:block;font:600 11px/1.2 var(--ui);letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin-bottom:2px}
+.convo .so .who{color:var(--acctext)}
+.convo p{margin:0;font-size:14.5px;line-height:1.5}
+.convo .you p{color:var(--ink)}
+.convo .so p{color:var(--ink2)}
+.act{display:flex;gap:8px;align-items:center;margin-top:6px;font:12px var(--ui);color:var(--mut)}
+.reply{display:block;margin-top:10px}
+.reply input{width:100%;font:14px var(--ui);color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:6px;padding:9px 11px}
+.reply input::placeholder{color:var(--mut);opacity:1}
+.alm-mast{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.alm-date{font:12px var(--ui);color:var(--mut)}
+/* mark sheets */
+.sheets{display:grid;gap:10px;margin-top:4px}
+.sheet{border-top:1px solid var(--rule);padding-top:10px}
+.sheet-name{margin:0 0 8px;font:600 11px/1 var(--ui);letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+.sheet-name small{font-weight:400;text-transform:none;letter-spacing:0}
+.cells{display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px 18px;color:var(--ink)}
+.cells figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:5px}
+.cells figcaption{font:10.5px var(--ui);color:var(--mut)}
+.mk{display:block;fill:currentColor;overflow:visible}
+.mono{--ma:currentColor}
+.rev{display:inline-flex;padding:8px;background:var(--ink);color:var(--bg);border-radius:6px;--ma:var(--bg)}
+.ic .plate{fill:var(--iconbg);stroke:var(--iconrule);stroke-width:1}
+.ic{color:var(--iconfg);fill:currentColor}
+
+/* ---------- I. Gloss: rubric red; Hoefler Text */
+.t-gloss .face{--body:"Hoefler Text",Baskerville,Georgia,serif;--ui:"Hoefler Text",Baskerville,Georgia,serif;--wmfont:400 30px/1 "Hoefler Text",Baskerville,Georgia,serif;--hfont:400 23px/1.2 "Hoefler Text",Baskerville,Georgia,serif;--rad:3px}
+.t-gloss .light{--bg:#f6f3ec;--surf:#fffdf8;--frame:#ddd5c5;--ink:#1e1c19;--ink2:#47423a;--mut:#6b6458;--rule:#e2dccf;--acc:#9e3426;--acctext:#9e3426;--onacc:#fff;--selbg:#f4dcd5;--err:#8a5a00;--errbg:#f6ecd6;--iconbg:#f6f3ec;--iconrule:#d4ccbb;--iconfg:#1e1c19}
+.t-gloss .dark{--bg:#15140f;--surf:#1c1b16;--frame:#2f2c25;--ink:#e4dfd3;--ink2:#c2bbad;--mut:#968f80;--rule:#312e27;--acc:#e0806a;--acctext:#e8917d;--onacc:#15140f;--selbg:#3d2620;--err:#d9a441;--errbg:#2a2316;--iconbg:#15140f;--iconrule:#3a362e;--iconfg:#e4dfd3}
+.t-gloss .lab{font:12.5px/1.2 "Hoefler Text",Baskerville,Georgia,serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.06em;font-weight:400}
+.t-gloss .rub{color:var(--acctext)}
+.t-gloss .gl-grid{display:grid;grid-template-columns:minmax(0,1fr) 34%;gap:18px}
+.t-gloss .gloss{border-left:1px solid var(--rule);padding-left:12px}
+.t-gloss .gloss p{font-size:13.5px;line-height:1.45;color:var(--ink2)}
+.t-gloss .gloss .lab{display:block;margin-bottom:2px}
+.t-gloss .ref{color:var(--acctext);font-size:11px;font-variant:small-caps;margin-left:1px}
+.t-gloss .src{margin:0 0 6px 18px}
+.t-gloss .src p{font-size:14px;margin:2px 0}
+.t-gloss .src b{font-weight:400;color:var(--ink)}
+.t-gloss .alm-mast{border-bottom:1px solid var(--ink);padding-bottom:6px;justify-content:space-between}
+.t-gloss .alm-mast .lab{font-size:15px}
+.t-gloss .convo .who{font:13px/1.2 "Hoefler Text",Georgia,serif;font-variant:small-caps;text-transform:lowercase;letter-spacing:.06em;font-weight:400}
+@media (max-width:620px){.t-gloss .gl-grid{grid-template-columns:1fr}.t-gloss .gloss{border-left:0;border-top:1px solid var(--rule);padding:8px 0 0}}
+
+/* ---------- II. Slip & Interpolation: indelible violet; Avenir Next + Charter */
+.t-slip .face{--body:Charter,"Bitstream Charter",Georgia,serif;--ui:"Avenir Next",Avenir,"Helvetica Neue",sans-serif;--wmfont:600 28px/1 "Avenir Next",Avenir,"Helvetica Neue",sans-serif;--hfont:600 21px/1.2 "Avenir Next",Avenir,"Helvetica Neue",sans-serif;--rad:2px;font-variant-numeric:tabular-nums}
+.t-slip .light{--bg:#f6f6f4;--surf:#fff;--frame:#dcdce2;--ink:#17171c;--ink2:#44444e;--mut:#62626e;--rule:#e1e1e7;--acc:#5a3fc0;--acctext:#5a3fc0;--onacc:#fff;--selbg:#ece8fb;--err:#b3261e;--errbg:#fbeceb;--iconbg:#fff;--iconrule:#d6d6de;--iconfg:#17171c}
+.t-slip .dark{--bg:#121217;--surf:#1a1a21;--frame:#2a2a33;--ink:#ecebf2;--ink2:#bdbccb;--mut:#91909f;--rule:#2c2c36;--acc:#a897ff;--acctext:#b4a6ff;--onacc:#121217;--selbg:#2b2552;--err:#ff8a80;--errbg:#2c1a1a;--iconbg:#1a1a21;--iconrule:#34343f;--iconfg:#ecebf2}
+.t-slip .wm{letter-spacing:-.01em}
+.t-slip .cite{font:600 12px var(--ui);color:var(--ink);text-decoration:none;border-bottom:1px solid var(--mut)}
+.t-slip .interp{color:var(--ink2);padding-left:12px;border-left:3px double var(--acc)}
+.t-slip .interp .lab{display:block;margin-bottom:2px}
+.t-slip .acc{color:var(--acctext)}
+.t-slip .slips{display:grid;gap:8px;margin:12px 0 10px}
+.t-slip .slip{display:grid;grid-template-columns:28px 1fr;gap:10px;border:1px solid var(--rule);border-top:2px solid var(--ink);padding:8px 10px;background:var(--bg)}
+.t-slip .slip p{font-size:14px;margin:2px 0}
+.t-slip .slip .no{font:600 18px/1 var(--ui);color:var(--ink)}
+.t-slip .slip.err{border-left:1px solid var(--rule);border-top-color:var(--err);border-radius:0;background:var(--errbg)}
+.t-slip .slip.err .no{color:var(--err)}
+.t-slip .alm-mast{justify-content:space-between;border-top:2px solid var(--ink);padding-top:8px}
+.t-slip .alm-date{font:600 12px var(--ui);letter-spacing:.04em;color:var(--ink2)}
+
+/* ---------- III. Night Scale: lamp; Palatino; dark-native */
+.t-night .face{--body:Palatino,"Palatino Linotype","Book Antiqua",Georgia,serif;--ui:Palatino,"Palatino Linotype",Georgia,serif;--mono:Menlo,"PT Mono",ui-monospace,monospace;--wmfont:400 30px/1 Palatino,"Palatino Linotype",Georgia,serif;--hfont:400 22px/1.25 Palatino,"Palatino Linotype",Georgia,serif;--rad:6px}
+.t-night .dark{--bg:#111318;--surf:#1a1d24;--frame:#262a33;--ink:#e6e0d2;--ink2:#bfb9ac;--mut:#8f8a7d;--rule:#2a2e37;--acc:#d6a24e;--acctext:#dcae62;--onacc:#111318;--selbg:#33291a;--err:#e5837a;--errbg:#2a1c1c;--iconbg:#111318;--iconrule:#2e333d;--iconfg:#e6e0d2}
+.t-night .light{--bg:#f3efe5;--surf:#fbf9f3;--frame:#dcd5c6;--ink:#1a1c22;--ink2:#41444d;--mut:#66625a;--rule:#e0d9ca;--acc:#8f621c;--acctext:#80561a;--onacc:#fff;--selbg:#f1e3c6;--err:#a3352b;--errbg:#f7e6e2;--iconbg:#1a1c22;--iconrule:#1a1c22;--iconfg:#f3efe5}
+.t-night .light .ic{--ma:#d6a24e}
+.t-night .lab,.t-night .meta,.t-night .alm-date,.t-night .gut,.t-night .mode-tag{font-family:var(--mono);letter-spacing:.06em}
+.t-night .row{display:grid;grid-template-columns:10px 74px minmax(0,1fr);gap:0 8px;align-items:start;margin-bottom:8px}
+.t-night .tk{width:1.5px;height:10px;background:var(--mut);margin-top:6px;justify-self:center}
+.t-night .tk.tall{height:26px;width:2.5px;background:var(--ink);margin-top:0;position:relative}
+.t-night .tk.tall::before{content:"";position:absolute;left:-4px;top:-7px;border:5.25px solid transparent;border-top:6px solid var(--acc);border-bottom:0}
+.t-night .gut{font-size:10.5px;line-height:1.2;text-transform:uppercase;color:var(--mut);padding-top:5px}
+.t-night .gut.acc{color:var(--acctext)}
+.t-night .row p,.t-night .row blockquote{margin:0}
+.t-night .interp{color:var(--ink2)}
+.t-night .prov .lab{font-size:10px;text-transform:uppercase;margin-left:4px}
+.t-night .yours{border-left:0;padding:0}
+.t-night .src p{font-size:14px;margin:0 0 2px}
+.t-night .alm-frame{border:1.5px solid var(--ink);padding:12px 14px 6px;margin-bottom:8px;background:linear-gradient(var(--acc),var(--acc)) no-repeat 14px 40px/calc(100% - 28px) 1.5px}
+.t-night .alm-mast{color:var(--ink);margin-bottom:16px}
+.t-night .alm-name{font:400 17px/1 var(--body)}
+.t-night .alm-date{margin-left:auto;font-size:11px}
+.t-night .alm .meta{display:block;margin:0 0 6px}
+
+/* ---------- IV. Colophon: thread green; Gill Sans + PT Serif */
+.t-col .face{--body:"PT Serif",Georgia,serif;--ui:"Gill Sans","Gill Sans MT",Seravek,"Helvetica Neue",sans-serif;--wmfont:300 30px/1 "Gill Sans","Gill Sans MT",Seravek,sans-serif;--hfont:400 24px/1.2 "PT Serif",Georgia,serif;--rad:0px}
+.t-col .light{--bg:#f4f4f1;--surf:#fff;--frame:#dfe1dc;--ink:#1b1c1b;--ink2:#454845;--mut:#666a65;--rule:#e4e6e1;--acc:#2f6b4f;--acctext:#2a6248;--onacc:#fff;--selbg:#dcece3;--err:#a8322a;--errbg:#f8e9e7;--iconbg:#fff;--iconrule:#d8dbd5;--iconfg:#1b1c1b}
+.t-col .dark{--bg:#161817;--surf:#1d201f;--frame:#2a2e2c;--ink:#e7e9e4;--ink2:#babfb8;--mut:#8f958d;--rule:#2b302d;--acc:#7fc3a0;--acctext:#86c9a6;--onacc:#161817;--selbg:#1f3a2e;--err:#f08c80;--errbg:#2c1c1a;--iconbg:#1d201f;--iconrule:#323733;--iconfg:#e7e9e4}
+.t-col .pg,.t-col .alm,.t-col .convo{border-width:1px 0 0;padding-left:0;padding-right:0;background:transparent}
+.t-col .wm{letter-spacing:.04em}
+.t-col .lockup.quiet{gap:6px;align-items:baseline}
+.t-col .lockup .mk{position:relative;top:1px}
+.t-col .crumb{text-transform:none}
+.t-col .thread-wrap{position:relative;padding-left:14px;margin-left:-14px}
+.t-col .thread{position:absolute;left:0;top:3px;bottom:12px;width:2px;background:var(--acc)}
+.t-col .yours{border-left:0;padding-left:0}
+.t-col .att{font:italic 13px/1.3 var(--body);color:var(--mut);white-space:nowrap}
+.t-col .interp{color:var(--ink2);font-style:italic}
+.t-col .interp .att{font-style:normal}
+.t-col .src{font-size:14px}
+.t-col .alm-mast{display:block;font:13px/1.2 var(--ui);letter-spacing:.06em;color:var(--ink2);text-align:center;border-bottom:1px solid var(--rule);padding-bottom:8px}
+.t-col .alm-mast .alm-date{font-size:13px}
+.t-col .alm-t{text-align:center}
+.t-col .end{display:flex;align-items:center;gap:6px;color:var(--mut)}
+.t-col .end .mk{color:var(--ink)}
+.t-col .lab{font-weight:500;letter-spacing:.1em}
+/* quiet page Undo (replaces routine success banners) */
+.phead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.face .undo{font:500 12px/1 var(--ui);letter-spacing:0;text-transform:none;padding:4px 6px;border:0;color:var(--mut);background:transparent}
+.face .undo:hover{color:var(--ink);text-decoration:underline}
+.goal{border-top:1px solid var(--rule);margin-top:4px}
+/* night: compact gutter at narrow widths; dateline-size meta */
+.t-night .alm .meta{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
+@media (max-width:620px){.t-night .row{grid-template-columns:10px minmax(0,1fr);gap:2px 8px}.t-night .gut{grid-column:2;padding-top:3px}.t-night .row>p,.t-night .row>blockquote,.t-night .row>div{grid-column:2}.t-night .tk{grid-row:1}}
+/* ===== round-1 revisions ===== */
+/* shared: return briefing, year, dark tile */
+.brief{background:var(--surf);border:1px solid var(--rule);border-radius:var(--rad,8px);padding:14px 18px;margin-bottom:12px}
+.brief-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin:0 0 8px}
+.brief-n{font:12px/1.3 var(--ui);color:var(--mut)}
+.brief dl{margin:0;display:grid;gap:6px}
+.brief dl>div{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px}
+.brief dt{padding-top:2px}
+.brief dd{margin:0;font-size:14px;line-height:1.45;color:var(--ink2)}
+@media (max-width:620px){.brief dl>div{grid-template-columns:1fr;gap:0}}
+.ic-dk .plate{fill:var(--dkbg);stroke:var(--dkbg)}
+.ic-dk{color:var(--dkfg);--ma:var(--dkacc)}
+.face{--dkbg:#16171a;--dkfg:#ecebe6;--dkacc:var(--acc)}
+.t-gloss .face{--dkbg:#131517;--dkfg:#e8e4dc;--dkacc:#ef8a6e}
+.t-slip .face{--dkbg:#121217;--dkfg:#ecebf2;--dkacc:#a897ff}
+.t-night .face{--dkbg:#111318;--dkfg:#e6e0d2;--dkacc:#d6a24e}
+.t-col .face{--dkbg:#161817;--dkfg:#e7e9e4;--dkacc:#7fc3a0}
+/* Gloss: designed dark (cool graphite, raised margin plane), interleaved narrow gloss, framed masthead */
+.t-gloss .dark{--bg:#121315;--surf:#18191c;--frame:#26282c;--ink:#e8e4dc;--ink2:#c4bfb5;--mut:#979288;--rule:#2a2c30;--acc:#ef8a6e;--acctext:#f09478;--onacc:#121315;--selbg:#3a2621;--err:#dcaa4a;--errbg:#272215;--iconbg:#131517;--iconrule:#2e3034;--iconfg:#e8e4dc;--plane:#202226}
+.t-gloss .light{--plane:transparent}
+.t-gloss .gl-grid{grid-auto-flow:row dense}
+.t-gloss .gl-grid>*{grid-column:1}
+.t-gloss .gl-grid>.gloss{grid-column:2;grid-row:1/span 3;align-self:start}
+.t-gloss .dark .gloss{background:var(--plane);border-left:0;border-radius:3px;padding:10px 12px}
+.t-gloss .hang{display:none}
+.t-gloss .alm .gl-grid>.gloss{grid-row:1/span 2}
+.t-gloss .gl-frame{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;border:1px solid var(--ink);border-bottom:0;padding:10px 12px 8px;color:var(--ink);--ma:var(--acc)}
+.t-gloss .gl-frame .lab{display:block;font-size:13px}
+.t-gloss .alm-year{display:block;font:400 34px/1 "Hoefler Text",Baskerville,Georgia,serif;font-variant-numeric:oldstyle-nums;color:var(--ink)}
+@media (max-width:620px){
+ .t-gloss .gl-grid>.gloss{grid-column:1;grid-row:auto;border:0;padding:0 0 4px 26px;margin:-4px 0 6px;position:relative;background:transparent}
+ .t-gloss .dark .gloss{background:var(--plane);padding:8px 10px 6px 30px}
+ .t-gloss .hang{display:block;position:absolute;left:6px;top:0;font:italic 18px/1 "Hoefler Text",Georgia,serif;color:var(--acctext)}
+ .t-gloss .dark .hang{left:10px;top:8px}
+ .t-gloss .gloss p{position:relative}
+ .t-gloss .gloss .lab{display:block}
+ .t-gloss .gl-frame{grid-template-columns:auto 1fr}.t-gloss .gl-frame .alm-date{grid-column:1/-1}}
+/* Slip: outline-only selection, dated slip masthead, muted variant */
+.t-slip .sel{background:transparent;box-shadow:none;outline:1.5px solid var(--acc);outline-offset:1px}
+.t-slip .sel-tag{display:none}
+.t-slip .slip-dated{border-top:5px solid var(--acc)}
+.t-slip .slip-dated .alm-mast{border-top:0;padding-top:0;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:4px 10px;color:var(--ink)}
+.t-slip .alm-year{font:600 30px/1 var(--ui);font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.01em}
+.t-slip .slip-dated .alm-date{grid-column:3;grid-row:2;justify-self:end}
+.t-slip .slip-dated .lab{grid-column:2;grid-row:1}
+.t-slip .slip-dated .alm-mast .mk{grid-row:1/span 2}
+.t-slip .slip-dated .alm-year{grid-column:3;grid-row:1}
+.t-slip .muted-var{border-top:1px solid var(--rule);padding-top:10px;margin-top:10px}
+.t-slip .light .mv{--ma:#5e557f}.t-slip .dark .mv{--ma:#a39cc2}
+.t-slip .mv-note{font:12px/1.4 var(--ui);color:var(--mut);margin:0;max-width:34ch}
+.t-slip .light .mv-d,.t-slip .dark .mv-l{display:none}
+/* Night: big year band */
+.t-night .alm-frame{background:none;padding-top:12px}
+.t-night .alm-mast{margin-bottom:6px}
+.t-night .alm-mast .alm-date{margin-left:auto}
+.t-night .alm-year{font:400 46px/1 Palatino,"Palatino Linotype",Georgia,serif;letter-spacing:.02em;margin:0 0 12px!important;padding-bottom:8px;border-bottom:4px solid var(--acc);color:var(--ink)}
+/* Colophon: thread on selected passage only; year-led masthead */
+.t-col .alm-mast{display:grid;justify-items:center;gap:4px;text-align:center}
+.t-col .alm-year{font:300 40px/1 "Gill Sans","Gill Sans MT",Seravek,sans-serif;letter-spacing:.06em;color:var(--ink)}
+.t-col .alm-name{font:13px/1.2 var(--ui);letter-spacing:.08em;color:var(--ink2)}
+@media (max-width:620px){
+ .t-gloss .gl-grid{grid-auto-flow:row}
+ .t-gloss .gl-grid>.gloss,.t-gloss .dark .gl-grid>.gloss{padding-left:0}
+ .t-gloss .gloss p{padding-left:24px}
+ .t-gloss .hang,.t-gloss .dark .hang{left:4px;top:1px}
+ .t-gloss .dark .gl-grid>.gloss{padding:8px 10px 4px 6px}}
+.t-gloss .ref{font:italic 12px/1 "Hoefler Text",Georgia,serif;font-variant:normal;margin-left:1px}
+.dark .ic-dk .plate{stroke:#3c3f46;stroke-width:1.5}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="m-gloss-a" viewBox="0 0 32 32"><rect x="4.5" y="6" width="9" height="20"/><rect x="15.5" y="6" width="4" height="4" style="fill:var(--ma,currentColor)"/><path d="M22 7H27V25H22" fill="none" stroke="currentColor" stroke-width="2"/></symbol><symbol id="m-gloss-b" viewBox="0 0 32 32"><path d="M4.5 28V4.5H27.5V28" fill="none" stroke="currentColor" stroke-width="2"/><rect x="13" y="10" width="9.5" height="18"/><rect x="8.5" y="10" width="3" height="3" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-slip-a" viewBox="0 0 32 32"><path d="M12.5 6H7.5V26H12.5M19.5 6H24.5V26H19.5" fill="none" stroke="currentColor" stroke-width="3"/><rect x="13.5" y="19.5" width="5" height="5" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-slip-b" viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="4" style="fill:var(--ma,currentColor)"/><path d="M4 9V27H28V9" fill="none" stroke="currentColor" stroke-width="2"/><rect x="8.5" y="18" width="5.5" height="5.5"/></symbol><symbol id="m-night-a" viewBox="0 0 32 32"><rect x="3" y="23" width="26" height="1.75"/><rect x="4.25" y="18.5" width="1.5" height="5"/><rect x="8.25" y="18.5" width="1.5" height="5"/><rect x="12.75" y="9.5" width="2.5" height="14"/><rect x="17.75" y="18.5" width="1.5" height="5"/><rect x="20.75" y="18.5" width="1.5" height="5"/><rect x="24.25" y="18.5" width="1.5" height="5"/><rect x="27.25" y="18.5" width="1.5" height="5"/><path d="M10 3.5H18L14 8Z" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-night-a-md" viewBox="0 0 32 32"><rect x="3" y="22.5" width="26" height="2.25"/><rect x="5" y="17" width="2.25" height="6"/><rect x="12.5" y="9.5" width="3" height="14"/><rect x="20" y="17" width="2.25" height="6"/><rect x="26" y="17" width="2.25" height="6"/><path d="M9.5 3H18.5L14 8.5Z" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-night-a-sm" viewBox="0 0 32 32"><rect x="2" y="22" width="28" height="3"/><rect x="3" y="16" width="3" height="7"/><rect x="12.5" y="9.5" width="3.5" height="13"/><rect x="21" y="16" width="3" height="7"/><rect x="27" y="16" width="3" height="7"/><path d="M8.5 2.5H20L14.25 9Z" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-night-b" viewBox="0 0 32 32"><rect x="4.75" y="4.75" width="22.5" height="22.5" fill="none" stroke="currentColor" stroke-width="1.75"/><rect x="8" y="21.5" width="1.25" height="4.5"/><rect x="11" y="21.5" width="1.25" height="4.5"/><rect x="14.75" y="21.5" width="1.25" height="4.5"/><rect x="17.75" y="21.5" width="1.25" height="4.5"/><rect x="20.25" y="21.5" width="1.25" height="4.5"/><rect x="23" y="21.5" width="1.25" height="4.5"/><rect x="8" y="8" width="16.25" height="5.5" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-col-a" viewBox="0 0 32 32"><rect x="4" y="7" width="24" height="3"/><rect x="4" y="14" width="24" height="3"/><rect x="4" y="21" width="12" height="3"/><rect x="19" y="18.5" width="8" height="8" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-col-b-sm" viewBox="0 0 32 32"><rect x="1" y="15" width="16" height="6"/><rect x="18.5" y="9.5" width="12.5" height="12.5" style="fill:var(--ma,currentColor)"/></symbol><symbol id="m-col-b" viewBox="0 0 32 32"><rect x="2.5" y="18" width="16" height="3.5"/><rect x="20.5" y="13" width="9" height="9" style="fill:var(--ma,currentColor)"/></symbol></svg>
+<header class="top">
+ <p class="kick">SOP61 · Brand round two · divergent · no winner selected · revised after rendered critique</p>
+ <h1>Sophia: four territories, each designed light <i>and</i> dark</h1>
+ <p class="lede">Fresh start from the round-two research. Every mark here is new original SVG; the ruled-book icon and all earlier marks are retired. Each territory brands something a notebook <i>does</i> — gloss, cite, take a reading, keep a place — not a picture of a notebook. Light and dark faces share identical markup, so differences are design, not content.</p>
+ <div class="controls" role="group" aria-label="Which specimens to show">
+  <span class="ctl-lab">Show</span>
+  <button type="button" data-set="both" aria-pressed="true">Light + dark</button>
+  <button type="button" data-set="light" aria-pressed="false">Light only</button>
+  <button type="button" data-set="dark" aria-pressed="false">Dark only</button>
+ </div>
+ <nav class="jump" aria-label="Territories"><a href="#gloss">I Gloss</a><a href="#slip">II Slip & Interpolation</a><a href="#night">III Night Scale</a><a href="#col">IV Colophon</a></nav>
+ <p class="honest"><b>Illustrative only.</b> Notebook text, the Fourier-series page, the Almanac entry and the conversation are invented examples; the “source” is a placeholder, not a quotation. Specimen buttons and fields are inert. Nothing here changes the app or adds features. Research references below are supplied inputs. <b>One reference image was inspected</b>: the 1851 Old Farmer’s Almanac cover (supplied by the coordinator, linked below) — used for hierarchy only; nothing is copied. No other reference image has been seen. Previous comparison remains at <a href="branding.html">branding.html</a>.</p>
+</header>
+<main>
+
+<section class="terr t-gloss" id="gloss" aria-labelledby="h-gloss">
+ <header class="terr-head">
+  <p class="kick">I · Brief territory 1 — Glossed Page · opening pass: Mara · critiqued and revised by all three voices</p>
+  <h2 id="h-gloss">Gloss</h2>
+  <p class="premise">The brand is the architecture of commentary around a text. Your page is the central column; Sophia speaks in the margin, tied to the line she comments on by a small rubric reference point.</p>
+  <dl class="facts">
+   <div><dt>Why the marks belong</dt><dd><b>Gloss bracket</b> (Sophia): a heavy column (the text), a square reference point on its top line, and a thin bracket for commentary. <b>Surround</b> (Almanac): the text block closed on three sides by commentary — a finished, framed entry, open only at the foot. Both draw a reading relation, not an object.</dd></div>
+   <div><dt>Provenance roles</dt><dd>Source = indented block with SOURCE numeral; Yours = heavy left rule + YOURS; Sophia = smaller roman in the gloss column with rubric small-caps label. Rubric appears on labels and reference points only; error uses ochre + ⚠ + words. Dark is not an inversion: hairlines vanish at night, so the margin becomes a raised plane on cool graphite. Below 620px the gloss stays beside its line as an indented gloss with a hanging rubric letter.</dd></div>
+   <div><dt>Type</dt><dd>Hoefler Text (fallback Baskerville, Georgia) roman/italic/small caps; UI labels in the same family.</dd></div>
+   <div><dt>Excluded</dt><dd>No manuscript texture, blackletter, daggers/pilcrows as ornament, or religious decoration.</dd></div>
+   <div><dt>Risk &amp; test</dt><dd>At 16px the bracket may read as code. Rubric red may read as a correction pen. Test greyscale 16px, and whether the 390px interleaved gloss (hanging rubric letters) still reads as commentary.</dd></div>
+  </dl>
+ </header>
+ <div class="pair"><div class="face light" data-mode="light"><p class="mode-tag">Light</p>
+<div class="lockup"><svg class="mk " width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Gloss bracket mark"><use href="#m-gloss-a"/></svg><span class="wm">Sophia</span></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <div class="gl-grid">
+   <p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump.<sup class="ref"><span class="vh">gloss </span>a</sup> There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>.<sup class="ref"><span class="vh">gloss </span>b</sup></p>
+  <aside class="gloss" aria-label="Sophia's glosses">
+   <p><span class="hang" aria-hidden="true">a</span><span class="lab rub">Sophia · a</span>Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed.</p>
+   <p class="prov"><span class="hang" aria-hidden="true">b</span><span class="lab rub">Sophia · b · uncertain</span>Whether this matters for your filter depends on the sampling rate. Not yet checked.</p>
+  </aside>
+   <blockquote class="yours"><span class="lab">Yours</span>So more terms never make the spike go away?<span class="prot">Your line · protected</span></blockquote>
+   <div class="src"><span class="lab">Source <b>1</b></span><p><cite>Example textbook chapter on Fourier series</cite> — Excerpt placeholder — illustrative; no real source is quoted on this page.</p><span class="meta">Opened in conversation · 25 Oct 2026</span></div>
+ </div>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm">
+ <div class="alm-mast gl-frame"><svg class="mk " width="26" height="26" viewBox="0 0 32 32" role="img" aria-label="Surround, Almanac mark"><use href="#m-gloss-b"/></svg><div><span class="lab rub">Sophia’s Almanac</span><span class="alm-year">2026</span></div><span class="alm-date">Sunday 25 October 2026</span></div>
+ <div class="gl-grid"><h4 class="alm-t">How a slide rule multiplies by adding</h4>
+ <aside class="gloss"><p><span class="lab rub">Finished entry</span>Reading is enough. No reply is expected.</p></aside><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p></div>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">Gloss bracket · Sophia</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Surround · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div></div></div><div class="face dark" data-mode="dark"><p class="mode-tag">Dark</p>
+<div class="lockup"><svg class="mk " width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Gloss bracket mark"><use href="#m-gloss-a"/></svg><span class="wm">Sophia</span></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <div class="gl-grid">
+   <p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump.<sup class="ref"><span class="vh">gloss </span>a</sup> There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>.<sup class="ref"><span class="vh">gloss </span>b</sup></p>
+  <aside class="gloss" aria-label="Sophia's glosses">
+   <p><span class="hang" aria-hidden="true">a</span><span class="lab rub">Sophia · a</span>Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed.</p>
+   <p class="prov"><span class="hang" aria-hidden="true">b</span><span class="lab rub">Sophia · b · uncertain</span>Whether this matters for your filter depends on the sampling rate. Not yet checked.</p>
+  </aside>
+   <blockquote class="yours"><span class="lab">Yours</span>So more terms never make the spike go away?<span class="prot">Your line · protected</span></blockquote>
+   <div class="src"><span class="lab">Source <b>1</b></span><p><cite>Example textbook chapter on Fourier series</cite> — Excerpt placeholder — illustrative; no real source is quoted on this page.</p><span class="meta">Opened in conversation · 25 Oct 2026</span></div>
+ </div>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm">
+ <div class="alm-mast gl-frame"><svg class="mk " width="26" height="26" viewBox="0 0 32 32" role="img" aria-label="Surround, Almanac mark"><use href="#m-gloss-b"/></svg><div><span class="lab rub">Sophia’s Almanac</span><span class="alm-year">2026</span></div><span class="alm-date">Sunday 25 October 2026</span></div>
+ <div class="gl-grid"><h4 class="alm-t">How a slide rule multiplies by adding</h4>
+ <aside class="gloss"><p><span class="lab rub">Finished entry</span>Reading is enough. No reply is expected.</p></aside><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p></div>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">Gloss bracket · Sophia</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Surround · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-gloss-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-gloss-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div></div></div></div>
+</section>
+<section class="terr t-slip" id="slip" aria-labelledby="h-slip">
+ <header class="terr-head">
+  <p class="kick">II · Brief territories 2 + 3 — Index & Slip, Coded Colour · opening pass: Marcus · critiqued and revised by all three voices</p>
+  <h2 id="h-slip">Slip & Interpolation</h2>
+  <p class="premise">Weeks later you must see at a glance whose sentence is whose. Sources are numbered slips; the page and your words stay plain ink; only Sophia’s interpretations are bracketed — the editorial convention for someone speaking inside another’s text.</p>
+  <dl class="facts">
+   <div><dt>Why the marks belong</dt><dd><b>Interpolation [ . ]</b> (Sophia): square brackets around a full stop — where Sophia adds to, but does not overwrite, your text. <b>Dated slip</b> (Almanac): the slip’s heavy heading rule over a single full stop — one finished idea per slip (risk: reads as a calendar page).</dd></div>
+   <div><dt>Provenance roles</dt><dd>Accent marks only Sophia’s own voice — her interpretations and the Almanac entries she prepares — and the current selection (an outline, no fill, no badge). Each role also carries a word label and bracket glyph; sources carry numerals that link to their slip. Error = red + ⚠ + “not opened”.</dd></div>
+   <div><dt>Type</dt><dd>Avenir Next (labels, wordmark, tabular numerals) with Charter for reading.</dd></div>
+   <div><dt>Excluded</dt><dd>No tag chips, category colours, status pills, graphs, streak counts or PKM link-graph imagery.</dd></div>
+   <div><dt>Risk &amp; test</dt><dd>Violet replaced Marcus’s original red to keep this distinct from Gloss; he accepted the structure in violet but flags saturated violet as a generic ‘AI’ colour — compare the muted variant. Brackets may read as code at 16px.</dd></div>
+  </dl>
+ </header>
+ <div class="pair"><div class="face light" data-mode="light"><p class="mode-tag">Light</p>
+<div class="lockup"><svg class="mk " width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Interpolation mark"><use href="#m-slip-a"/></svg><span class="wm">Sophia</span></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump. There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>. <a class="cite" href="#s1-l">[1]</a></p>
+ <blockquote class="yours"><span class="lab">Yours</span>So more terms never make the spike go away?<span class="prot">Your line · protected</span></blockquote>
+ <p class="interp"><span class="lab acc"><span aria-hidden="true">[ </span>Sophia<span aria-hidden="true"> ]</span></span>Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed.</p>
+ <p class="interp prov"><span class="lab acc"><span aria-hidden="true">[ </span>Sophia · uncertain<span aria-hidden="true"> ]</span></span>Whether this matters for your filter depends on the sampling rate. Not yet checked.</p>
+ <div class="slips">
+  <div class="slip" id="s1-l"><span class="no">1</span><div><span class="lab">Source · opened</span><p><cite>Example textbook chapter on Fourier series</cite> — Excerpt placeholder — illustrative; no real source is quoted on this page.</p><span class="meta">25 Oct 2026</span></div></div>
+  <div class="slip err" role="note"><span class="no">2</span><div><span class="lab"><span aria-hidden="true">⚠ </span>Source · not opened</span><p>Second source: access denied. Nothing from it is quoted.</p></div></div>
+ </div>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm slip-dated">
+ <div class="alm-mast"><svg class="mk " width="26" height="26" viewBox="0 0 32 32" role="img" aria-label="Dated slip, Almanac mark"><use href="#m-slip-b"/></svg><span class="lab">Sophia’s Almanac</span><span class="alm-year">2026</span><span class="alm-date">10 · 25 · Sun</span></div>
+ <h4 class="alm-t">How a slide rule multiplies by adding</h4><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p>
+ <p class="interp"><span class="lab acc"><span aria-hidden="true">[ </span>Finished entry<span aria-hidden="true"> ]</span></span>Reading is enough. No reply is expected.</p>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">Interpolation [ . ] · Sophia</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Dated slip · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div>
+<div class="muted-var"><p class="sheet-name">Muted accent variant (for comparison)</p><div class="cells"><figure class="mv"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>Muted</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>Saturated</figcaption></figure><p class="mv-note">Muted <span class="mv-l">#5E557F light · #A39CC2 dark</span><span class="mv-d">#A39CC2 dark · #5E557F light</span> vs saturated #5A3FC0 / #A897FF. Mark only; not yet tested on text.</p></div></div></div></div><div class="face dark" data-mode="dark"><p class="mode-tag">Dark</p>
+<div class="lockup"><svg class="mk " width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Interpolation mark"><use href="#m-slip-a"/></svg><span class="wm">Sophia</span></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump. There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>. <a class="cite" href="#s1-d">[1]</a></p>
+ <blockquote class="yours"><span class="lab">Yours</span>So more terms never make the spike go away?<span class="prot">Your line · protected</span></blockquote>
+ <p class="interp"><span class="lab acc"><span aria-hidden="true">[ </span>Sophia<span aria-hidden="true"> ]</span></span>Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed.</p>
+ <p class="interp prov"><span class="lab acc"><span aria-hidden="true">[ </span>Sophia · uncertain<span aria-hidden="true"> ]</span></span>Whether this matters for your filter depends on the sampling rate. Not yet checked.</p>
+ <div class="slips">
+  <div class="slip" id="s1-d"><span class="no">1</span><div><span class="lab">Source · opened</span><p><cite>Example textbook chapter on Fourier series</cite> — Excerpt placeholder — illustrative; no real source is quoted on this page.</p><span class="meta">25 Oct 2026</span></div></div>
+  <div class="slip err" role="note"><span class="no">2</span><div><span class="lab"><span aria-hidden="true">⚠ </span>Source · not opened</span><p>Second source: access denied. Nothing from it is quoted.</p></div></div>
+ </div>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm slip-dated">
+ <div class="alm-mast"><svg class="mk " width="26" height="26" viewBox="0 0 32 32" role="img" aria-label="Dated slip, Almanac mark"><use href="#m-slip-b"/></svg><span class="lab">Sophia’s Almanac</span><span class="alm-year">2026</span><span class="alm-date">10 · 25 · Sun</span></div>
+ <h4 class="alm-t">How a slide rule multiplies by adding</h4><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p>
+ <p class="interp"><span class="lab acc"><span aria-hidden="true">[ </span>Finished entry<span aria-hidden="true"> ]</span></span>Reading is enough. No reply is expected.</p>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">Interpolation [ . ] · Sophia</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Dated slip · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-slip-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div>
+<div class="muted-var"><p class="sheet-name">Muted accent variant (for comparison)</p><div class="cells"><figure class="mv"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>Muted</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-slip-a"/></svg><figcaption>Saturated</figcaption></figure><p class="mv-note">Muted <span class="mv-l">#5E557F light · #A39CC2 dark</span><span class="mv-d">#A39CC2 dark · #5E557F light</span> vs saturated #5A3FC0 / #A897FF. Mark only; not yet tested on text.</p></div></div></div></div></div>
+</section>
+<section class="terr t-night" id="night" aria-labelledby="h-night">
+ <header class="terr-head">
+  <p class="kick">III · Brief territories 4 + 5 — Paper Instruments, Almanac Year · opening pass: Imani · critiqued and revised by all three voices</p>
+  <h2 id="h-night">Night Scale</h2>
+  <p class="premise">A scale with one reading taken. Drawn on dark first; light is derived. Sophia’s Almanac shares the geometry but closes it into a frame with a large year and no pointer, because its entries are finished.</p>
+  <dl class="facts">
+   <div><dt>Why the marks belong</dt><dd><b>Scale & caret</b> (Sophia): a baseline with seven uneven ticks; the third is tall with a lamp-coloured caret — one reading taken. 16px and 24px optical cuts keep the caret and three ticks so it never collapses to a bare ⊥. <b>Frame</b> (Almanac): the ticks closed into a frame under a heavy year band. The inspected 1851 almanac cover supports only a closed frame, a central title and a prominent year; the ticks are this territory’s own geometry, and issues are never numbered.</dd></div>
+   <div><dt>Provenance roles</dt><dd>A gutter scale: each block has a tick and a word (Page, You, Source n, Sophia). The tall tick marks the passage under discussion. Lamp marks Sophia and the selection; error = coral + ⚠ + words. Below 620px the gutter word moves above its block.</dd></div>
+   <div><dt>Type</dt><dd>Palatino upright for wordmark and reading; Menlo/PT Mono for datelines only.</dd></div>
+   <div><dt>Excluded</dt><dd>No glow, gradients, moons, stars, rings enclosing the mark, mountains or astrology.</dd></div>
+   <div><dt>Risk &amp; test</dt><dd>The scale may read as a slider, progress bar or volume control. Test: unlabeled 16px mark, five people; any “progress”/“volume” answer fails.</dd></div>
+  </dl>
+ </header>
+ <div class="pair"><div class="face dark" data-mode="dark"><p class="mode-tag">Dark · drawn first</p>
+<div class="lockup"><svg class="mk " width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Scale mark"><use href="#m-night-a"/></svg><span class="wm">Sophia</span></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut">Page</span><p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump. There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>.</p></div>
+ <div class="row here"><span class="tk tall" aria-hidden="true"></span><span class="gut">You</span><blockquote class="yours">So more terms never make the spike go away?<span class="prot">Your line · protected</span></blockquote></div>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut">Source 1</span><div class="src"><p><cite>Example textbook chapter on Fourier series</cite> — Excerpt placeholder — illustrative; no real source is quoted on this page.</p><span class="meta">OPENED 2026-10-25</span></div></div>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut acc">Sophia</span><p class="interp">Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed.</p></div>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut acc">Sophia ?</span><p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="lab">uncertain</span></p></div>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm">
+ <div class="alm-frame">
+  <div class="alm-mast"><svg class="mk " width="24" height="24" viewBox="0 0 32 32" role="img" aria-label="Almanac frame mark"><use href="#m-night-b"/></svg><span class="alm-name">Sophia’s Almanac</span><span class="alm-date">SUN 25 OCT</span></div>
+  <p class="alm-year">2026</p>
+  <h4 class="alm-t">How a slide rule multiplies by adding</h4><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p>
+  <p class="meta">Finished entry. Reading is enough.</p>
+ </div>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">Scale & caret · Sophia <small>16 and 24 use optical cuts</small></p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a-sm"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a-md"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Frame · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div></div></div><div class="face light" data-mode="light"><p class="mode-tag">Light</p>
+<div class="lockup"><svg class="mk " width="34" height="34" viewBox="0 0 32 32" role="img" aria-label="Scale mark"><use href="#m-night-a"/></svg><span class="wm">Sophia</span></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut">Page</span><p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump. There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>.</p></div>
+ <div class="row here"><span class="tk tall" aria-hidden="true"></span><span class="gut">You</span><blockquote class="yours">So more terms never make the spike go away?<span class="prot">Your line · protected</span></blockquote></div>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut">Source 1</span><div class="src"><p><cite>Example textbook chapter on Fourier series</cite> — Excerpt placeholder — illustrative; no real source is quoted on this page.</p><span class="meta">OPENED 2026-10-25</span></div></div>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut acc">Sophia</span><p class="interp">Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed.</p></div>
+ <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut acc">Sophia ?</span><p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="lab">uncertain</span></p></div>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm">
+ <div class="alm-frame">
+  <div class="alm-mast"><svg class="mk " width="24" height="24" viewBox="0 0 32 32" role="img" aria-label="Almanac frame mark"><use href="#m-night-b"/></svg><span class="alm-name">Sophia’s Almanac</span><span class="alm-date">SUN 25 OCT</span></div>
+  <p class="alm-year">2026</p>
+  <h4 class="alm-t">How a slide rule multiplies by adding</h4><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p>
+  <p class="meta">Finished entry. Reading is enough.</p>
+ </div>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">Scale & caret · Sophia <small>16 and 24 use optical cuts</small></p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a-sm"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a-md"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Frame · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-night-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-night-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div></div></div></div>
+</section>
+<section class="terr t-col" id="col" aria-labelledby="h-col">
+ <header class="terr-head">
+  <p class="kick">IV · Brief territory 6 — Patina (restraint successor to Margin) · opening pass: brief text · critiqued and revised by all three voices</p>
+  <h2 id="h-col">Colophon</h2>
+  <p class="premise">The brand recedes so your titles lead. A quiet lowercase wordmark, a green thread beside the passage you have selected to discuss, and attributions written as plain trailing words, the way a colophon credits a book.</p>
+  <dl class="facts">
+   <div><dt>Why the marks belong</dt><dd><b>End mark</b> (Sophia): a rule that comes to rest on a square — the typographic sign that a piece is complete for now. <b>Last line</b> (Almanac): lines of a finished entry, the last one ending on the square. The earlier ribbon was cut: it read as a ‘T’ and implied a bookmark feature that doesn’t exist.</dd></div>
+   <div><dt>Provenance roles</dt><dd>Roles are carried by posture and a trailing attribution (“— you”, “— source, opened”, “— Sophia, uncertain”), so they survive with colour off. Thread green appears only on the selection, the mark and Sophia’s name label; it never carries a role on its own. Open question (Marcus): trailing labels may be read too late.</dd></div>
+   <div><dt>Type</dt><dd>Gill Sans (wordmark, labels) with PT Serif for reading.</dd></div>
+   <div><dt>Excluded</dt><dd>No leather, distress, ‘wear’, usage counts, mastery or progress implied by the thread.</dd></div>
+   <div><dt>Risk &amp; test</dt><dd>The quiet control: tests whether “none of the logos were good” meant “less logo”. May be too quiet in a Dock. Test: icon among ten Dock neighbours at 32px; can people find it twice?</dd></div>
+  </dl>
+ </header>
+ <div class="pair"><div class="face light" data-mode="light"><p class="mode-tag">Light</p>
+<div class="lockup quiet"><span class="wm">sophia</span><svg class="mk " width="18" height="18" viewBox="0 0 32 32" role="img" aria-label="End mark"><use href="#m-col-b"/></svg></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <div class="thread-wrap"><span class="thread" aria-hidden="true"></span>
+ <p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump. There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>.</p></div>
+ <blockquote class="yours">So more terms never make the spike go away? <span class="att">— you</span><span class="prot">Your line · protected</span></blockquote>
+ <p class="src"><cite>Example textbook chapter on Fourier series</cite>. Excerpt placeholder — illustrative; no real source is quoted on this page. <span class="att">— source, opened 25 Oct</span></p>
+ <p class="interp">Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed. <span class="att">— Sophia</span></p>
+ <p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="att">— Sophia, uncertain</span></p>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm">
+ <p class="alm-mast"><span class="alm-year">2026</span><span class="alm-name">sophia’s almanac</span><span class="alm-date">Sunday 25 October 2026</span></p>
+ <h4 class="alm-t">How a slide rule multiplies by adding</h4><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p>
+ <p class="att end">Finished entry. Reading is enough. <svg class="mk " width="12" height="12" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg></p>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">End mark · Sophia <small>16 and 24 use a heavier optical cut</small></p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b-sm"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b-sm"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Last line · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div></div></div><div class="face dark" data-mode="dark"><p class="mode-tag">Dark</p>
+<div class="lockup quiet"><span class="wm">sophia</span><svg class="mk " width="18" height="18" viewBox="0 0 32 32" role="img" aria-label="End mark"><use href="#m-col-b"/></svg></div>
+<div class="pg">
+ <div class="phead"><p class="crumb">Signals <span aria-hidden="true">›</span> Fourier series</p><button type="button" class="undo" aria-label="Undo Sophia’s last revision of this page">Undo</button></div><h4 class="ptitle">Why the square wave overshoots</h4>
+ <div class="thread-wrap"><span class="thread" aria-hidden="true"></span>
+ <p>Adding more sine terms makes the partial sum follow the square wave closely everywhere except beside the jump. There the ripple narrows, but <mark class="sel">its peak does not shrink<span class="sel-tag">Selected</span></mark>.</p></div>
+ <blockquote class="yours">So more terms never make the spike go away? <span class="att">— you</span><span class="prot">Your line · protected</span></blockquote>
+ <p class="src"><cite>Example textbook chapter on Fourier series</cite>. Excerpt placeholder — illustrative; no real source is quoted on this page. <span class="att">— source, opened 25 Oct</span></p>
+ <p class="interp">Established: the overshoot settles near 9% of the jump. The sketch on this page is illustrative, not computed. <span class="att">— Sophia</span></p>
+ <p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="att">— Sophia, uncertain</span></p>
+ <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
+</div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="convo" aria-label="Conversation specimen">
+<div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
+<div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
+<label class="reply"><span class="vh">Message Sophia</span><input type="text" placeholder="Ask or reply…" aria-label="Message Sophia"></label>
+</div>
+<div class="alm">
+ <p class="alm-mast"><span class="alm-year">2026</span><span class="alm-name">sophia’s almanac</span><span class="alm-date">Sunday 25 October 2026</span></p>
+ <h4 class="alm-t">How a slide rule multiplies by adding</h4><p>Because log(ab) = log a + log b, two scales marked by logarithm can be slid along each other: adding lengths multiplies the numbers they stand for.</p>
+ <p class="att end">Finished entry. Reading is enough. <svg class="mk " width="12" height="12" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg></p>
+ <label class="reply"><span class="vh">Discuss this entry</span><input type="text" placeholder="Discuss this entry (optional)…" aria-label="Discuss this entry"></label>
+</div>
+<div class="sheets"><div class="sheet"><p class="sheet-name">End mark · Sophia <small>16 and 24 use a heavier optical cut</small></p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b-sm"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b-sm"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-b"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-b"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-b"/></svg></span><figcaption>Reversed</figcaption></figure></div></div><div class="sheet"><p class="sheet-name">Last line · Almanac</p><div class="cells"><figure><svg class="mk " width="16" height="16" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>16</figcaption></figure><figure><svg class="mk " width="24" height="24" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>24</figcaption></figure><figure><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>32</figcaption></figure><figure><svg class="mk " width="64" height="64" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>64</figcaption></figure><figure><svg class="ic" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-a"/></svg></svg><figcaption>Icon</figcaption></figure><figure><svg class="ic ic-dk" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14.5" class="plate"/><svg x="12" y="12" width="40" height="40" viewBox="0 0 32 32"><use href="#m-col-a"/></svg></svg><figcaption>Icon, dark tile</figcaption></figure><figure><svg class="mk mono" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg><figcaption>Mono</figcaption></figure><figure><span class="rev"><svg class="mk " width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><use href="#m-col-a"/></svg></span><figcaption>Reversed</figcaption></figure></div></div></div></div></div>
+</section>
+</main>
+<footer class="foot">
+ <h2>Supplied research inputs (not verified here)</h2>
+ <p>Observations from the user-supplied research; caveats retained. Links are for reference and load nothing.</p>
+ <ul>
+  <li>Glossed page structure — Glossa ordinaria, Free Library Lewis E45: <a href="https://libwww.freelibrary.org/digital/item/4112">libwww.freelibrary.org/digital/item/4112</a>; HMML Folio 27: <a href="https://hmmlschool.org/folio/27/">hmmlschool.org/folio/27</a></li>
+  <li>Slips and indexing — Linnaeus slips: <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4837604/">PMC4837604</a>; Locke’s commonplace method: <a href="https://publicdomainreview.org/collection/john-lockes-method-for-common-place-books-1685">Public Domain Review</a></li>
+  <li>Colour with a job — Byrne’s Euclid: <a href="https://publicdomainreview.org/collection/the-first-six-books-of-the-elements-of-euclid-1847/">Public Domain Review</a></li>
+  <li>Almanac year — Old Farmer’s Almanac cover engravings (primary page): <a href="https://www.almanac.com/engravings-old-farmers-almanac-front-cover">almanac.com</a>. The 1851 cover image was inspected: closed ornate frame, central title, prominent year and issue number. Only frame/title/year hierarchy is borrowed; ornament, portraits, seasons and issue numbering are not. Sources disagree on continuity dates; none is claimed here.</li>
+  <li>Glossed page — the Free Library item page text (checked by the coordinator, not by this author) describes central text, smaller surrounding commentary and red/blue linking marks; its image was not viewable and has not been seen.</li>
+  <li>Paper instruments — Volvelles: <a href="https://nyamcenterforhistory.org/2017/06/12/the-original-app-paper-volvelles/">NYAM Center for History</a></li>
+  <li>Material restraint — MD Notebook: <a href="https://md-product.com/en/">md-product.com/en</a>; Hobonichi yearly edition: <a href="https://www.1101.com/store/techo/en/2027/all_about/original/">1101.com</a></li>
+ </ul>
+ <p>Fonts are macOS system faces with generic fallbacks; nothing is downloaded. Authored by Claude Opus 5.5 (claude-opus-5-5); opening premises from three Opus 5.5 persona passes.</p>
+</footer>
+<script>
+(function(){var r=document.documentElement,b=document.querySelectorAll('[data-set]');
+function set(v){r.setAttribute('data-show',v);b.forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.set===v))});}
+b.forEach(function(x){x.addEventListener('click',function(){set(x.dataset.set)})});set('both');})();
+</script>
+</body></html>
