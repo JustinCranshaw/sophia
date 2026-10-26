@@ -55,7 +55,7 @@ final class AppModel: ObservableObject {
         self.library = library; self.connection = connection
         almanac = MainActor.assumeIsolated { AlmanacModel(root: library.root, connection: connection) }
         notebooks = library.notebooks
-        if let first = notebooks.first { openNotebook(first) }
+        if let first = notebooks.first { openNotebook(first, at: .contents) }
         MainActor.assumeIsolated {
             almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true }
             almanac.onSaved = { [weak self] _ in
