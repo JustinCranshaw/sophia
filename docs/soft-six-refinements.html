@@ -314,7 +314,7 @@ html[data-paint=T][data-col=PLUM] .face.light .mk:not(.mono):not(.fin){--tv0:#8E
 html[data-paint=T][data-col=MADDER] .face.light .mk:not(.mono):not(.fin){--tv0:#C25570;--tv1:#BE526D;--tv2:#B34963;--tv3:#A43D57;--tv4:#95304B;--tv5:#8A2742;--tv6:#86243F}html[data-paint=T][data-col=MADDER] .face.dark .mk:not(.mono):not(.fin){--tv0:#F9B7C8;--tv1:#F7B1C3;--tv2:#F0A2B6;--tv3:#E68DA4;--tv4:#DC7893;--tv5:#D46987;--tv6:#D16382}html[data-paint=T][data-col=MADDER] .face .ic:not(.ic-dk){--tv0:#FBF7F4;--tv1:#FBF2F0;--tv2:#FBE4E6;--tv3:#FAD1D9;--tv4:#F9BECB;--tv5:#F7B0C2;--tv6:#F6ABBE}html[data-paint=T][data-col=MADDER] .face .ic-dk{--tv0:#F9B7C8;--tv1:#F7B1C3;--tv2:#F0A2B6;--tv3:#E68DA4;--tv4:#DC7893;--tv5:#D46987;--tv6:#D16382}
 .face .rev .mk{color:inherit!important}
 /* reverse, mono and the ink-only Almanac mark always stay solid */
-.face .rev .mk,.face .mk.mono,.face .mk.fin,.solid,.solid svg,svg[width="16"],svg[width="20"]{--tv0:initial!important;--tv1:initial!important;--tv2:initial!important;--tv3:initial!important;--tv4:initial!important;--tv5:initial!important;--tv6:initial!important;}
+.face .rev .mk,.face .mk.mono,.face .mk.fin,.solid,.solid svg,svg[width="16"],svg[width="18"],svg[width="20"]{--tv0:initial!important;--tv1:initial!important;--tv2:initial!important;--tv3:initial!important;--tv4:initial!important;--tv5:initial!important;--tv6:initial!important;}
 .tonal .mname{color:var(--c-ink)}
 </style></head>
 <body>
@@ -638,7 +638,7 @@ html[data-paint=T][data-col=MADDER] .face.light .mk:not(.mono):not(.fin){--tv0:#
 (function(){var r=document.documentElement,N={SS:'Supplied · Soft Six',DC:'DC · Trued Channel',RS:'RS · Rosette',PT:'PT · Petal',TP:'TP · Taper'},C={INK:'Ink',ORIG:'Original #15161A',DELFT:'Delft blue',PLUM:'Plum',MADDER:'Madder',CTX:'Context accent'},O={S:'supplied orientation',U:'upright'};
 function grp(sel,attr,set){var b=document.querySelectorAll(sel);b.forEach(function(x){x.addEventListener('click',function(){set(x.getAttribute(attr))})});return b}
 function press(b,attr,v){b.forEach(function(x){x.setAttribute('aria-pressed',String(x.getAttribute(attr)===v))})}
-var p=grp('[data-paint]','data-paint',setP),s=grp('[data-set]','data-set',setS),c=grp('[data-cand-btn]','data-cand-btn',setC),k=grp('[data-col]','data-col',setK),o=grp('[data-ori]','data-ori',setO);
+var p=grp('button[data-paint]','data-paint',setP),s=grp('[data-set]','data-set',setS),c=grp('[data-cand-btn]','data-cand-btn',setC),k=grp('button[data-col]','data-col',setK),o=grp('button[data-ori]','data-ori',setO);
 function setS(v){r.setAttribute('data-show',v);press(s,'data-set',v)}
 function setC(v){r.setAttribute('data-cand',v);press(c,'data-cand-btn',v);document.querySelectorAll('.cand').forEach(function(x){x.setAttribute('aria-current',String(x.dataset.c===v))});document.getElementById('cand-now').textContent=N[v];document.querySelectorAll('.cand-now-c').forEach(function(x){x.textContent=N[v]})}
 function setK(v){var own=["DELFT", "PLUM", "MADDER"].indexOf(v)>=0;p.forEach(function(x){if(x.getAttribute('data-paint')==='T'){x.disabled=!own}});if(!own&&r.getAttribute('data-paint')==='T'){setP('S')}r.setAttribute('data-col',v);press(k,'data-col',v);document.getElementById('col-now').textContent=C[v]+(v==='ORIG'?' (light faces; dark keeps ink)':'')}
