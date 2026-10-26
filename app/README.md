@@ -72,6 +72,12 @@ For a first-time setup walkthrough, `launch --without-claude` injects unavailabl
 - `Sources/SophiaReader`: the shared, read-only Markdown and LaTeX reader in WebKit, with its local scripts, styles, and fonts.
 - `Sources/sophia-mcp`: `read_page`, `write_page`, `set_chapter`, `set_goal`, `note`, `set_memory`, `recall`, `about_you`, and `link`, served to Claude Code over stdio. They write through `NotebookStore`, under a lock on the notebook, so the app and the tools never overwrite each other; the app rereads the files when a tool finishes.
 
+## Working visual identity
+
+The app uses the selected DC Trued Channel mark in solid Plum (`#6E2F55` light, `#E3A9C8` dark), with a compact Palatino wordmark and tighter inline spacing. Reading and interface typography remain native; semantic errors, source decisions and recovery controls keep their existing treatments. The local bundle includes a generated icon; no installation or distribution step is implied. See [brand decisions](../docs/brand-decisions.md) and [native verification](checks/sop68-native-brand.md).
+
+The mark is a generated static path, not a runtime SVG parser. Check its locked-source parity from `app/` with `python3 scripts/gen-brand-mark.py --check`; regenerate deliberately by omitting `--check`. Normal app packaging copies the checked-in `Resources/Sophia.icns` and sets `CFBundleIconFile`. The optional icon generator is documented in the verification note; it is not a normal build dependency.
+
 ## What this version does
 
 An unanswered question stays in its conversation with **Retry** and a link to the official Claude Code setup guide. Retry rechecks the existing connection and sends the saved question without creating another person entry; a partial reply is labeled interrupted. This local recovery path is checked with debug missing-install injection and an existing signed-in installation. Fresh installation/sign-in on a clean Mac remains separate validation.

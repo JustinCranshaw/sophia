@@ -19,8 +19,16 @@ enum Snapshot {
         let size = (env["SOPHIA_SNAPSHOT_SIZE"] ?? "1440x900").split(separator: "x").compactMap { Double($0) }
         try? FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            guard let window = NSApp.windows.first(where: { $0.contentView != nil }), let s = model.open else { exit(1) }
+            guard let window = NSApp.windows.first(where: { $0.contentView != nil }) else { exit(1) }
             if size.count == 2 { window.setContentSize(NSSize(width: size[0], height: size[1])) }
+            guard let s = model.open else {
+                // The actual empty-Library root, under the same controlled appearance and size.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    save(window, to: out.appendingPathComponent("empty.png"))
+                    exit(0)
+                }
+                return
+            }
             // The conversation scrolled to its end before the resize reflowed it.
             NotificationCenter.default.post(name: .scrollConversationToEnd, object: nil)
             var places: [(String, NotebookSession.Place)] = [("contents", .contents), ("goals", .goals), ("notes", .notes), ("about", .about)]
@@ -36,14 +44,18 @@ enum Snapshot {
                     s.beginEdit(file: file, key: r.key)
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
-                        let rep = NSBitmapImageRep(cgImage: cg)
-                        try? rep.representation(using: .png, properties: [:])?.write(to: out.appendingPathComponent(places[i].0 + ".png"))
-                    }
+                    save(window, to: out.appendingPathComponent(places[i].0 + ".png"))
                     shoot(i + 1)
                 }
             }
             shoot(0)
+        }
+    }
+
+    private static func save(_ window: NSWindow, to url: URL) {
+        if let cg = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(window.windowNumber), [.boundsIgnoreFraming, .bestResolution]) {
+            let rep = NSBitmapImageRep(cgImage: cg)
+            try? rep.representation(using: .png, properties: [:])?.write(to: url)
         }
     }
 }

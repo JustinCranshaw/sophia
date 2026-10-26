@@ -105,7 +105,7 @@ struct OpenNotebookRows: View {
                 Spacer(minLength: 0)
             }
             .padding(.leading, indent).padding(.vertical, 3).padding(.horizontal, 6)
-            .background(selected ? Color.accentColor.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .background(selected ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -133,7 +133,7 @@ struct OpenNotebookRows: View {
             .padding(.leading, indentBy ?? (indent ? 14 : 0))
             .padding(.vertical, 3).padding(.horizontal, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(session.place == place ? Color.accentColor.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .background(session.place == place ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -155,7 +155,7 @@ struct AboutRow: View {
                 if proposed > 0 { Text("\(proposed) to confirm").font(.caption).foregroundStyle(.secondary).fixedSize() }
             }
             .padding(.vertical, 3).padding(.horizontal, 6)
-            .background(session.place == .about ? Color.accentColor.opacity(0.18) : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .background(session.place == .about ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

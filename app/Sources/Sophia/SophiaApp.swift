@@ -159,7 +159,7 @@ struct SophiaApp: App {
                 .environmentObject(model.almanac)
                 .frame(minWidth: 900, minHeight: 600)
         }
-        .windowToolbarStyle(.unified)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Notebook…") { NotificationCenter.default.post(name: .newNotebook, object: nil) }
@@ -246,6 +246,12 @@ struct RootView: View {
             ToolbarItem(placement: .navigation) {
                 Button { naming = true } label: { Label("New Notebook", systemImage: "plus") }
                     .help("New notebook")
+            }
+            if #available(macOS 26, *) {
+                ToolbarItem(placement: .principal) { BrandLockup() }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .principal) { BrandLockup() }
             }
         }
         .sheet(isPresented: $naming) {
@@ -394,13 +400,19 @@ struct NotebookView: View {
 }
 
 struct EmptyLibraryView: View {
+    @Environment(\.controlActiveState) private var controlActiveState
     @Binding var naming: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            BrandMark().fill(Brand.plum).frame(width: 40, height: 40)
+                .padding(.bottom, 2).accessibilityHidden(true)
             Text("What do you want to understand?").font(.system(size: 30, weight: .semibold, design: .serif))
             Text("Start a notebook for a question, an idea to test, or something to look into. A book forms only as you keep things.")
                 .foregroundStyle(.secondary)
-            Button("New Notebook…") { naming = true }.buttonStyle(.borderedProminent)
+            Button { naming = true } label: {
+                Text("New Notebook…").foregroundStyle(controlActiveState == .inactive ? Color.primary : Brand.onPlum)
+            }
+                .buttonStyle(.borderedProminent).tint(Brand.plum)
         }
         .padding(48).frame(maxWidth: 560, maxHeight: .infinity, alignment: .center)
     }
