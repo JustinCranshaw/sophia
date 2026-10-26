@@ -257,7 +257,7 @@ struct AlmanacHomeControls: View {
                     .disabled(worker.snapshot.phase == .preparing || worker.snapshot.settings?.enabled != true)
                 Button("Preparation & notifications…") { almanac.showSettings() }
                 if worker.snapshot.phase == .preparing { Button("Cancel preparation") { worker.cancel() } }
-            }.buttonStyle(.borderless)
+            }.buttonStyle(.bordered).controlSize(.small)
             if worker.snapshot.phase == .preparing {
                 Text(worker.activity ?? "Preparing a new entry…").font(.caption).foregroundStyle(.secondary)
             } else if worker.snapshot.settings?.enabled != true {

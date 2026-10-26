@@ -34,3 +34,13 @@ SOP-68 places one compact noninteractive lockup in the toolbar, rather than addi
 The application icon is a charrette implementation decision, **not another user lock**: the exact DC mark in `#6E2F55` on a plain white rounded tile. It is generated from the same native path and packaged as a local `.icns`. It does not authorize changing the mark geometry or the solid Plum pair. The earlier icon-tile, reverse and monochrome studies remain specimens. The 40pt empty-Library mark and its plum New Notebook button are also replaceable implementation treatments.
 
 The source `sDC` symbols in `sophia-wordmark-options.html` and `soft-six-refinements.html` are identical. The generated native path retains those six paths and their circular arcs; the generator is a development script, not an SVG parser shipped at runtime. Native toolbar layout is observed on macOS 26; the macOS 14/15 branch is compile-checked only, with layout unobserved.
+
+## Batch 2 · selective colour roles in the app
+
+These are replaceable implementation choices, not additional user locks. Beyond the established Batch 1 identity/selection/empty-CTA sites:
+
+- **Plum:** Sophia's name as a label—the conversation speaker label and the working-memory header. It is not applied to her claims, judgements, statuses or new actions.
+- **Ink:** the person's own words and corrections, titles and neutral statuses. Quotes and corrections retain distinct rule widths and typography; the correction keeps its explicit label.
+- **System:** clickable controls/links and semantic red/orange states retain their native treatments and text. The source-request banner and refusal card keep the system accent; no global tint is introduced. Almanac preparation actions use small bordered native buttons.
+
+Body/UI/reader fonts are unchanged. The native captures for this surface pass were inactive windows; active/key activation could not be established in the controlled environment. Orange provisional text looked pale in the supplied light capture; its contrast needs a separate all-orange-sites follow-up with active-window observations; see [SOP-70](https://linear.app/decomposer/issue/SOP-70). Readability judgement from that capture is not contrast-compliance evidence.
