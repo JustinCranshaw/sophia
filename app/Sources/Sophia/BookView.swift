@@ -144,71 +144,75 @@ struct ContentsRow: View {
 
 struct ContentsView: View {
     @ObservedObject var session: NotebookSession
+    @EnvironmentObject private var model: AppModel
     var body: some View {
         let store = session.store
         Sheet {
             Text(store.name).font(.system(size: 32, weight: .semibold, design: .serif))
-            Text(store.pages.isEmpty ? "No pages yet. The book grows only as you keep things." : "\(store.pages.count) page\(store.pages.count == 1 ? "" : "s")")
-                .foregroundStyle(.secondary)
-            if !store.goals.isEmpty {
-                Label("Goals", systemImage: "scope").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                ForEach(store.goals.filter { $0.str("status") == "working" }, id: \.self.line) { g in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(g.str("text") ?? "").font(.system(size: 17, design: .serif))
-                        if store.isProvisional(g) { Text("provisional").font(.caption).foregroundStyle(.secondary) }
+            if Almanac.isConfigured(url: store.url) {
+                Intro("A collection of finished discoveries. Open an entry to read; a response is never required.")
+                if let worker = model.almanac.worker, worker.url == store.url {
+                    AlmanacHomeControls(worker: worker, almanac: model.almanac)
+                }
+            } else {
+                let goals = NotebookPresentation.confirmedGoals(store)
+                if !goals.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("WHAT YOU WANT TO EXPLORE").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        ForEach(Array(goals.prefix(3)), id: \.self.line) { goal in
+                            Text(goal.str("text") ?? "").font(.system(size: 18, design: .serif))
+                        }
                     }
                 }
-            }
-            if !store.pages.isEmpty {
-                // Each chapter: a rule, its number and title on one line, then its pages with their numbers in a column.
-                ForEach(store.chapters) { c in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Divider()
-                        HStack(alignment: .firstTextBaseline, spacing: 12) {
-                            Text(c.number ?? "").font(.system(size: 22, weight: .light, design: .serif)).monospacedDigit()
-                                .foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-                            Text(c.title).font(.system(size: 22, weight: .semibold, design: .serif))
-                        }
-                        rows(c.pages)
-                    }.padding(.top, 10)
+                HStack {
+                    Button("Goals & intentions…") { model.showNotebookSettings(store.url, section: .goals) }
+                    let proposals = store.goals.filter { store.isProvisional($0) }.count
+                    if proposals > 0 { Text("\(proposals) proposal\(proposals == 1 ? "" : "s") to review").font(.caption).foregroundStyle(.secondary) }
+                }.buttonStyle(.borderless)
+                if let inquiry = NotebookPresentation.earlyInquiry(store) {
+                    DisclosureGroup("An early question from this notebook") {
+                        Text(inquiry).textSelection(.enabled).font(.callout)
+                        Text("From the saved conversation; this may not describe your current aim.").font(.caption).foregroundStyle(.secondary)
+                    }.font(.callout)
                 }
-                let loose = store.unfiledPages
-                if !loose.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        if !store.chapters.isEmpty {
-                            Divider()
-                            Text("Not in a chapter").font(.system(size: 11, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(.secondary)
-                        }
-                        rows(loose)
-                    }.padding(.top, store.chapters.isEmpty ? 0 : 10)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("HOW SOPHIA WORKS HERE · GENERAL APPROACH").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text("Explore through explanations, questions and sources. Keep useful ideas as pages, revisit them, and change direction as your inquiry develops. This is not a prescribed course or an assessment of you.")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
             }
-            let links = session.library.links(touching: store.name)
-            VStack(alignment: .leading, spacing: 12) {
-                Divider()
-                Text("Other notebooks").font(.system(size: 11, weight: .semibold)).tracking(1.2).textCase(.uppercase).foregroundStyle(.secondary)
-                if store.isSeparate {
-                    Text("This notebook is kept separate: Sophia doesn't see your other notebooks here, and they don't see this one.")
-                        .font(.callout).foregroundStyle(.secondary)
-                } else if links.isEmpty {
-                    Text("No links yet. When a page here connects to one in another notebook, Sophia can propose a link for you to confirm.")
-                        .font(.callout).foregroundStyle(.secondary)
-                } else {
-                    LinksList(session: session, links: links)
-                }
-                Toggle("Keep this notebook separate", isOn: Binding(get: { store.isSeparate }, set: { session.setSeparate($0) }))
-                    .toggleStyle(.checkbox).font(.callout)
-            }.padding(.top, 10)
+            Divider()
+            HStack {
+                Text(Almanac.isConfigured(url: store.url) ? "Entries" : "Contents").font(.system(size: 23, weight: .semibold, design: .serif))
+                Spacer()
+                Text("\(store.pages.count) page\(store.pages.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+            }
+            if store.pages.isEmpty {
+                Intro("No pages yet. Begin with a question in the notebook conversation; a page is kept when there is something useful to return to.")
+            }
+            ForEach(store.chapters) { chapter in
+                VStack(alignment: .leading, spacing: 12) {
+                    ChapterLabel(chapter: chapter)
+                    rows(chapter.pages)
+                }.padding(.top, 8)
+            }
+            rows(store.unfiledPages)
         }
     }
 }
 
 extension ContentsView {
     func rows(_ pages: [NotebookStore.Page]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let entries = NotebookPresentation.almanacEntries(session.store)
+        return VStack(alignment: .leading, spacing: 12) {
             ForEach(pages) { p in
                 let (n, t) = pageNumber(session.store, p)
-                ContentsRow(number: n ?? "", title: t) { session.place = .page(p.file) }
+                VStack(alignment: .leading, spacing: 3) {
+                    if let entry = entries[p.file] {
+                        Text(NotebookPresentation.publicationDate(entry)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    ContentsRow(number: n ?? "", title: t) { session.show(.page(p.file)) }
+                }
             }
         }
     }
@@ -278,16 +282,6 @@ struct PageView: View {
                         }
                     }
                 }
-                // Only recorded, authored actions have destructive Undo.
-                if let w = session.undoableWrite(for: file), let e = session.store.transcript.first(where: { $0.str("id") == w }) {
-                    let mine = e.str("purpose") == "edit_page"
-                    let release = e.str("purpose") == "release_edit"
-                    HStack {
-                        Banner(tone: .saved, text: release ? "Sophia may change your edit on your next message." : mine ? "You edited \(editedPlace(e)). The previous version is kept."
-                               : e["revised"] == .bool(true) ? "Sophia revised this page. The previous version is kept." : "Sophia added this page to your book.")
-                        Button(release ? "Undo permission to change your edit" : mine ? "Undo your edit" : "Undo Sophia's change") { session.undoWrite(w) }
-                    }
-                }
                 let chapter = store.chapter(of: file)
                 let hidden = NotebookStore.repeatedHeadingLines(in: page.body, title: page.title, chapter: chapter)
                 let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
@@ -301,7 +295,9 @@ struct PageView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack {
-                    Text(updated).font(.system(size: 12)).foregroundStyle(.secondary)
+                    if let entry = NotebookPresentation.almanacEntries(store)[file] {
+                        Text(NotebookPresentation.publicationDate(entry)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
+                    }
                     if ranges.contains(where: { $0.index != nil }) {
                         Menu("Sections") {
                             ForEach(ranges.filter { $0.index != nil }, id: \.key) { range in
@@ -311,6 +307,16 @@ struct PageView: View {
                             }
                         }.controlSize(.small).disabled(session.editing?.file == file)
                     }
+                    Spacer(minLength: 8)
+                    if let write = session.undoableWrite(for: file), let action = store.transcript.first(where: { $0.str("id") == write }) {
+                        Button { session.undoWrite(write) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
+                            .buttonStyle(.borderless).controlSize(.small)
+                            .accessibilityLabel(undoLabel(action) + " on “" + page.title + "”")
+                            .help(undoLabel(action) + ". Available until the next action on this page.")
+                    }
+                }
+                if let write = session.undoableWrite(for: file), let action = store.transcript.first(where: { $0.str("id") == write }), action.str("purpose") == "release_edit" {
+                    Text("Sophia may change your released edit on your next message.").font(.caption).foregroundStyle(.secondary)
                 }
                 if let notice = session.navigationProblem, notice.file == file {
                     Text(notice.text).font(.callout).foregroundStyle(.secondary).textSelection(.enabled)
@@ -384,14 +390,13 @@ struct PageView: View {
         return editor
     }
 
-    /// "§2", "the opening", or "the page", for an edit entry.
-    func editedPlace(_ e: JSONObject) -> String { editLabel(e) }
-
-    var updated: String {
-        let url = session.store.pagesURL.appendingPathComponent(file)
-        guard let d = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date else { return "Saved" }
-        return "Updated " + d.formatted(.dateTime.month(.abbreviated).day())
+    private func undoLabel(_ action: JSONObject) -> String {
+        if action.str("purpose") == "edit_page" { return "Undo your edit" }
+        if action.str("purpose") == "release_edit" { return "Undo permission to change your edit" }
+        return "Undo Sophia's change"
     }
+
+
 }
 
 // MARK: Notes

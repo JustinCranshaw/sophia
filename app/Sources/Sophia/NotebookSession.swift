@@ -525,13 +525,13 @@ final class NotebookSession: ObservableObject {
         } catch { goalReviewID = nil; goalProblem = error.localizedDescription; changed(); return false }
     }
 
-    func reviewGoal(_ recordID: String) {
+    func reviewGoal(_ recordID: String, navigate: Bool = true) {
         store.reload()
         let root = store.rootID(of: recordID)
         let current = store.goals.first { store.rootID(of: $0.str("id") ?? "") == root }
         goalReviewID = current?.str("id")
         goalProblem = current?.str("id") == recordID ? nil : "That goal changed. Review its current version before deciding."
-        show(.goals)
+        if navigate { show(.goals) }
     }
 
     /// Person edits apply only to the current confirmed version, never an unseen proposal.

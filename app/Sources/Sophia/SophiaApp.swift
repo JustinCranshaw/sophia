@@ -46,6 +46,8 @@ final class AppModel: ObservableObject {
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
     @Published var problem: String?
+    @Published var notebookSettings: NotebookSettingsSelection?
+    @Published var aboutShown = false
     private var bookVisibility: [String: Bool] = [:]
 
     init() {
@@ -53,7 +55,7 @@ final class AppModel: ObservableObject {
         self.library = library; self.connection = connection
         almanac = MainActor.assumeIsolated { AlmanacModel(root: library.root, connection: connection) }
         notebooks = library.notebooks
-        if let first = notebooks.first { openNotebook(first) }
+        if let first = notebooks.first { openNotebook(first, at: .contents) }
         MainActor.assumeIsolated {
             almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true }
             almanac.onSaved = { [weak self] _ in
@@ -77,6 +79,7 @@ final class AppModel: ObservableObject {
             do {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
                 open?.shutdown()
+                notebookSettings = nil
                 next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
                 open = next
             } catch { problem = error.localizedDescription; return false }
@@ -120,6 +123,12 @@ final class AppModel: ObservableObject {
         open?.pendingSection = section
     }
 
+    func showNotebookSettings(_ url: URL, section: NotebookSettingsSection = .notebook) {
+        if open?.store.url != url, !openNotebook(url, allowAutomaticReturn: false) { return }
+        guard open?.store.url == url else { return }
+        notebookSettings = NotebookSettingsSelection(url: url, section: section)
+    }
+
     func toggleBook() {
         guard let current = open else { return }
         current.bookShown.toggle()
@@ -158,7 +167,10 @@ struct SophiaApp: App {
             }
             CommandGroup(after: .appInfo) {
                 Button("Connection & Data…") { model.connection.detailsShown = true }
-                Button("Sophia’s Almanac…") { model.almanac.showSettings() }
+                Button("Sophia’s Almanac…") {
+                    if let worker = model.almanac.worker { model.openNotebook(worker.url, at: .contents, allowAutomaticReturn: false) }
+                    else { model.almanac.showSettings() }
+                }
             }
             CommandGroup(after: .pasteboard) {
                 Divider()
@@ -203,6 +215,16 @@ struct RootView: View {
             ConnectionView(connection: connection).frame(width: 560)
         }
         .sheet(isPresented: $almanac.settingsShown) { AlmanacSettingsView(almanac: almanac) }
+        .sheet(isPresented: $model.aboutShown) {
+            if let session = model.open {
+                SharedAboutView(session: session) { model.aboutShown = false }
+            }
+        }
+        .sheet(item: $model.notebookSettings) { selection in
+            if let session = model.open, session.store.url == selection.url {
+                NotebookSettingsView(session: session, section: selection.section) { model.notebookSettings = nil }
+            }
+        }
         .onChange(of: almanac.worker?.url) { _, _ in model.notebooks = model.library.notebooks }
         .onReceive(NotificationCenter.default.publisher(for: .openAlmanacEntry)) { notification in
             guard let id = notification.object as? String,
@@ -215,8 +237,8 @@ struct RootView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 if let worker = almanac.worker {
-                    AlmanacToolbarView(worker: worker, almanac: almanac, read: model.readAlmanacEntry)
-                } else { Button("Almanac…") { almanac.settingsShown = true } }
+                    AlmanacReadyControl(worker: worker, read: model.readAlmanacEntry)
+                }
             }
             ToolbarItem(placement: .primaryAction) {
                 Button("Connection & Data") { connection.detailsShown = true }
@@ -322,7 +344,7 @@ struct NotebookView: View {
             let key = Self.draftKey(session)
             let draft = Binding(get: { drafts[key] ?? "" }, set: { drafts[key] = $0 })
             let narrow = geo.size.width < 821
-            let reading = readingAlmanac
+            let reading = (session.place == .contents && session.bookShown) || readingAlmanac
             let surfaces: [Surface] = reading ? [.book, .divider, .conversation] : [.conversation, .divider, .book]
             let layout = reading || narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
             layout {
@@ -346,6 +368,11 @@ struct NotebookView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .editPage)) { _ in session.editWholePage() }
+        .onChange(of: session.place) { _, place in
+            if case .page(let file) = place, let worker = model.almanac.worker, worker.url == session.store.url {
+                worker.acknowledgeOpening(file: file)
+            }
+        }
         .onChange(of: Self.draftKey(session)) { old, new in
             let prefix = session.store.url.path + "/"
             guard old.hasPrefix(prefix), !old.hasSuffix("/"),

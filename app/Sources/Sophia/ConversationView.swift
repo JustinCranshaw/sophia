@@ -7,6 +7,8 @@ struct ConversationView: View {
     @Binding private var message: String
     private let compact: Bool
     @FocusState private var focused: Bool
+    @State private var expanded = false
+    @State private var seenSophiaID: String?
     @State private var followsLatest = true
     @State private var hasNewActivity = false
     @State private var scrollPosition: ConversationScrollPosition?
@@ -20,16 +22,22 @@ struct ConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !compact {
-            HStack {
-                Spacer()
-                Text(session.conversationName).font(.caption).foregroundStyle(.secondary)
-                Button("Finish for now") { session.endSession() }
-                    .disabled(session.isResponding || !session.hasUncheckpointedMessages)
-                    .help("Finish for now")
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(session.activeThread.isEmpty ? "Notebook conversation" : "Conversation · " + session.conversationName)
+                    .font(.subheadline.weight(.semibold)).lineLimit(2).help(session.conversationName)
+                Spacer(minLength: 8)
+                if compact {
+                    Button(conversationToggleTitle) { expanded.toggle() }.buttonStyle(.borderless)
+                }
+                if !compact || expanded {
+                    Button("Finish for now") { session.endSession() }
+                        .disabled(session.isResponding || !session.hasUncheckpointedMessages)
+                        .help("Finish for now")
+                }
             }
             .padding(.horizontal, 14).padding(.vertical, 9)
             Divider()
+            if !compact || expanded {
             ScrollViewReader { proxy in
                 GeometryReader { viewport in
                     ScrollView {
@@ -129,6 +137,7 @@ struct ConversationView: View {
                     followIfNeeded(proxy)
                 }
             }
+            .frame(height: compact ? 230 : nil)
             }
             if let request = session.pendingSource {
                 VStack(alignment: .leading, spacing: 8) {
@@ -162,7 +171,7 @@ struct ConversationView: View {
             Divider()
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .bottom, spacing: 8) {
-                    TextField("Ask, answer, or push back…", text: $message, axis: .vertical)
+                    TextField(session.activeThread.isEmpty ? "Ask about this notebook…" : "Ask about this page…", text: $message, axis: .vertical)
                         .font(.system(size: 14))
                         .lineLimit(1...8)
                         .textFieldStyle(.plain)
@@ -184,7 +193,16 @@ struct ConversationView: View {
             .padding(.horizontal, 24).padding(.vertical, 14)
             .frame(maxWidth: .infinity)
         }
-        .onAppear { focused = Snapshot.outDir == nil && !compact }
+        .onAppear {
+            focused = Snapshot.outDir == nil && !compact
+            seenSophiaID = latestSophiaMessage?.str("id")
+        }
+        .onChange(of: conversationKey) { _, _ in
+            expanded = false
+            seenSophiaID = latestSophiaMessage?.str("id")
+        }
+        .onChange(of: expanded) { _, value in if value { seenSophiaID = latestSophiaMessage?.str("id") } }
+        .onChange(of: latestSophiaMessage?.str("id")) { _, id in if expanded { seenSophiaID = id } }
         .onChange(of: compact) { _, value in if value { focused = false } }
         .disabled(Snapshot.outDir != nil)
     }
@@ -197,6 +215,18 @@ struct ConversationView: View {
     }
 
     private var conversationKey: String { session.store.url.path + "/" + session.activeThread }
+    private var latestSophiaMessage: JSONObject? {
+        session.store.transcript.last {
+            $0.str("role") == "sophia" && NotebookStore.thread(of: $0) == session.activeThread && $0["recovered"] != .bool(true)
+                && ($0.str("purpose") == nil || $0.str("purpose") == "briefing")
+        }
+    }
+    private var conversationToggleTitle: String {
+        if expanded { return "Hide conversation" }
+        guard let entry = latestSophiaMessage, let id = entry.str("id"), id != seenSophiaID else { return "Show conversation" }
+        return entry.str("purpose") == "briefing" ? "Welcome back · Show conversation" : "New reply · Show conversation"
+    }
+
 
     private func followIfNeeded(_ proxy: ScrollViewProxy) {
         // Never animate automatic following: intermediate offsets can look like scrolling away.
@@ -224,6 +254,7 @@ struct ConversationView: View {
         hasNewActivity = false
         settlingViewport = false
         message = ""
+        expanded = true
         session.send(t)
     }
 }
@@ -249,6 +280,7 @@ struct Who: View {
 }
 
 struct EntryView: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
     let retryQuestion: JSONObject?
@@ -306,7 +338,7 @@ struct EntryView: View {
                     if entry.str("tool") == "note", let record = entry.str("record") {
                         NoteLine(session: session, recordID: record, revised: entry["revised"] == .bool(true))
                     } else {
-                        Button("Notes") { session.show(.notes) }.buttonStyle(.link).font(.caption)
+                        Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link).font(.caption)
                     }
                 }
             } else if let pid = entry.str("proposal") {
@@ -366,7 +398,7 @@ struct EntryView: View {
                     if !catchUp { Divider() }
                     HStack(spacing: 4) {
                         Text(catchUp ? "\(noted) from your last session ·" : "Session ended · \(noted) ·").font(.caption).foregroundStyle(.secondary)
-                        Button("Review") { session.show(.notes) }.buttonStyle(.link).font(.caption)
+                        Button("Review") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link).font(.caption)
                     }
                     if !notKept.isEmpty {
                         DisclosureGroup("\(notKept.count) not kept") {
@@ -412,6 +444,7 @@ private struct NotebookUpdatesView: View {
 
 /// A note Sophia wrote during the conversation: one quiet line, so the person can see what she keeps.
 struct NoteLine: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let recordID: String
     let revised: Bool
@@ -424,14 +457,14 @@ struct NoteLine: View {
                 (Text(revised ? "Updated a note, \(kind): " : "Noted, \(kind): ").foregroundColor(.secondary) + Text(r.str("text") ?? ""))
                     .lineLimit(2)
                 Spacer(minLength: 4)
-                Button("Notes") { session.show(.notes) }.buttonStyle(.link)
+                Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
             }
             .font(.caption)
         } else {
             HStack {
                 Label("Note no longer available.", systemImage: "note.text").foregroundStyle(.secondary)
                 Spacer(minLength: 4)
-                Button("Notes") { session.show(.notes) }.buttonStyle(.link)
+                Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
             }.font(.caption).help(recordID)
         }
     }
@@ -471,6 +504,7 @@ struct PageWriteCard: View {
 
 /// A goal Sophia recorded from the conversation, with full review before confirmation.
 struct GoalNotedCard: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let recordID: String
     var body: some View {
@@ -494,9 +528,12 @@ struct GoalNotedCard: View {
             }
             Spacer(minLength: 8)
             if let c = current, store.isProvisional(c), c.str("id") == recordID {
-                Button("Review") { session.reviewGoal(recordID) }
+                Button("Review") {
+                    session.reviewGoal(recordID, navigate: false)
+                    model.showNotebookSettings(session.store.url, section: .goals)
+                }
             }
-            Button("Goals") { session.show(.goals) }
+            Button("Goals") { model.showNotebookSettings(session.store.url, section: .goals) }
         }
         .controlSize(.small)
         .padding(.horizontal, 12).padding(.vertical, 9)

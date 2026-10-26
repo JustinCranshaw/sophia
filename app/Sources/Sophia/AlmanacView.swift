@@ -11,7 +11,6 @@ final class AlmanacModel: ObservableObject {
     @Published private(set) var worker: AlmanacPreparation?
     @Published private(set) var configured: [URL] = []
     @Published var settingsShown = false
-    @Published var controlsShown = false
     @Published var problem: String?
     var ordinaryBusy: () -> Bool = { false }
     var onSaved: ((AlmanacEntry) -> Void)?
@@ -126,7 +125,6 @@ final class AlmanacModel: ObservableObject {
 
     func prepare() {
         guard !stopped else { return }
-        controlsShown = false
         guard connection.acknowledged else {
             problem = "Review Connection & Data before preparing an entry. Closing that information does not start preparation."
             connection.detailsShown = true; return
@@ -134,12 +132,7 @@ final class AlmanacModel: ObservableObject {
         problem = nil; worker?.prepare(acknowledged: true)
     }
 
-    func showSettings() { controlsShown = false; settingsShown = true }
-
-    func pauseDaily() {
-        guard var settings = worker?.snapshot.settings else { return }
-        settings.paused.toggle(); save(settings)
-    }
+    func showSettings() { settingsShown = true }
 
     func disable() {
         guard var settings = worker?.snapshot.settings else { return }
@@ -160,6 +153,7 @@ struct AlmanacSettingsView: View {
     @State private var selected: Set<String> = []
     @State private var topics = ""
     @State private var automatic = false
+    @State private var paused = false
     @State private var minute = 540
 
     private var targetSeparate: Bool {
@@ -203,6 +197,7 @@ struct AlmanacSettingsView: View {
                     TextField("Topics or directions (optional)", text: $topics, axis: .vertical).lineLimit(2...4)
                     Toggle("Prepare daily while Sophia stays open", isOn: $automatic)
                     if automatic {
+                        Toggle("Pause daily preparation", isOn: $paused)
                         DatePicker("Prepare around", selection: time, displayedComponents: .hourAndMinute)
                         Text("When this Mac is awake. Missed days make no backlog; one waiting entry pauses automatic accumulation. Manual preparation stays available.")
                             .font(.caption).foregroundStyle(.secondary)
@@ -213,6 +208,10 @@ struct AlmanacSettingsView: View {
                         Text("Creates a new notebook: “\(almanac.proposedName)”. Existing notebooks with that name are kept.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
+                    if almanac.worker != nil {
+                        Divider()
+                        AlmanacNotificationControls(notifications: almanac.notifications)
+                    }
                     if let problem = almanac.problem { Text(problem).foregroundStyle(.red).font(.callout) }
                 }
             }
@@ -222,10 +221,12 @@ struct AlmanacSettingsView: View {
             }
             HStack {
                 Button("Cancel") { almanac.settingsShown = false }.keyboardShortcut(.cancelAction)
+                if almanac.worker?.snapshot.settings?.enabled == true {
+                    Button("Disable preparation") { almanac.disable(); almanac.settingsShown = false }
+                }
                 Spacer()
                 Button(almanac.worker?.snapshot.settings?.enabled == true ? "Save changes" : "Enable Almanac") {
-                    let previous = almanac.worker?.snapshot.settings
-                    almanac.save(AlmanacSettings(enabled: true, automatic: automatic, paused: previous?.paused ?? false,
+                    almanac.save(AlmanacSettings(enabled: true, automatic: automatic, paused: paused,
                         selectedNotebooks: targetSeparate ? [] : selected.sorted(), topics: topics, automaticMinute: minute))
                 }
                 .keyboardShortcut(.defaultAction)
@@ -240,108 +241,44 @@ struct AlmanacSettingsView: View {
     private func load() {
         let settings = almanac.worker?.snapshot.settings
         selected = Set(settings?.selectedNotebooks ?? [])
-        topics = settings?.topics ?? ""; automatic = settings?.automatic ?? false
+        topics = settings?.topics ?? ""; automatic = settings?.automatic ?? false; paused = settings?.paused ?? false
         minute = settings?.automaticMinute ?? 540
     }
 }
 
-struct AlmanacStatusView: View {
+struct AlmanacHomeControls: View {
     @ObservedObject var worker: AlmanacPreparation
     @ObservedObject var almanac: AlmanacModel
-    let read: (AlmanacEntry) -> Void
-    var sidebar = false
-
+    private var hasProblem: Bool { almanac.problem != nil || worker.problem != nil || worker.snapshot.problem != nil }
     var body: some View {
-        let snapshot = worker.snapshot
-        VStack(alignment: .leading, spacing: 7) {
-            Text(status).font(.caption).foregroundStyle(.secondary).accessibilityLabel("Almanac status: \(status)")
-            if !sidebar, let text = worker.activity { Text(text).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
-            if let entry = snapshot.waitingEntry ?? snapshot.latestEntry, !sidebar || snapshot.waitingEntry != nil {
-                Text(entry.title).font(.caption.weight(.medium)).lineLimit(2).help(entry.title)
-                Text("Prepared \(shortDate(entry.preparedAt))").font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Button(hasProblem ? "Retry preparation" : "Prepare a new entry") { almanac.prepare() }
+                    .disabled(worker.snapshot.phase == .preparing || worker.snapshot.settings?.enabled != true)
+                Button("Preparation & notifications…") { almanac.showSettings() }
+                if worker.snapshot.phase == .preparing { Button("Cancel preparation") { worker.cancel() } }
+            }.buttonStyle(.borderless)
+            if worker.snapshot.phase == .preparing {
+                Text(worker.activity ?? "Preparing a new entry…").font(.caption).foregroundStyle(.secondary)
+            } else if worker.snapshot.settings?.enabled != true {
+                Text("Preparation is disabled. Your saved entries remain here.").font(.caption).foregroundStyle(.secondary)
+            } else if worker.snapshot.settings?.automatic == true {
+                Text(worker.snapshot.settings?.paused == true ? "Daily preparation is paused." : "Daily preparation is enabled while Sophia is open and this Mac is awake.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            if !sidebar, let problem = almanac.problem ?? worker.problem ?? snapshot.problem {
-                Text(problem).font(.caption).foregroundStyle(.red).lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true).help(problem)
-            }
-            HStack(spacing: 14) {
-                if let entry = snapshot.waitingEntry ?? snapshot.latestEntry { Button("Read entry") { read(entry) } }
-                if snapshot.phase == .preparing {
-                    Button(sidebar ? "Cancel" : "Cancel preparation") { worker.cancel() }.accessibilityLabel("Cancel preparation")
-                } else if snapshot.settings?.enabled == true, !sidebar || snapshot.latestEntry == nil {
-                    Button(snapshot.phase == .failed ? (sidebar ? "Retry" : "Retry preparation") : snapshot.latestEntry == nil ? "Prepare an entry" : "Prepare another entry") { almanac.prepare() }
-                }
-                if sidebar { Button("Options…") { almanac.controlsShown = true } }
-            }
-            if !sidebar {
-                Divider()
-                Button("Themes & timing…") { almanac.showSettings() }
-                if snapshot.settings?.enabled == true {
-                    if snapshot.settings?.automatic == true {
-                        Button(dailyAction) { almanac.pauseDaily() }
-                    } else { Text("Daily preparation is off").font(.caption).foregroundStyle(.secondary) }
-                    Button("Disable Almanac") { almanac.disable() }
-                }
-                Divider()
-                AlmanacNotificationControls(notifications: almanac.notifications)
+            if let problem = almanac.problem ?? worker.problem ?? worker.snapshot.problem {
+                Text(problem).font(.callout).foregroundStyle(.red).textSelection(.enabled)
             }
         }
-        // Keep each action independent when this control is embedded in the sidebar List.
-        .buttonStyle(.borderless)
-    }
-
-    private var status: String {
-        let snapshot = worker.snapshot
-        if snapshot.settings?.enabled == false { return "Disabled · saved entries stay readable" }
-        if almanac.problem != nil || worker.problem != nil || snapshot.problem != nil { return "New entry did not finish" }
-        switch snapshot.phase {
-        case .unconfigured: return "Choose themes to begin"
-        case .idle: return snapshot.latestEntry == nil ? "Ready to prepare" : "Latest entry opened"
-        case .paused: return snapshot.settings?.automatic == true ? "Daily preparation paused" : "Manual preparation · daily is off"
-        case .needsThemes: return "Choose an available notebook title or topic"
-        case .preparing: return "Preparing an entry · your current notebook stays open"
-        case .ready: return "An entry is ready to read"
-        case .failed: return "New entry did not finish"
-        case .cancelled: return "Preparation cancelled"
-        }
-    }
-
-    private var dailyAction: String {
-        let paused = worker.snapshot.settings?.paused == true
-        if worker.snapshot.phase == .preparing {
-            return paused ? "Resume daily & cancel preparation" : "Pause daily & cancel preparation"
-        }
-        return paused ? "Resume daily preparation" : "Pause daily preparation"
     }
 }
 
-struct AlmanacToolbarView: View {
+struct AlmanacReadyControl: View {
     @ObservedObject var worker: AlmanacPreparation
-    @ObservedObject var almanac: AlmanacModel
     let read: (AlmanacEntry) -> Void
-    @FocusState private var optionsFocused: Bool
     var body: some View {
-        Button(label) { almanac.controlsShown.toggle() }
-            .popover(isPresented: $almanac.controlsShown) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Sophia’s Almanac").font(.headline)
-                    AlmanacStatusView(worker: worker, almanac: almanac) { entry in almanac.controlsShown = false; read(entry) }
-                }.padding(16).frame(width: 350)
-                    .focusable()
-                    .focusEffectDisabled()
-                    .focused($optionsFocused)
-                    .onAppear { optionsFocused = true }
-                    .onExitCommand { almanac.controlsShown = false }
-            }
-    }
-    private var label: String {
-        if worker.snapshot.settings?.enabled == false { return "Almanac · Off" }
-        if almanac.problem != nil || worker.problem != nil || worker.snapshot.problem != nil { return "Almanac · Needs attention" }
-        switch worker.snapshot.phase {
-        case .preparing: return "Almanac · Preparing"
-        case .failed, .needsThemes: return "Almanac · Needs attention"
-        case .paused: return worker.snapshot.settings?.automatic == true ? "Almanac · Paused" : worker.snapshot.waitingEntry != nil ? "Almanac · Ready" : "Almanac"
-        default: return worker.snapshot.waitingEntry != nil ? "Almanac · Ready" : "Almanac"
+        if let entry = worker.snapshot.waitingEntry {
+            Button("New Almanac entry") { read(entry) }.help(entry.title)
         }
     }
 }
