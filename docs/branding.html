@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sophia — four branding directions (prototype)</title>
+<style>
+:root{--ui:system-ui,-apple-system,sans-serif;--mono:ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 var(--ui);color:#1f1d1a;background:#efede8}
+header{max-width:1240px;margin:0 auto;padding:32px 24px 8px}
+header h1{font:600 28px/1.2 ui-serif,Georgia,serif;margin:0 0 6px}
+header p{margin:0 0 6px;color:#555;max-width:72ch}
+.grid{max-width:1240px;margin:0 auto;padding:16px 24px 48px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.card{border-radius:12px;padding:20px;background:var(--bg);color:var(--ink);border:1px solid var(--rule);display:flex;flex-direction:column;gap:14px}
+.card h2{margin:0;font:600 12px/1 var(--ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.prem{margin:0;font-size:13.5px;color:var(--muted)}
+.marks{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.marks .rev{background:var(--ink);color:var(--bg);border-radius:8px;padding:6px}
+.wm{font:var(--wm);color:var(--ink);margin:0}
+.wm small{display:block;font:var(--wm2);color:var(--muted);margin-top:4px}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw span{flex:1 1 64px;min-width:0;overflow-wrap:anywhere;height:44px;border-radius:6px;background:var(--c);border:1px solid rgba(0,0,0,.12);font:10px/1 var(--mono);padding:4px;display:flex;align-items:flex-end;color:var(--t,#fff)}
+.spec{font:var(--book);margin:0;font-size:19px;line-height:1.35}
+.spec span{display:block;font:12px var(--mono);color:var(--muted);margin-top:4px}
+.app{border:1px solid var(--rule);border-radius:8px;background:var(--surface);font-size:12.5px;overflow:hidden}
+.chat{padding:8px 12px;border-bottom:1px solid var(--rule);font-family:var(--ui)}
+.lock{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;font:13px var(--ui);color:var(--ink)}
+.lock > span:last-child{flex-basis:100%;padding-left:22px;font-size:12px}
+.lock + .lock{margin-top:2px}
+.test{margin:0;font-size:12.5px;color:var(--muted)}
+nav.jump{max-width:1240px;margin:0 auto;padding:4px 24px 0;display:flex;flex-wrap:wrap;gap:8px}
+nav.jump a{color:inherit;font-size:13px;padding:4px 10px;border:1px solid rgba(128,128,128,.45);border-radius:999px;text-decoration:none}
+a:focus,a:focus-visible{outline:3px solid #4C8DF6;outline-offset:2px}
+.margin{display:grid;grid-template-columns:72px 1fr;gap:0 10px}
+.margin .gl{font:italic 11.5px/1.35 var(--ui);color:var(--muted);border-right:1.5px solid var(--accent);padding-right:8px;text-align:right}
+.rows{display:grid;grid-template-columns:64px 1fr;font-size:12.5px}
+.rows > *{padding:5px 8px;border-top:1px solid var(--rule)}
+.rows .tag{margin:0;padding-top:7px}
+.chat p{margin:0 0 6px}.chat b{font-weight:600}
+.page{padding:10px 12px;font:var(--book);font-size:13.5px;line-height:1.4}
+.page h3{margin:0 0 6px;font-size:16px}
+.page p{margin:0 0 6px}
+.you{color:var(--person)}.src{color:var(--src);font-size:12.5px}
+.tag{font:600 9.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.alm{border:1px solid var(--rule);border-radius:8px;background:var(--surface);padding:14px}
+.alm .k{font:11px var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.alm h4{margin:4px 0 6px;font:var(--book);font-size:20px;line-height:1.2}
+.alm p{margin:0;font:var(--book);font-size:13.5px;line-height:1.45}
+.trade{margin:0;font-size:13px;border-top:1px solid var(--rule);padding-top:10px}
+.trade b{color:var(--accent)}
+footer{max-width:1240px;margin:0 auto;padding:0 24px 40px;color:#666;font-size:13px}
+@media (prefers-color-scheme:dark){body{background:#121212;color:#ddd}header p,footer{color:#aaa}}
+</style>
+</head>
+<body>
+<header>
+<h1>Sophia — four branding directions</h1>
+<p>A first prototype for comparison. It is not a decision and there is no winner. Every sample text is illustrative: there are no real sources, quotations or results. Fonts come from the system faces installed on this Mac (Charter, Optima, Palatino, Big Caslon, Hoefler Text, Avenir Next, Menlo, plus system-ui and ui-serif) and nothing loads over a network. Each direction owns a different primary object (the page, the voice, the reading, the claim), so each card's samples take a different shape. Cards always render on their light palette; dark versions are not drawn yet.</p>
+</header>
+<nav class="jump" aria-label="Directions"><a href="#a">A · Margin</a><a href="#b">B · Two Voices</a><a href="#c">C · Daybook</a><a href="#d">D · Instrument</a><a href="#notdrawn">Not drawn: Open Question</a></nav>
+<main class="grid">
+
+<!-- A. MARGIN -->
+<section class="card" id="a" style="--bg:#F7F3EA;--surface:#FDFBF6;--ink:#1F1D1A;--muted:#6B6259;--accent:#A8432F;--src:#4A5D6E;--person:#1F1D1A;--rule:#D9D2C7;--wm:400 34px/1 Charter,ui-serif,serif;--wm2:italic 15px Charter,serif;--book:16px/1.4 Charter,ui-serif,serif">
+<h2>A · Margin — the book you own</h2>
+<p class="prem">The book belongs to you. Sophia writes and revises pages directly, and you can Undo. The ruled margin shows who said what: your words, sources and Sophia’s reading are told apart by position and type, not colour. The oxide rule is identity only and never signals a status.</p>
+<div class="marks" aria-label="Margin marks at 64, 32 and 16 px, and reversed">
+<svg width="64" height="64" viewBox="0 0 16 16" fill="none" stroke="#1F1D1A" stroke-width="1.1"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5.5" y1="1" x2="5.5" y2="15" stroke="#A8432F"/><line x1="7.5" y1="5" x2="12" y2="5"/><line x1="7.5" y1="8" x2="12" y2="8"/><line x1="7.5" y1="11" x2="10.5" y2="11"/><rect x="2.9" y="4.2" width="1.6" height="1.6" fill="#A8432F" stroke="none"/></svg>
+<svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#1F1D1A" stroke-width="1.3"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5.5" y1="1" x2="5.5" y2="15" stroke="#A8432F"/><rect x="2.9" y="4.2" width="1.6" height="1.6" fill="#A8432F" stroke="none"/></svg>
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1F1D1A" stroke-width="1.5"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5.5" y1="1" x2="5.5" y2="15"/></svg>
+<span class="rev"><svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5.5" y1="1" x2="5.5" y2="15"/></svg></span>
+</div>
+<p class="wm"><span style="display:inline-block;width:14px;height:2px;background:#A8432F;vertical-align:.45em;margin-right:8px"></span>Sophia</p>
+<div><div class="lock"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1F1D1A" stroke-width="1.5" aria-hidden="true"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="5.5" y1="1" x2="5.5" y2="15"/></svg>Sophia <span style="color:#6B6259">· sidebar size, 13px system</span></div><div class="lock" style="font-family:Charter,serif;font-style:italic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1F1D1A" stroke-width="1.5" aria-hidden="true"><rect x="2" y="1" width="12" height="14" rx="1.5"/><line x1="4" y1="4.5" x2="12" y2="4.5"/></svg>Sophia’s Almanac <span style="font:13px var(--ui);color:#6B6259">· a dateline replaces the margin, because Sophia writes the whole entry</span></div></div>
+<div class="sw"><span style="--c:#F7F3EA;--t:#1F1D1A">F7F3EA paper</span><span style="--c:#1F1D1A">1F1D1A ink</span><span style="--c:#A8432F">A8432F rule</span><span style="--c:#4A5D6E">4A5D6E source</span><span style="--c:#6B6259">6B6259 Sophia</span></div>
+<p class="spec">Why the second eigenvector splits a graph<span>Charter (book) · system-ui (conversation) · Menlo (locators)</span></p>
+<div class="app"><div class="chat"><b>You</b> Why does vertex 3 lean toward its own triangle? <b style="margin-left:6px">Sophia</b> Two of its three neighbours are there. I added your observation to 1.2, in your words.</div>
+<div class="page"><h3>1.2 The Fiedler vector</h3><div class="margin"><div class="gl"></div><p>Relax the cut: give each vertex a real value and keep neighbours close, subject to <i>x</i> ⊥ <b>1</b>.</p><div class="gl">your words</div><p class="you">“I expected the vertex by the bridge to sit at zero. It doesn’t.”</p><div class="gl">source</div><p class="src" style="border-left:1px solid #4A5D6E;padding-left:6px">An exact passage goes here, with its locator in Menlo. <span style="font:11px var(--mono)">§ · p.</span></p><div class="gl">Sophia’s reading</div><p style="color:#6B6259">The signs partition; the magnitudes show how firmly each vertex belongs.</p></div></div></div>
+<div class="alm" style="border-top:2px solid #A8432F"><div class="k">Sophia’s Almanac · Sunday 25 October</div><h4>What one edge holds together</h4><p>A finished entry to read. The margin is empty because Sophia wrote all of it. There is no reply field and no count.</p></div>
+<p class="trade"><b>Tradeoff:</b> the person’s ownership is the clearest of the four, but Sophia may feel quiet. Colour is unresolved: if a later variant gives each voice its own ink, status has to move to glyphs.</p>
+<p class="test"><b>Would test it:</b> on a long page, can the founder name who wrote each line in grayscale, without a key?</p>
+</section>
+
+<!-- B. COMPANION -->
+<section class="card" id="b" style="--bg:#FBFAF7;--surface:#FFFFFF;--ink:#1C1B19;--muted:#5F5C55;--accent:#3F4A2E;--src:#5B5148;--person:#1C1B19;--rule:#E2E0D8;--wm:500 34px/1 Optima,Avenir Next,sans-serif;--wm2:italic 15px Optima,sans-serif;--book:16px/1.45 Palatino,ui-serif,serif">
+<h2>B · Two Voices — a named thought partner</h2>
+<p class="prem">The brand's main object is a voice in dialogue, not a page. Sophia gets her own type register (Optima) and a muted green field. She has no face, no avatar and no bubble tails.</p>
+<div class="marks" aria-label="Two Voices marks">
+<svg width="64" height="64" viewBox="0 0 16 16"><rect x="2" y="4" width="8" height="2" rx="1" fill="#1C1B19"/><line x1="3" y1="8" x2="13" y2="8" stroke="#C9CCBE" stroke-width=".4"/><rect x="6" y="10" width="8" height="2" rx="1" fill="#3F4A2E"/></svg>
+<svg width="32" height="32" viewBox="0 0 16 16"><rect x="2" y="4" width="8" height="2" rx="1" fill="#1C1B19"/><rect x="6" y="10" width="8" height="2" rx="1" fill="#3F4A2E"/></svg>
+<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="2.5" width="9" height="4" rx="2" fill="#1C1B19"/><rect x="6" y="9.5" width="9" height="4" rx="2" fill="#3F4A2E"/></svg>
+<span class="rev"><svg width="32" height="32" viewBox="0 0 16 16" fill="currentColor"><rect x="2" y="4" width="8" height="2" rx="1"/><rect x="6" y="10" width="8" height="2" rx="1"/></svg></span>
+<svg width="40" height="40" viewBox="0 0 16 16" aria-label="Seal used to sign Almanac letters"><circle cx="8" cy="8" r="7.2" fill="none" stroke="#3F4A2E" stroke-width=".7"/><rect x="4" y="5.6" width="5.5" height="1.6" rx=".8" fill="#1C1B19"/><rect x="6.5" y="8.8" width="5.5" height="1.6" rx=".8" fill="#3F4A2E"/></svg>
+</div>
+<p class="wm">Sophia</p>
+<div><div class="lock"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="2.5" width="9" height="4" rx="2" fill="#1C1B19"/><rect x="6" y="9.5" width="9" height="4" rx="2" fill="#3F4A2E"/></svg><span style="font-family:Optima,sans-serif">Sophia</span> <span style="color:#5F5C55">· sidebar size</span></div><div class="lock" style="font-family:Optima,sans-serif;font-style:italic">Sophia’s Almanac <span style="font:13px var(--ui);color:#5F5C55">· signed with the seal, never a face</span></div></div>
+<div class="sw"><span style="--c:#FBFAF7;--t:#1C1B19">FBFAF7 ground</span><span style="--c:#EEF0E6;--t:#1C1B19">EEF0E6 voice</span><span style="--c:#3F4A2E">3F4A2E Sophia</span><span style="--c:#5B5148">5B5148 source</span><span style="--c:#1C1B19">1C1B19 you</span></div>
+<p class="spec" style="font-family:Optima,sans-serif">Shall we test that on a smaller graph?<span>Optima (Sophia) · system-ui (you) · Palatino (book) · Menlo</span></p>
+<div class="app" style="padding:12px 14px;font-size:13px"><p style="margin:0 0 10px"><span class="tag">you</span>Why does vertex 3 lean toward its own triangle?</p>
+<div style="font:14px/1.5 Optima,sans-serif;color:#1C1B19;border-left:2px solid #3F4A2E;padding:0 0 0 10px;margin:0 0 10px">Because two of its three neighbours are there, and only one is across the bridge. Would you like to try a seventh vertex hanging off vertex 1?<div style="font-style:italic;color:#3F4A2E;margin-top:4px">— Sophia</div></div>
+<p style="margin:0;font:13px Palatino,serif;color:#5F5C55">Revised in the book: <i>1.2 The Fiedler vector</i> · Open · Undo</p></div>
+<div class="alm" style="background:#EEF0E6"><div class="k">Sophia’s Almanac · Sunday 25 October</div><p style="font:15px/1.5 Optima,sans-serif;margin-top:6px">Dear reader — today, why a graph held together by one edge has a small second eigenvalue, worked on two triangles. Read it when you like; nothing is waiting on a reply.</p><div style="display:flex;align-items:center;gap:6px;margin-top:8px;font:italic 14px Optima,sans-serif;color:#3F4A2E"><svg width="22" height="22" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.2" fill="none" stroke="#3F4A2E" stroke-width=".9"/><rect x="4" y="5.6" width="5.5" height="1.6" rx=".8" fill="#1C1B19"/><rect x="6.5" y="8.8" width="5.5" height="1.6" rx=".8" fill="#3F4A2E"/></svg>Sophia</div></div>
+<p class="trade"><b>Tradeoff:</b> this gives Sophia warmth and presence. It commits the product to keeping her character consistent, and her voice could crowd out the person’s own words.</p>
+<p class="test"><b>Would test it:</b> after a week, does the founder recall what Sophia said, and does it feel like a character performing rather than help?</p>
+</section>
+
+<!-- C. ALMANAC EDITORIAL -->
+<section class="card" id="c" style="--bg:#F3EEE2;--surface:#FBF8F1;--ink:#16130F;--muted:#6E6455;--accent:#23355E;--src:#5E5340;--person:#16130F;--rule:#CFC5B2;--wm:400 36px/1 'Big Caslon','Hoefler Text',serif;--wm2:italic 16px 'Hoefler Text',serif;--book:16px/1.45 'Hoefler Text',ui-serif,serif">
+<h2>C · Daybook — reading as the pleasure</h2>
+<p class="prem">The brand is built around what the founder enjoyed: reading. Notebooks are volumes on a shelf, and the Almanac is the masthead. Dates are calendar dates, never issue numbers.</p>
+<div class="marks" aria-label="Daybook marks">
+<svg width="64" height="64" viewBox="0 0 16 16" fill="none" stroke="#16130F"><line x1="1.5" y1="2.5" x2="14.5" y2="2.5" stroke-width=".9"/><line x1="1.5" y1="3.6" x2="14.5" y2="3.6" stroke-width=".35"/><text x="8" y="12.6" text-anchor="middle" font-family="Big Caslon,serif" font-size="10" fill="#23355E" stroke="none">S</text><line x1="1.5" y1="14.3" x2="14.5" y2="14.3" stroke-width=".9"/></svg>
+<svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#16130F"><line x1="1.5" y1="2.5" x2="14.5" y2="2.5" stroke-width="1"/><text x="8" y="12.6" text-anchor="middle" font-family="Big Caslon,serif" font-size="10.5" fill="#23355E" stroke="none">S</text><line x1="1.5" y1="14.3" x2="14.5" y2="14.3" stroke-width="1"/></svg>
+<svg width="16" height="16" viewBox="0 0 16 16"><rect x="0" y="0" width="16" height="16" rx="2.5" fill="#16130F"/><text x="8" y="13" text-anchor="middle" font-family="Big Caslon,serif" font-size="14" fill="#F3EEE2">S</text></svg>
+<span class="rev"><svg width="32" height="32" viewBox="0 0 16 16" fill="currentColor"><rect x="1.5" y="2" width="13" height="1"/><text x="8" y="12.6" text-anchor="middle" font-family="Big Caslon,serif" font-size="10.5">S</text><rect x="1.5" y="13.8" width="13" height="1"/></svg></span>
+</div>
+<p class="wm" style="border-top:2px solid #16130F;border-bottom:1px solid #16130F;padding:6px 0;text-align:center">Sophia’s Almanac<small>from Sophia · a notebook for reading</small></p>
+<div><div class="lock"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect width="16" height="16" rx="2.5" fill="#16130F"/><text x="8" y="13" text-anchor="middle" font-family="Big Caslon,serif" font-size="14" fill="#F3EEE2">S</text></svg><span style="font-family:'Hoefler Text',serif">Sophia</span> <span style="color:#6E6455">· sidebar size; Big Caslon is kept for large sizes only</span></div></div>
+<div class="sw"><span style="--c:#F3EEE2;--t:#16130F">F3EEE2 paper</span><span style="--c:#16130F">16130F ink</span><span style="--c:#23355E">23355E masthead</span><span style="--c:#5E5340">5E5340 notes</span><span style="--c:#CFC5B2;--t:#16130F">CFC5B2 rule</span></div>
+<p class="spec">The <i>long</i> view of a short question<span>Big Caslon (display) · Hoefler Text (reading) · system-ui (chat)</span></p>
+<div class="app" style="padding:12px 14px;font:14px/1.5 'Hoefler Text',serif"><div class="k" style="font:10px var(--mono);color:#6E6455;letter-spacing:.1em">VOLUME · GRAPH CLUSTERING · CONTENTS</div>
+<div style="font:22px/1.2 'Big Caslon',serif;margin:4px 0 8px">Graph Clustering</div>
+<div style="display:grid;grid-template-columns:28px 1fr;row-gap:2px"><span style="color:#6E6455">1.1</span><span>Cuts, and why balance matters</span><span style="color:#6E6455">1.2</span><span><i>The Fiedler vector</i> <span style="color:#6E6455">— with a passage in your words</span></span><span style="color:#6E6455">2.1</span><span>When zero is the wrong threshold</span></div>
+<p style="margin:8px 0 0;font:12.5px var(--ui);color:#6E6455">The conversation sits beside this contents page in plain system type.</p></div>
+<div class="alm" style="text-align:center;border-top:3px double #16130F"><div class="k">Sunday · 25 October 2026</div><h4 style="font-family:'Big Caslon',serif;font-size:24px">What One Edge Holds Together</h4><p>A finished essay on why the second eigenvalue is small when a graph nearly falls apart, set for reading at leisure.</p></div>
+<p class="trade"><b>Tradeoff:</b> this direction leads with the pleasure the founder already chose. But it bases the whole identity on an opt-in feature some people never enable; that cost was raised in critique and is kept here deliberately.</p>
+<p class="test"><b>Would test it:</b> does someone who never turns on the Almanac still recognise Sophia as “the reading one”?</p>
+</section>
+
+<!-- D. INSTRUMENT -->
+<section class="card" id="d" style="--bg:#EEF0EC;--surface:#F8F9F7;--ink:#1E2328;--muted:#56616A;--accent:#1F4E8C;--src:#1E2328;--person:#1E2328;--rule:#CDD3D6;--wm:600 26px/1 'Avenir Next',system-ui,sans-serif;--wm2:500 12px Menlo,monospace;--book:15px/1.45 'Avenir Next',system-ui,sans-serif">
+<h2>D · Instrument — research rigour</h2>
+<p class="prem">Sophia as a precise research assistant. Provenance appears as explicit mono tags in ruled rows, and a slate hairline marks source boundaries. Red stays reserved for problems. There are no scores and no confidence percentages.</p>
+<div class="marks" aria-label="Instrument marks">
+<svg width="64" height="64" viewBox="0 0 16 16" fill="none" stroke="#1E2328" stroke-width=".9"><circle cx="8" cy="8" r="6"/><path d="M10.6 5.4c-.6-.7-1.5-1-2.6-1-1.4 0-2.4.8-2.4 1.8 0 2.3 5 1.4 5 3.8 0 1-1 1.8-2.6 1.8-1.1 0-2-.4-2.6-1.1" stroke="#1F4E8C" stroke-width="1.1"/><line x1="8" y1="0.5" x2="8" y2="2.5"/><line x1="8" y1="13.5" x2="8" y2="15.5"/><line x1=".5" y1="8" x2="2.5" y2="8"/><line x1="13.5" y1="8" x2="15.5" y2="8"/></svg>
+<svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#1E2328" stroke-width="1.1"><circle cx="8" cy="8" r="6"/><path d="M10.6 5.4c-.6-.7-1.5-1-2.6-1-1.4 0-2.4.8-2.4 1.8 0 2.3 5 1.4 5 3.8 0 1-1 1.8-2.6 1.8-1.1 0-2-.4-2.6-1.1" stroke="#1F4E8C" stroke-width="1.3"/></svg>
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1E2328" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M10.6 5.4c-.6-.7-1.5-1-2.6-1-1.4 0-2.4.8-2.4 1.8 0 2.3 5 1.4 5 3.8 0 1-1 1.8-2.6 1.8-1.1 0-2-.4-2.6-1.1" stroke="#1F4E8C"/></svg>
+<span class="rev"><svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><circle cx="8" cy="8" r="6"/><path d="M10.6 5.4c-.6-.7-1.5-1-2.6-1-1.4 0-2.4.8-2.4 1.8 0 2.3 5 1.4 5 3.8 0 1-1 1.8-2.6 1.8-1.1 0-2-.4-2.6-1.1"/></svg></span>
+</div>
+<p class="wm" style="letter-spacing:.28em">SOPHIA</p>
+<div><div class="lock"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1E2328" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M10.6 5.4c-.6-.7-1.5-1-2.6-1-1.4 0-2.4.8-2.4 1.8 0 2.3 5 1.4 5 3.8 0 1-1 1.8-2.6 1.8-1.1 0-2-.4-2.6-1.1" stroke="#1F4E8C"/></svg><span style="letter-spacing:.18em;font-weight:600">SOPHIA</span> <span style="color:#56616A">· sidebar size</span></div><div class="lock" style="font:12px Menlo,monospace;letter-spacing:.08em">SOPHIA’S ALMANAC <span style="font:13px var(--ui);letter-spacing:0;color:#56616A">· dated plate</span></div></div>
+<div class="sw"><span style="--c:#EEF0EC;--t:#1E2328">EEF0EC bone</span><span style="--c:#1E2328">1E2328 slate</span><span style="--c:#1F4E8C">1F4E8C survey</span><span style="--c:#56616A">56616A tags</span><span style="--c:#CDD3D6;--t:#1E2328">CDD3D6 rule</span></div>
+<p class="spec">Which passage supports this step?<span>Avenir Next (all text) · Menlo (sources, tags)</span></p>
+<div class="app"><div class="rows"><span class="tag">you</span><span>“I expected the vertex by the bridge to sit at zero.”</span><span class="tag">source</span><span style="font:11.5px Menlo,monospace;border-left:1.5px solid #56616A">An exact passage goes here, with its locator.</span><span class="tag">Sophia</span><span>My interpretation: the signs partition. <span style="color:#56616A">Established for unweighted graphs; my uncertain read for weighted ones.</span></span></div></div>
+<div class="alm"><div class="k">Plate · 2026-10-25</div><h4 style="font-family:'Avenir Next',sans-serif;font-weight:600">What one edge holds together</h4><p style="font-family:'Avenir Next',sans-serif">A finished entry that gives each claim and then its support. Prepared from general explanation, not from verified source text.</p></div>
+<p class="trade"><b>Tradeoff:</b> provenance is the most explicit of the four. The cost is that the literary warmth and teacher role recede, and the look risks resembling generic research tools.</p>
+<p class="test"><b>Would test it:</b> does the founder trust a page more in this direction, or find it cold enough to read less?</p>
+</section>
+
+</main>
+<section id="notdrawn" style="max-width:1240px;margin:0 auto;padding:0 24px 20px"><h2 style="font:600 17px ui-serif,Georgia,serif;margin:0 0 4px">Considered, not drawn: Open Question</h2><p style="margin:0;max-width:80ch;font-size:14px">In critique, two of the three voices called this a real gap: no card makes the person’s question the main unit, even though inquiry need not produce a page. The idea would head each notebook and Almanac entry with the question that was taken up, never promise answers, and never use a question mark as a prompt to reply. It was not folded into one of the four, which would have blurred both. It is the next direction to draw if the set needs one.</p></section>
+<footer>This is a prototype exploration for comparison. It changes no product branding and makes no trademark or availability claims. Page and conversation behaviour belongs to SOP59. Sophia writes pages directly and you can Undo; there is no draft or acceptance step, and no direction adds a routine “saved” banner. In every direction, status colour is kept for rare cases: a goal Sophia noted that stays provisional until you confirm it (pages are never held for approval), or an error.</footer>
+</body>
+</html>
