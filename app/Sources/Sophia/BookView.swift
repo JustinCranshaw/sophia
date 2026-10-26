@@ -75,7 +75,7 @@ struct PersonQuote: View {
     let text: String
     var body: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 1).fill(Color.accentColor.opacity(0.6)).frame(width: 2)
+            RoundedRectangle(cornerRadius: 1).fill(Color.primary.opacity(0.5)).frame(width: 2)
             Text(MarkdownView.scripts(AttributedString(text), size: 17, design: .serif))
                 .font(.system(size: 17, design: .serif).italic()).lineSpacing(6).fixedSize(horizontal: false, vertical: true)
         }
@@ -120,7 +120,7 @@ struct ChapterLabel: View {
     var body: some View {
         Text((chapter.number.map { "Chapter \($0) · " } ?? "") + chapter.title)
             .font(.system(size: 11, weight: .semibold)).tracking(1.2).textCase(.uppercase)
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(.secondary)
     }
 }
 
@@ -133,7 +133,7 @@ struct ContentsRow: View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(number).font(.system(size: 17, design: .serif)).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-                Text(title).font(.system(size: 18, design: .serif)).foregroundStyle(hover ? Color.accentColor : .primary)
+                Text(title).font(.system(size: 18, design: .serif)).foregroundStyle(.primary).underline(hover)
             }
             .contentShape(Rectangle())
         }
@@ -443,9 +443,9 @@ struct NotesView: View {
             }
             if let c = correction {
                 HStack(alignment: .top, spacing: 8) {
-                    RoundedRectangle(cornerRadius: 1).fill(Color.accentColor).frame(width: 3)
+                    RoundedRectangle(cornerRadius: 1).fill(Color.primary).frame(width: 3)
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Your correction · \(shortDate(c.str("at")))").font(.caption2.weight(.bold)).foregroundStyle(Color.accentColor)
+                        Text("Your correction · \(shortDate(c.str("at")))").font(.caption2.weight(.bold)).foregroundStyle(.primary)
                         Text(c.str("text") ?? "").font(.system(size: 15, design: .serif))
                     }
                 }
@@ -550,7 +550,7 @@ struct GoalsView: View {
             let provisional = store.isProvisional(g)
             HStack(spacing: 6) {
                 Text(status == "working" ? "WORKING ON" : status == "met" ? "✓ MET · marked by you" : "DROPPED")
-                    .font(.caption2.weight(.bold)).foregroundStyle(status == "met" ? Color.green : Color.accentColor)
+                    .font(.caption2.weight(.bold)).foregroundStyle(status == "met" ? Color.green : Color.secondary)
                 if provisional {
                     Text("· PROVISIONAL · \(g.str("replaces") == nil ? "noted" : "revised") by Sophia").font(.caption2.weight(.bold)).foregroundStyle(.orange)
                 }
@@ -612,7 +612,7 @@ struct GoalsView: View {
     @ViewBuilder
     func interpretation(_ record: JSONObject, label: String) -> some View {
         if let correction = session.store.correction(of: record.str("id") ?? "") {
-            Text("Your correction · \(shortDate(correction.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(Color.accentColor)
+            Text("Your correction · \(shortDate(correction.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(.primary)
             Text(correction.str("text") ?? "").textSelection(.enabled)
             Text("Was, Sophia's read: “\(record.str("text") ?? "")”").font(.caption).foregroundStyle(.secondary)
         } else {

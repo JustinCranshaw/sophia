@@ -275,7 +275,7 @@ struct Who: View {
     let text: String
     var sophia = false
     var body: some View {
-        Text(text.uppercased()).font(.caption2.weight(.bold)).tracking(0.6).foregroundStyle(sophia ? Color.accentColor : .secondary)
+        Text(text.uppercased()).font(.caption2.weight(.bold)).tracking(0.6).foregroundStyle(sophia ? Brand.plum : .secondary)
     }
 }
 

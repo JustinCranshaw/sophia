@@ -13,7 +13,7 @@ struct MemoryCard: View {
     var body: some View {
         let store = session.store
         VStack(alignment: .leading, spacing: 10) {
-            Text("WHAT SOPHIA IS KEEPING IN MIND").font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(.secondary)
+            Text("WHAT SOPHIA IS KEEPING IN MIND").font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(Brand.plum)
             if store.memory.isEmpty {
                 Text("Nothing yet. Sophia keeps a few lines here on where things stand, and looks up her notes when she needs more.")
                     .font(.callout).foregroundStyle(.secondary)
