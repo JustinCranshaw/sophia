@@ -162,13 +162,33 @@ If an edited page range disappears before it can be saved, its unsaved text is k
 Explicit **Finish for now** reports a connection, unusable reply, or save failure without retrying automatically. A disk failure may leave some notes saved before completion is recorded: inspect Sophia's notes before choosing Finish again. Automatic return-note failures stay quiet. See [SOP54 feedback checks](checks/sop54-finish-feedback.md).
 Linked notebook page reads and link-title discovery use an existing-only reader: missing or corrupt notebooks remain unavailable, without creating pages, defaults or recovery records. MCP `read_page` also avoids writable startup for its source notebook. See [the focused checks](checks/sop52-linked-read-only.md); this does not change the writable context used by other tools such as local `recall`.
 
+## Notebook Home and navigation
+
+The sidebar represents notebooks, chapters and pages. Clicking a notebook opens its Home, including an empty notebook; starting a new notebook with a question still carries that text into an unsent composer. Home puts the actual contents and confirmed working goals first. Goal proposals remain proposals, with review available through the notebook menu/settings. An optional historical inquiry quotes saved words with a caveat; the approach text is explicitly general, not a generated curriculum or assessment. Private working memory is not repurposed as an introduction.
+
+Goals and Sophia’s notes live in notebook settings, available from the notebook’s ellipsis/context menu and their existing conversation actions. They do not retarget the selected page or its conversation. About you is a separately labeled shared-Library utility using the existing confirmation/correction controls. A conversation header always identifies its page or the notebook; Home’s history can be expanded, and explicit Send expands it. Composer drafts remain window-local and keyed by notebook/page, not durable across Quit.
+
+Routine page-write banners are quieted. The page header’s contextual Undo retains the same authored-action eligibility and previous bytes; its accessible label names the action and page. It does not capture ⌘Z from the editor/composer. Unknown-provenance changes, refusals, connection errors and kept-edit recovery remain explicit.
+
+Almanac entries show recorded publication dates without rewriting titles or using file modification times. Ordinary pages stay ordinary; unavailable dates are not invented. Preparation, timing, pause/disable and optional notifications are grouped on the Almanac’s Home/settings. A global **New Almanac entry** action appears only while a saved entry is waiting; opening an entry is not a claim that it was read or understood.
+
+See [SOP59 native checks](checks/sop59-notebook-orientation.md) for the rendered design loop, controlled interaction evidence and limits. Focused read-only presentation checks, from `app/`:
+
+```sh
+swift build --product Sophia
+SOPHIA_BIN=$(swift build --show-bin-path)
+SOPHIA_CHECK_DIR=$(mktemp -d /tmp/sophia-orientation-checks.XXXXXX)
+swiftc -I "$SOPHIA_BIN/Modules" Sources/Sophia/NotebookPresentation.swift checks/notebook-presentation.swift "$SOPHIA_BIN"/SophiaCore.build/*.o -o "$SOPHIA_CHECK_DIR/checks"
+"$SOPHIA_CHECK_DIR/checks" "$SOPHIA_CHECK_DIR/fixtures"
+```
+
 ## Sophia’s Almanac
 
-Use **Sophia’s Almanac…** in the Library or app menu to opt in. Choose eligible notebook names and optional topics; these and earlier Almanac entry titles go to Claude for thematic curation. The source notebooks’ pages, conversations, goals and personal assessments are not sent. Separate notebooks are excluded; if the Almanac itself is kept separate, only typed topics guide it. Enabling creates a uniquely named, marked notebook rather than converting an ordinary same-name notebook.
+Use **Sophia’s Almanac…** in the Library or app menu to open its Home or opt in. Choose eligible notebook names and optional topics; these and earlier Almanac entry titles go to Claude for thematic curation. The source notebooks’ pages, conversations, goals and personal assessments are not sent. Separate notebooks are excluded; if the Almanac itself is kept separate, only typed topics guide it. Enabling creates a uniquely named, marked notebook rather than converting an ordinary same-name notebook.
 
 Manual preparation can make another entry even when an earlier one is waiting. Daily preparation is a separate explicit choice: set a local time and leave Sophia open with this Mac awake. The app checks on its timer, activation and wake; it does not run a closed-app daemon, wake the Mac, or create catch-up entries for missed days. One waiting entry blocks automatic accumulation. Pause daily preparation leaves manual preparation available; Disable stops preparation while keeping saved pages. Changing settings cancels stale preparation. Connection & Data must be acknowledged before requests; closing that information starts nothing by itself.
 
-Entries use ordinary pages, conversation, Undo and protected editing. Background preparation keeps the current notebook, page, editor and unsent composer in place. Read entry explicitly navigates; opening is not a claim of reading or learning. Prepare another entry creates another page, rather than silently replacing an edited one. Failed/cancelled preparation keeps earlier pages readable. The generation source basis is WebSearch summaries or general explanation, never a claim of inspected passages; attended conversation retains its normal source-opening permission controls.
+Entries use ordinary pages, conversation, Undo and protected editing. Background preparation keeps the current notebook, page, editor and unsent composer in place. Selecting an entry explicitly navigates; opening is not a claim of reading or learning. Prepare another entry creates another page, rather than silently replacing an edited one. Failed/cancelled preparation keeps earlier pages readable. The generation source basis is WebSearch summaries or general explanation, never a claim of inspected passages; attended conversation retains its normal source-opening permission controls.
 
 Notifications are independently optional. **Enable notifications…** is the only action that may ask macOS for alert permission. The generic notification contains no topic or source-notebook title and is attempted only after an entry is saved. Denial or submission failure does not prevent reading/preparation; automatic notification retry does not repeatedly announce the same entry. A notification click only opens its revalidated saved target. Controlled adapter checks do not establish actual OS delivery, Focus behavior or ad-hoc-package permission behavior.
 
