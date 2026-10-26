@@ -181,12 +181,7 @@ cite{font-style:italic}
 /* shared: return briefing, year, dark tile */
 .brief{background:var(--surf);border:1px solid var(--rule);border-radius:var(--rad,8px);padding:14px 18px;margin-bottom:12px}
 .brief-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;margin:0 0 8px}
-.brief-n{font:12px/1.3 var(--ui);color:var(--mut)}
-.brief dl{margin:0;display:grid;gap:6px}
-.brief dl>div{display:grid;grid-template-columns:118px minmax(0,1fr);gap:10px}
-.brief dt{padding-top:2px}
-.brief dd{margin:0;font-size:14px;line-height:1.45;color:var(--ink2)}
-@media (max-width:620px){.brief dl>div{grid-template-columns:1fr;gap:0}}
+.brief .brief-t{margin:0;font-size:14.5px;line-height:1.5;color:var(--ink2)}
 .ic-dk .plate{fill:var(--dkbg);stroke:var(--dkbg)}
 .ic-dk{color:var(--dkfg);--ma:var(--dkacc)}
 .face{--dkbg:#16171a;--dkfg:#ecebe6;--dkacc:var(--acc)}
@@ -239,6 +234,7 @@ cite{font-style:italic}
 .t-col .alm-name{font:13px/1.2 var(--ui);letter-spacing:.08em;color:var(--ink2)}
 @media (max-width:620px){
  .t-gloss .gl-grid{grid-auto-flow:row}
+ .t-gloss .alm .gl-grid>.gloss{grid-row:auto}
  .t-gloss .gl-grid>.gloss,.t-gloss .dark .gl-grid>.gloss{padding-left:0}
  .t-gloss .gloss p{padding-left:24px}
  .t-gloss .hang,.t-gloss .dark .hang{left:4px;top:1px}
@@ -270,7 +266,7 @@ cite{font-style:italic}
   <p class="premise">The brand is the architecture of commentary around a text. Your page is the central column; Sophia speaks in the margin, tied to the line she comments on by a small rubric reference point.</p>
   <dl class="facts">
    <div><dt>Why the marks belong</dt><dd><b>Gloss bracket</b> (Sophia): a heavy column (the text), a square reference point on its top line, and a thin bracket for commentary. <b>Surround</b> (Almanac): the text block closed on three sides by commentary — a finished, framed entry, open only at the foot. Both draw a reading relation, not an object.</dd></div>
-   <div><dt>Provenance roles</dt><dd>Source = indented block with SOURCE numeral; Yours = heavy left rule + YOURS; Sophia = smaller roman in the gloss column with rubric small-caps label. Rubric appears on labels and reference points only; error uses ochre + ⚠ + words. Dark is not an inversion: hairlines vanish at night, so the margin becomes a raised plane on cool graphite. Below 620px the gloss stays beside its line as an indented gloss with a hanging rubric letter.</dd></div>
+   <div><dt>Provenance roles</dt><dd>Source = indented block with SOURCE numeral; Yours = heavy left rule + YOURS; Sophia = smaller roman in the gloss column with rubric small-caps label. Rubric appears on labels, reference points and the selection; error uses ochre + ⚠ + words. Dark is not an inversion: hairlines vanish at night, so the margin becomes a raised plane on cool graphite. Below 620px the gloss stays beside its line as an indented gloss with a hanging rubric letter.</dd></div>
    <div><dt>Type</dt><dd>Hoefler Text (fallback Baskerville, Georgia) roman/italic/small caps; UI labels in the same family.</dd></div>
    <div><dt>Excluded</dt><dd>No manuscript texture, blackletter, daggers/pilcrows as ornament, or religious decoration.</dd></div>
    <div><dt>Risk &amp; test</dt><dd>At 16px the bracket may read as code. Rubric red may read as a correction pen. Test greyscale 16px, and whether the 390px interleaved gloss (hanging rubric letters) still reads as commentary.</dd></div>
@@ -291,7 +287,7 @@ cite{font-style:italic}
  </div>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -318,7 +314,7 @@ cite{font-style:italic}
  </div>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -359,7 +355,7 @@ cite{font-style:italic}
  </div>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -386,7 +382,7 @@ cite{font-style:italic}
  </div>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -408,8 +404,8 @@ cite{font-style:italic}
   <p class="premise">A scale with one reading taken. Drawn on dark first; light is derived. Sophia’s Almanac shares the geometry but closes it into a frame with a large year and no pointer, because its entries are finished.</p>
   <dl class="facts">
    <div><dt>Why the marks belong</dt><dd><b>Scale & caret</b> (Sophia): a baseline with seven uneven ticks; the third is tall with a lamp-coloured caret — one reading taken. 16px and 24px optical cuts keep the caret and three ticks so it never collapses to a bare ⊥. <b>Frame</b> (Almanac): the ticks closed into a frame under a heavy year band. The inspected 1851 almanac cover supports only a closed frame, a central title and a prominent year; the ticks are this territory’s own geometry, and issues are never numbered.</dd></div>
-   <div><dt>Provenance roles</dt><dd>A gutter scale: each block has a tick and a word (Page, You, Source n, Sophia). The tall tick marks the passage under discussion. Lamp marks Sophia and the selection; error = coral + ⚠ + words. Below 620px the gutter word moves above its block.</dd></div>
-   <div><dt>Type</dt><dd>Palatino upright for wordmark and reading; Menlo/PT Mono for datelines only.</dd></div>
+   <div><dt>Provenance roles</dt><dd>A gutter scale: each block has a tick and a word (Page, You, Source n, Sophia). The tall tick marks the passage under discussion. Lamp marks Sophia, the selection and the reading caret; error = coral + ⚠ + words. Below 620px the gutter word moves above its block.</dd></div>
+   <div><dt>Type</dt><dd>Palatino upright for wordmark and reading; Menlo/PT Mono for datelines, gutter words and labels.</dd></div>
    <div><dt>Excluded</dt><dd>No glow, gradients, moons, stars, rings enclosing the mark, mountains or astrology.</dd></div>
    <div><dt>Risk &amp; test</dt><dd>The scale may read as a slider, progress bar or volume control. Test: unlabeled 16px mark, five people; any “progress”/“volume” answer fails.</dd></div>
   </dl>
@@ -425,7 +421,7 @@ cite{font-style:italic}
  <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut acc">Sophia ?</span><p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="lab">uncertain</span></p></div>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -451,7 +447,7 @@ cite{font-style:italic}
  <div class="row"><span class="tk" aria-hidden="true"></span><span class="gut acc">Sophia ?</span><p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="lab">uncertain</span></p></div>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -493,7 +489,7 @@ cite{font-style:italic}
  <p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="att">— Sophia, uncertain</span></p>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
@@ -517,7 +513,7 @@ cite{font-style:italic}
  <p class="interp prov">Whether this matters for your filter depends on the sampling rate. Not yet checked. <span class="att">— Sophia, uncertain</span></p>
  <div class="goal"><span class="lab">Provisional goal</span> Understand convergence near jumps <button type="button">Confirm</button></div><div class="err" role="note"><span class="lab"><span aria-hidden="true">⚠ </span>Not opened</span> Second source: access denied. Nothing from it is quoted.</div>
 </div>
-<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Contents · on return</span><span class="brief-n">Sophia’s account. Correct it if it’s wrong.</span></p><dl><div><dt class="lab">Open question</dt><dd>Why the overshoot near the jump doesn’t shrink as terms are added.</dd></div><div><dt class="lab">Last idea</dt><dd>The ripple narrows toward the jump; its height stays.</dd></div><div><dt class="lab">Still uncertain</dt><dd>Whether it matters for your filter at your sampling rate.</dd></div><div><dt class="lab">Next step</dt><dd>Try the 5-term and 50-term sums side by side, or keep reading.</dd></div></dl></div>
+<div class="brief" aria-label="Return briefing specimen"><p class="brief-h"><span class="lab">Sophia · welcome back</span></p><p class="brief-t">You were asking why the overshoot near the jump doesn’t shrink. Want to try the 5-term and 50-term sums side by side?</p></div>
 <div class="convo" aria-label="Conversation specimen">
 <div class="turn you"><span class="who">You</span><p>Why doesn’t the spike shrink?</p></div>
 <div class="turn so"><span class="who">Sophia</span><p>Each new term narrows the ripple, but the sum still has to climb a vertical jump it can’t follow exactly, so the overshoot moves closer to the jump instead of getting smaller. I’ve added that to the page.</p></div>
