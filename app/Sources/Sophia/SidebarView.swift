@@ -12,8 +12,6 @@ struct SidebarView: View {
             Section("Library") {
                 if let worker = almanac.worker {
                     NotebookRows(url: worker.url)
-                    AlmanacStatusView(worker: worker, almanac: almanac, read: model.readAlmanacEntry, sidebar: true)
-                        .padding(.leading, 20).padding(.bottom, 8)
                 } else {
                     Button("Sophia’s Almanac…") { almanac.settingsShown = true }
                 }
@@ -36,7 +34,7 @@ struct NotebookRows: View {
             OpenNotebookRows(session: s)
         } else {
             Button { model.openNotebook(url) } label: {
-                Label(url.lastPathComponent, systemImage: "book.closed").lineLimit(1).truncationMode(.tail)
+                Label(url.lastPathComponent, systemImage: Almanac.isConfigured(url: url) ? "sun.max" : "book.closed").lineLimit(1).truncationMode(.tail)
             }
             .buttonStyle(.plain)
             .help(url.lastPathComponent)
@@ -50,22 +48,17 @@ struct OpenNotebookRows: View {
 
     var body: some View {
         let store = session.store
-        let provisional = store.goals.filter { store.isProvisional($0) }.count
-        row(.contents, store.name, "book", bold: true)
+        let entries = NotebookPresentation.almanacEntries(store)
+        row(.contents, store.name, Almanac.isConfigured(url: store.url) ? "sun.max" : "book", bold: true)
             .modifier(NotebookCopyActions(url: store.url))
-        row(.goals, "Goals", "scope", indent: true,
-            trailing: provisional > 0 ? "\(provisional) to confirm" : store.goals.isEmpty ? nil : "\(store.goals.filter { $0.str("status") == "working" }.count)")
-        row(.notes, "Sophia's notes", "note.text", indent: true, trailing: noteCount == 0 ? nil : "\(noteCount)")
         if store.pages.isEmpty {
             Text("No pages yet.").font(.caption).lineLimit(1).foregroundStyle(.secondary).padding(.leading, 22)
         } else {
-            Text("Book").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                .padding(.leading, 20).padding(.top, 8)
             ForEach(store.chapters) { c in
                 chapterRow(c)
-                if !collapsed.contains(c.id) { ForEach(c.pages) { p in pageRow(p, indent: 32) } }
+                if !collapsed.contains(c.id) { ForEach(c.pages) { p in pageRow(p, indent: 32, entry: entries[p.file]) } }
             }
-            ForEach(store.unfiledPages) { p in pageRow(p, indent: 14) }
+            ForEach(store.unfiledPages) { p in pageRow(p, indent: 14, entry: entries[p.file]) }
         }
     }
 
@@ -93,7 +86,7 @@ struct OpenNotebookRows: View {
     }
 
     /// A page: its section number in a fixed column (or a page icon), then its title on one line.
-    func pageRow(_ p: NotebookStore.Page, indent: CGFloat) -> some View {
+    func pageRow(_ p: NotebookStore.Page, indent: CGFloat, entry: AlmanacEntry?) -> some View {
         let (n, t) = pageNumber(session.store, p)
         let selected = session.place == .page(p.file)
         return Button { session.show(.page(p.file)) } label: {
@@ -103,7 +96,12 @@ struct OpenNotebookRows: View {
                 } else {
                     Image(systemName: "doc.text").foregroundStyle(.secondary).frame(width: 16)
                 }
-                Text(t).lineLimit(1).truncationMode(.tail)
+                VStack(alignment: .leading, spacing: 3) {
+                    if let entry {
+                        Text(NotebookPresentation.publicationDate(entry, abbreviated: true)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    Text(t).lineLimit(2).truncationMode(.tail)
+                }
                 Spacer(minLength: 0)
             }
             .padding(.leading, indent).padding(.vertical, 3).padding(.horizontal, 6)

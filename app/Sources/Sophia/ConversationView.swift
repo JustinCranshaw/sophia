@@ -7,6 +7,7 @@ struct ConversationView: View {
     @Binding private var message: String
     private let compact: Bool
     @FocusState private var focused: Bool
+    @State private var expanded = false
     @State private var followsLatest = true
     @State private var hasNewActivity = false
     @State private var scrollPosition: ConversationScrollPosition?
@@ -20,16 +21,22 @@ struct ConversationView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if !compact {
-            HStack {
-                Spacer()
-                Text(session.conversationName).font(.caption).foregroundStyle(.secondary)
-                Button("Finish for now") { session.endSession() }
-                    .disabled(session.isResponding || !session.hasUncheckpointedMessages)
-                    .help("Finish for now")
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(session.activeThread.isEmpty ? "Notebook conversation" : "Conversation · " + session.conversationName)
+                    .font(.subheadline.weight(.semibold)).lineLimit(2).help(session.conversationName)
+                Spacer(minLength: 8)
+                if compact {
+                    Button(expanded ? "Hide conversation" : "Show conversation") { expanded.toggle() }.buttonStyle(.borderless)
+                }
+                if !compact || expanded {
+                    Button("Finish for now") { session.endSession() }
+                        .disabled(session.isResponding || !session.hasUncheckpointedMessages)
+                        .help("Finish for now")
+                }
             }
             .padding(.horizontal, 14).padding(.vertical, 9)
             Divider()
+            if !compact || expanded {
             ScrollViewReader { proxy in
                 GeometryReader { viewport in
                     ScrollView {
@@ -129,6 +136,7 @@ struct ConversationView: View {
                     followIfNeeded(proxy)
                 }
             }
+            .frame(height: compact ? 230 : nil)
             }
             if let request = session.pendingSource {
                 VStack(alignment: .leading, spacing: 8) {
@@ -162,7 +170,7 @@ struct ConversationView: View {
             Divider()
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .bottom, spacing: 8) {
-                    TextField("Ask, answer, or push back…", text: $message, axis: .vertical)
+                    TextField(session.activeThread.isEmpty ? "Ask about this notebook…" : "Ask about this page…", text: $message, axis: .vertical)
                         .font(.system(size: 14))
                         .lineLimit(1...8)
                         .textFieldStyle(.plain)
@@ -185,6 +193,7 @@ struct ConversationView: View {
             .frame(maxWidth: .infinity)
         }
         .onAppear { focused = Snapshot.outDir == nil && !compact }
+        .onChange(of: session.activeThread) { _, _ in expanded = false }
         .onChange(of: compact) { _, value in if value { focused = false } }
         .disabled(Snapshot.outDir != nil)
     }
@@ -224,6 +233,7 @@ struct ConversationView: View {
         hasNewActivity = false
         settlingViewport = false
         message = ""
+        expanded = true
         session.send(t)
     }
 }
@@ -471,6 +481,7 @@ struct PageWriteCard: View {
 
 /// A goal Sophia recorded from the conversation, with full review before confirmation.
 struct GoalNotedCard: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let recordID: String
     var body: some View {
@@ -494,7 +505,10 @@ struct GoalNotedCard: View {
             }
             Spacer(minLength: 8)
             if let c = current, store.isProvisional(c), c.str("id") == recordID {
-                Button("Review") { session.reviewGoal(recordID) }
+                Button("Review") {
+                    session.reviewGoal(recordID, navigate: false)
+                    model.showNotebookSettings(session.store.url, section: .goals)
+                }
             }
             Button("Goals") { session.show(.goals) }
         }

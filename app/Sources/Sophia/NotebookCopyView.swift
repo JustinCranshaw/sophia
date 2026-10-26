@@ -4,6 +4,7 @@ import AppKit
 /// Finder copies the ordinary folder; Sophia adds no archive or sync format.
 struct NotebookCopyActions: ViewModifier {
     let url: URL
+    @EnvironmentObject private var model: AppModel
     @State private var helpShown = false
     func body(content: Content) -> some View {
         HStack(spacing: 4) {
@@ -22,6 +23,10 @@ struct NotebookCopyActions: ViewModifier {
     }
     private var actions: some View {
         Group {
+            Button("Notebook settings…") { model.showNotebookSettings(url) }
+            Button("Goals…") { model.showNotebookSettings(url, section: .goals) }
+            Button("Sophia’s notes…") { model.showNotebookSettings(url, section: .notes) }
+            Divider()
             Button("Show Notebook in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Button("Copy & Restore…") { helpShown = true }
         }
