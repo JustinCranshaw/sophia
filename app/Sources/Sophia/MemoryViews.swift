@@ -155,6 +155,7 @@ struct LinksList: View {
 
 /// A conversation line when Sophia rewrites her memory.
 struct MemoryChangedLine: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
     var body: some View {
@@ -166,7 +167,7 @@ struct MemoryChangedLine: View {
             Image(systemName: "brain").foregroundStyle(.tertiary)
             Text("Updated what she's keeping in mind" + (parts.isEmpty ? "" : ": " + parts.joined(separator: ", ")))
                 .foregroundStyle(.secondary)
-            Button("See") { session.show(.notes) }.buttonStyle(.link)
+            Button("See") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
         }
         .font(.caption)
     }
@@ -174,6 +175,7 @@ struct MemoryChangedLine: View {
 
 /// A conversation card when Sophia proposes a line about the person, or a link.
 struct LibraryProposalCard: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
     var body: some View {
@@ -199,7 +201,10 @@ struct LibraryProposalCard: View {
             if let r = rec {
                 Button("Confirm") { isLink ? session.confirmLink(id) : session.confirmAbout(r) }
             }
-            Button(isLink ? "Contents" : "About you") { session.show(isLink ? .contents : .about) }
+            Button(isLink ? "Notebook connections…" : "About you…") {
+                if isLink { model.showNotebookSettings(session.store.url) }
+                else { model.aboutShown = true }
+            }
         }
         .controlSize(.small)
         .padding(.horizontal, 12).padding(.vertical, 9)

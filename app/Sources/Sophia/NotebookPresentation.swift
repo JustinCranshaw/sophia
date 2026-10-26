@@ -4,7 +4,7 @@ import SophiaCore
 /// Read-only presentation of recorded facts; never derives a learner profile or publication date.
 enum NotebookPresentation {
     static func confirmedGoals(_ store: NotebookStore) -> [JSONObject] {
-        store.goals.filter { !store.isProvisional($0) && $0.str("status") == "working" }
+        store.goals.filter { $0.str("by") == "person" && $0.str("status") == "working" }
     }
     static func earlyInquiry(_ store: NotebookStore) -> String? {
         store.transcript.first { entry in

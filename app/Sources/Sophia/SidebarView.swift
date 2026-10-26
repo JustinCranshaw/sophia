@@ -19,7 +19,7 @@ struct SidebarView: View {
                     NotebookRows(url: url)
                 }
             }
-            if let s = model.open { Section { AboutRow(session: s) } }
+            if let s = model.open { Section("Shared across notebooks") { AboutRow(session: s) } }
         }
         .listStyle(.sidebar)
     }
@@ -33,7 +33,7 @@ struct NotebookRows: View {
         if let s = model.open, s.store.url == url {
             OpenNotebookRows(session: s)
         } else {
-            Button { model.openNotebook(url) } label: {
+            Button { if model.openNotebook(url) { model.open?.show(.contents) } } label: {
                 Label(url.lastPathComponent, systemImage: Almanac.isConfigured(url: url) ? "sun.max" : "book.closed").lineLimit(1).truncationMode(.tail)
             }
             .buttonStyle(.plain)
@@ -143,10 +143,11 @@ struct OpenNotebookRows: View {
 
 /// "About you", shared by every notebook.
 struct AboutRow: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     var body: some View {
         let proposed = session.library.aboutLines(visibleIn: session.store.name).filter(LibraryStore.isProvisional).count
-        Button { session.show(.about) } label: {
+        Button { model.aboutShown = true } label: {
             HStack(spacing: 6) {
                 Image(systemName: "person.crop.circle").foregroundStyle(.secondary).frame(width: 16)
                 Text("About you").lineLimit(1)

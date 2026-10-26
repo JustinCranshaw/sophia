@@ -7,6 +7,7 @@ enum UXHarness {
     static var timer: Timer?
     static var root: URL?
     static var elements: [NSObject] = []
+    static var elementWindows: [NSWindow] = []
 
     static func get(_ object: NSObject, _ name: String) -> Any? {
         let selector = NSSelectorFromString(name)
@@ -35,14 +36,15 @@ enum UXHarness {
     }
 
     static func tree() -> [[String: Any]] {
-        elements = []
+        elements = []; elementWindows = []
         var rows: [[String: Any]] = []
         var seen = Set<ObjectIdentifier>()
-        func visit(_ object: Any, _ depth: Int) {
+        func visit(_ object: Any, _ depth: Int, _ window: NSWindow) {
             guard depth < 40, let a = object as? NSObject,
                   seen.insert(ObjectIdentifier(a)).inserted else { return }
+            let owner = (a as? NSWindow) ?? (a as? NSView)?.window ?? window
             let id = elements.count
-            elements.append(a)
+            elements.append(a); elementWindows.append(owner)
             let f = (a as? any NSAccessibilityProtocol)?.accessibilityFrame() ?? .zero
             var row: [String: Any] = ["id": id, "depth": depth,
                 "class": String(describing: type(of: a)),
@@ -53,11 +55,11 @@ enum UXHarness {
             if let help = get(a, "accessibilityHelp") as? String { row["help"] = help }
             if let value = get(a, "accessibilityValue") { row["value"] = String(describing: value) }
             rows.append(row)
-            for child in (get(a, "accessibilityChildren") as? [Any] ?? []) { visit(child, depth + 1) }
-            if let view = object as? NSView { for child in view.subviews { visit(child, depth + 1) } }
-            if let window = object as? NSWindow, let view = window.contentView { visit(view, depth + 1) }
+            for child in (get(a, "accessibilityChildren") as? [Any] ?? []) { visit(child, depth + 1, owner) }
+            if let view = object as? NSView { for child in view.subviews { visit(child, depth + 1, owner) } }
+            if let window = object as? NSWindow, let view = window.contentView { visit(view, depth + 1, owner) }
         }
-        for window in NSApp.windows where window.isVisible { visit(window, 0) }
+        for window in NSApp.windows where window.isVisible { visit(window, 0, window) }
         return rows
     }
 
@@ -79,6 +81,7 @@ enum UXHarness {
         let action = cmd["action"] as? String ?? "inspect"
         if elements.isEmpty { _ = tree() }
         let target = (cmd["id"] as? Int).flatMap { elements.indices.contains($0) ? elements[$0] : nil }
+        let targetWindow = (cmd["id"] as? Int).flatMap { elementWindows.indices.contains($0) ? elementWindows[$0] : nil }
         switch action {
         case "inspect": break
         case "menu":
@@ -131,8 +134,39 @@ enum UXHarness {
                 } else { result["error"] = "Focus a text editor first" }
             }
         case "click", "hover":
-            if let window = activeWindow, let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
-                let point = NSPoint(x: x, y: window.frame.height - y)
+            if let window = activeWindow {
+                let point: NSPoint
+                if cmd["id"] != nil {
+                    guard let target, let accessible = target as? any NSAccessibilityProtocol else {
+                        result["error"] = "The UI element is missing; inspect again."; break
+                    }
+                    guard targetWindow === window else {
+                        result["error"] = "The UI element is outside the active window."; break
+                    }
+                    let frame = accessible.accessibilityFrame()
+                    let role = get(target, "accessibilityRole") as? String
+                    let label = get(target, "accessibilityLabel") as? String
+                    let type = String(describing: Swift.type(of: target))
+                    _ = tree()
+                    // Native segments recreate their AX wrapper on each read. Require one exact
+                    // visible match in the same window, never reinterpret an old numeric index.
+                    let matches = elements.enumerated().filter { index, value in
+                        elementWindows[index] === window && String(describing: Swift.type(of: value)) == type
+                            && (get(value, "accessibilityRole") as? String) == role
+                            && (get(value, "accessibilityLabel") as? String) == label
+                            && (value as? any NSAccessibilityProtocol)?.accessibilityFrame() == frame
+                    }
+                    guard matches.count == 1 else {
+                        result["error"] = "The UI element is stale or ambiguous; inspect again."; break
+                    }
+                    let center = NSPoint(x: frame.midX, y: frame.midY)
+                    guard !frame.isEmpty, window.frame.contains(center) else {
+                        result["error"] = "The UI element is outside the active window."; break
+                    }
+                    point = window.convertPoint(fromScreen: center)
+                } else if let x = cmd["x"] as? Double, let y = cmd["y"] as? Double {
+                    point = NSPoint(x: x, y: window.frame.height - y)
+                } else { result["error"] = "Supply a current element ID or click coordinates."; break }
                 window.makeKeyAndOrderFront(nil)
                 let kinds: [NSEvent.EventType] = action == "hover" ? [.mouseMoved] : [.leftMouseDown, .leftMouseUp]
                 for kind in kinds {

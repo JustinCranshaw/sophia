@@ -259,6 +259,7 @@ struct Who: View {
 }
 
 struct EntryView: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
     let retryQuestion: JSONObject?
@@ -316,7 +317,7 @@ struct EntryView: View {
                     if entry.str("tool") == "note", let record = entry.str("record") {
                         NoteLine(session: session, recordID: record, revised: entry["revised"] == .bool(true))
                     } else {
-                        Button("Notes") { session.show(.notes) }.buttonStyle(.link).font(.caption)
+                        Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link).font(.caption)
                     }
                 }
             } else if let pid = entry.str("proposal") {
@@ -376,7 +377,7 @@ struct EntryView: View {
                     if !catchUp { Divider() }
                     HStack(spacing: 4) {
                         Text(catchUp ? "\(noted) from your last session ·" : "Session ended · \(noted) ·").font(.caption).foregroundStyle(.secondary)
-                        Button("Review") { session.show(.notes) }.buttonStyle(.link).font(.caption)
+                        Button("Review") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link).font(.caption)
                     }
                     if !notKept.isEmpty {
                         DisclosureGroup("\(notKept.count) not kept") {
@@ -422,6 +423,7 @@ private struct NotebookUpdatesView: View {
 
 /// A note Sophia wrote during the conversation: one quiet line, so the person can see what she keeps.
 struct NoteLine: View {
+    @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let recordID: String
     let revised: Bool
@@ -434,14 +436,14 @@ struct NoteLine: View {
                 (Text(revised ? "Updated a note, \(kind): " : "Noted, \(kind): ").foregroundColor(.secondary) + Text(r.str("text") ?? ""))
                     .lineLimit(2)
                 Spacer(minLength: 4)
-                Button("Notes") { session.show(.notes) }.buttonStyle(.link)
+                Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
             }
             .font(.caption)
         } else {
             HStack {
                 Label("Note no longer available.", systemImage: "note.text").foregroundStyle(.secondary)
                 Spacer(minLength: 4)
-                Button("Notes") { session.show(.notes) }.buttonStyle(.link)
+                Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
             }.font(.caption).help(recordID)
         }
     }
@@ -510,7 +512,7 @@ struct GoalNotedCard: View {
                     model.showNotebookSettings(session.store.url, section: .goals)
                 }
             }
-            Button("Goals") { session.show(.goals) }
+            Button("Goals") { model.showNotebookSettings(session.store.url, section: .goals) }
         }
         .controlSize(.small)
         .padding(.horizontal, 12).padding(.vertical, 9)

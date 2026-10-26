@@ -396,14 +396,7 @@ struct PageView: View {
         return "Undo Sophia's change"
     }
 
-    /// "§2", "the opening", or "the page", for an edit entry.
-    func editedPlace(_ e: JSONObject) -> String { editLabel(e) }
 
-    var updated: String {
-        let url = session.store.pagesURL.appendingPathComponent(file)
-        guard let d = (try? FileManager.default.attributesOfItem(atPath: url.path))?[.modificationDate] as? Date else { return "Saved" }
-        return "Updated " + d.formatted(.dateTime.month(.abbreviated).day())
-    }
 }
 
 // MARK: Notes

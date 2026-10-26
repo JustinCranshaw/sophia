@@ -249,10 +249,11 @@ struct AlmanacSettingsView: View {
 struct AlmanacHomeControls: View {
     @ObservedObject var worker: AlmanacPreparation
     @ObservedObject var almanac: AlmanacModel
+    private var hasProblem: Bool { almanac.problem != nil || worker.problem != nil || worker.snapshot.problem != nil }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Button("Prepare a new entry") { almanac.prepare() }
+                Button(hasProblem ? "Retry preparation" : "Prepare a new entry") { almanac.prepare() }
                     .disabled(worker.snapshot.phase == .preparing || worker.snapshot.settings?.enabled != true)
                 Button("Preparation & notifications…") { almanac.showSettings() }
                 if worker.snapshot.phase == .preparing { Button("Cancel preparation") { worker.cancel() } }

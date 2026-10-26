@@ -47,6 +47,7 @@ final class AppModel: ObservableObject {
     @Published var open: NotebookSession?
     @Published var problem: String?
     @Published var notebookSettings: NotebookSettingsSelection?
+    @Published var aboutShown = false
     private var bookVisibility: [String: Bool] = [:]
 
     init() {
@@ -213,6 +214,11 @@ struct RootView: View {
             ConnectionView(connection: connection).frame(width: 560)
         }
         .sheet(isPresented: $almanac.settingsShown) { AlmanacSettingsView(almanac: almanac) }
+        .sheet(isPresented: $model.aboutShown) {
+            if let session = model.open {
+                SharedAboutView(session: session) { model.aboutShown = false }
+            }
+        }
         .sheet(item: $model.notebookSettings) { selection in
             if let session = model.open, session.store.url == selection.url {
                 NotebookSettingsView(session: session, section: selection.section) { model.notebookSettings = nil }
