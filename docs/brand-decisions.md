@@ -19,7 +19,7 @@ The user's decision covers exactly these four things:
 
 The geometry and color values must be copied exactly. Do not redraw, retune, apply a tonal ramp to or recolor the mark. Delft, Madder, tonal, the context accents and the other forms on that page are history, not open options.
 
-**Current specimen treatments, not separate decisions.** The source page's Plum row also shows an icon tile (light: `#6E2F55` plate with `#F4E4EC` glyph; dark: `#16171a` plate with `#E3A9C8` glyph) and a reverse (a white glyph on a `#6E2F55` square). The comparison pages reuse them as specimens. The user has not chosen them, and they are not locked.
+**Current specimen treatments, not separate decisions.** The source page's Plum row also shows an icon tile (light: `#6E2F55` plate with `#F4E4EC` glyph; dark: `#16171a` plate with `#E3A9C8` glyph) and a reverse (a white glyph on a `#6E2F55` square). The wordmark comparison also shows a monochrome sample. The comparison pages reuse them as specimens. The user has not chosen them, and they are not locked.
 
 ## Open · Wordmark typeface
 
