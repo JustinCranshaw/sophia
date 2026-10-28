@@ -46,7 +46,7 @@ final class AppModel: ObservableObject {
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
     private var aboutSession: NotebookSession?
-    let sharedAboutStore: NotebookStore?
+    @Published private(set) var sharedAboutStore: NotebookStore?
     @Published var problem: String?
     @Published var notebookSettings: NotebookSettingsSelection?
     private let preferences: UserDefaults
@@ -103,6 +103,7 @@ final class AppModel: ObservableObject {
         do {
             if aboutSession == nil {
                 let shared = try LibraryStore(root: library.root).ensureSharedAboutPage(session: "about-open")
+                sharedAboutStore = shared.store
                 aboutSession = try NotebookSession(url: shared.store.url, allowAutomaticReturn: false, conversationScope: .sharedAbout, libraryRoot: library.root)
             }
             guard let aboutSession else { return false }

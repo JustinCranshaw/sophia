@@ -42,7 +42,14 @@ notebook/
   .editing.json            what the person has open in the page editor, if anything (cleared on commit, revert, and launch)
 
 library/.sophia/
-  about.jsonl              "About you": background and standing preferences shared by every notebook
+  about.jsonl              historical About records (read-only after migration)
+  about/                    shared About NotebookStore
+    notebook.json           role/scope metadata and stable page identity
+    pages/about-you.md      canonical About you Markdown
+    pages/about-you.previous.md  one previous version, when present
+    transcript.jsonl        the shared page’s own conversation and edit/Undo records
+    page-proposals.jsonl    proposed whole-page changes and person decisions
+    legacy-about.json       immutable migration snapshot, preserving original evidence
   links.jsonl              links between pages in different notebooks
 ```
 
@@ -58,10 +65,13 @@ Sophia has three layers of memory.
 
 **Long-term notes (one notebook).** The notes described below. `recall` finds them by id, by page reference, or by words (all must appear), and it also finds matching messages from the person.
 
-**About you (every notebook).**
-- **What it is:** lines in `<library>/.sophia/about.jsonl`: the person's background and standing preferences, never topic details or judgments of ability.
-- **Sophia's proposals:** Sophia proposes a line with `about_you`. It needs a quote that matches the person's words in that notebook, records the notebook it came from, and is limited to 12 lines in all. A proposed line is provisional. It is visible to Sophia only in its notebook until the person confirms it, which writes a replacing record by the person.
-- **The person's control:** they can add, reword, or delete lines, and Sophia can't revise a confirmed line.
+**About you (shared across the Library).**
+- **What it is:** an ordinary Markdown page at `<library>/.sophia/about/pages/about-you.md`, represented by the same `NotebookStore.Page` as other pages, with external role `about` and scope `library`. It uses the same reader, byte-exact section/whole-page editor, personal-line protection, previous version and Undo. The body has no structured record markers.
+- **Sophia’s proposals:** `about_you` takes a complete Markdown replacement and an exact quote from the originating conversation. The external proposal records the whole current file hash, proposed body, origin and source evidence. Pending content is visible to Sophia only in its originating notebook/conversation. Only the person accepts or rejects; accepting uses the ordinary person-edit path and can be undone until the next eligible page action. A changed file hash stales the proposal; an open editor blocks acceptance.
+- **The person’s control:** edit the page directly or inspect the complete formatted current/proposed bodies, optional source and evidence before deciding. Accepting replaces the whole body. The page-level label makes its Library scope explicit even when the sidebar is hidden.
+- **The page’s conversation:** one stable `about-you.md` thread in the shared store, independent of the selected notebook. The engine receives an explicit real Library root and shared-About scope. Its two MCP handlers can read only this page and propose About changes; no other notebook reads, links, generic writes, goals, notes or memory tools are available. Existing attended WebSearch remains available; this native scope has no WebFetch bridge. Ordinary return/checkpoint/role-page initialization does not run here.
+- **Visibility:** accepted Markdown is supplied to ordinary notebook conversations; internal Almanac preparation still excludes About content. About-origin proposals use `.sophia/about`, which cannot collide with an ordinary notebook leaf name. The model sees only that origin’s pending proposals; the person may review all origins.
+- **Migration:** a snapshot is saved before importing person-confirmed text. Legacy provisional records become pending whole-page proposals at their original base and origin; migration never confirms them. Original IDs, quotes and replacement history remain in the snapshot and original `about.jsonl`, now historical rather than a second content authority. Reopening preserves edited canonical bytes and does not rebase old proposals onto newer edits. Initialization has no destructive new-page Undo.
 
 **Links (between notebooks).**
 - **What a link is:** a `links.jsonl` record, `{from: {notebook, page?, section?}, to: {notebook, page, section?}, reason}`.
@@ -69,7 +79,7 @@ Sophia has three layers of memory.
 - **Sections:** a page's `##` and `###` headings, outside code fences. A link can point into a section. The section's title must match one on the page (ignoring case, spacing, and punctuation) and is stored as written there. Following a link scrolls to that section.
 - **What Sophia sees across notebooks:** only the other notebooks' chapter, page, and section titles. Sophia can read a page in another notebook, or one section of it, only through a confirmed link (`read_page` with `notebook` and optionally `section`).
 - **Keeping a notebook out:** a notebook with `"separate": true` in notebook.json isn't listed, linked, or readable from others. It sees none of them, and can't be linked.
-- **Locking:** library files are written under a lock on `<library>/.sophia/.lock`. Deleting a line or link removes its whole chain.
+- **Locking:** links and legacy Library operations use `<library>/.sophia/.lock`; the shared About store uses its own notebook lock for page edits, proposals and decisions. About migration takes the Library lock before that store lock. Removing a link removes its chain; current About changes use the page editor or reviewed proposals.
 
 Pages are Markdown because people read them as prose. The two logs are JSON Lines (one JSON object per line) because every entry must carry machine-checked authorship. People read and correct them through the app, which also offers "Show record" on any card so the raw line can be audited.
 
@@ -115,7 +125,7 @@ The current `write_page` API writes title frontmatter and a Markdown body; citat
 Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ... }`.
 
 - Messages carry `text`, and each belongs to a session (`session`), one app launch.
-- **Threads.** Each page has one conversation thread, and so does the notebook's Contents. An entry's `page` names its thread by the page's file name; `""` means Contents. An entry with no `page` was written before threads existed and also belongs to Contents. Entries take their thread as follows:
+- **Threads.** Each page has one conversation thread, and so does the notebook's Contents. Chapter introductions use their actual page files; notebook introductions retain the legacy Contents thread (`""`). Shared About has its own store and `about-you.md` thread. An entry's `page` names its thread by the page's file name; `""` means Contents. An entry with no `page` was written before threads existed and also belongs to Contents. Entries take their thread as follows:
   - Messages, WebSearch, WebFetch, `goal_noted`, `stopped`, `replied` and the tool server's entries take the conversation they came from, not the page on screen. A reply that finishes after the person moves on stays where it began. The tool server is launched for one thread and stamps that thread on what it writes.
   - Entries that act on a page take that page: an edit, a release, a refused write, an undo of a revision or edit, and an undo of a release (which takes the edited page). An undo of a new page takes the conversation where the page was written, since the page itself is gone.
   - Checkpoint, briefing and memory entries belong to Contents.

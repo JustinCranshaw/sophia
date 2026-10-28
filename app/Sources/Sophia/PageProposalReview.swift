@@ -33,8 +33,6 @@ struct PageProposalReview: View {
                 let current = session.store.readPage(file)?.body ?? ""
                 let proposed = proposal.str("content") ?? ""
                 let counts = changeCounts(current: current, proposed: proposed)
-                Text("Accepting replaces the whole page · \(counts.added) lines added, \(counts.removed) removed")
-                    .font(.callout).foregroundStyle(.secondary)
                 HStack(alignment: .top, spacing: 18) {
                     source("Current saved page", current)
                     source("Proposed page", proposed)
@@ -52,6 +50,8 @@ struct PageProposalReview: View {
                 if stale { Text("This page changed after the proposal. Ask for a new proposal based on the current page.").foregroundStyle(.secondary) }
                 else if editing { Text("Finish editing the page before accepting this change.").foregroundStyle(.secondary) }
                 if let problem { Text(problem).foregroundStyle(.red).textSelection(.enabled) }
+                Text("Accepting replaces the whole page · \(counts.added) \(counts.added == 1 ? "line" : "lines") added, \(counts.removed) removed")
+                    .font(.callout).foregroundStyle(.secondary)
                 HStack {
                     Button("Reject change") { decide { try session.rejectProposal(proposalID) } }
                     Spacer()
