@@ -1,7 +1,7 @@
 // Sophia's notebook tools, served to Claude Code over stdio (newline-delimited JSON-RPC).
 // read_page reads or lists pages (or a linked page in another notebook). write_page saves a page,
 // set_chapter groups pages into a chapter, set_goal records a provisional goal, note writes a note,
-// set_memory rewrites Sophia's working memory, recall looks up Sophia’s notes, about_you proposes a line
+// set_memory rewrites Sophia's working memory, recall looks up Sophia's notes, about_you proposes a page change
 // about the person for every notebook, and link proposes a link to another notebook's page. All
 // write through NotebookStore or LibraryStore so they follow the same rules and locking as the app.
 // Usage: sophia-mcp <notebook-directory> <session>
@@ -81,33 +81,15 @@ let notebookTools: [[String: Any]] = [
     ],
     [
         "name": "note",
-        "description": "Write one of your notes on this notebook, which you'll see when the person comes back, or revise one of yours (pass its id as `note`). Kinds: \"follow_up\" (something to check on later, such as whether an idea has landed), \"background\" (something you learned about the person in relation to this topic: what they know, what's rusty, how they like to work on it), \"attempt\" (something they tried: quote their words; text is your tentative read), \"question\" (an open question). Every note needs their exact words as `quote` or ids in `refs`. When a noteworthy actual attempt addresses an existing goal criterion, include the person’s message ref (t-…) alongside its known criterion ref and state which part it supports, what help preceded it, and what remains unshown; do not infer mastery or create goals or notes just to fill criteria. Note only what you'd want to know next time; most turns need no note.",
-        "inputSchema": [
-            "type": "object",
-            "properties": [
-                "kind": ["type": "string", "enum": ["follow_up", "background", "attempt", "question"]],
-                "text": ["type": "string", "description": "One or two sentences. Tentative where it's your interpretation."],
-                "quote": ["type": "string", "description": "The person's exact words from this conversation that the note rests on."],
-                "refs": ["type": "array", "items": ["type": "string"], "description": "Message ids (t-…), notes (n-…), goal criteria (g-1#2), or pages (p:file.md) this rests on."],
-                "note": ["type": "string", "description": "Id of your note to revise, such as \"n-4\", for example to close a follow-up. Omit for a new note."]
-            ],
-            "required": ["text"]
-        ]
+        "description": "Revise the ordinary Markdown page Sophia’s notes. Read its current body first and supply the complete proposed body, with evidence for the change. Keep interpretation distinct from the person’s words, and preserve protected personal contributions. Most turns need no update.",
+        "inputSchema": ["type": "object", "properties": ["content": ["type": "string", "description": "Complete Markdown body; preserve existing content the person still wants and every protected personal line."],"refs": ["type": "array", "items": ["type": "string"], "description": "Existing message, historical record, criterion or page references supporting this change."],"quote": ["type": "string", "description": "The person’s exact words supporting this change."]], "required": ["content"]]
+
     ],
     [
         "name": "set_memory",
-        "description": "Rewrite your working memory for this notebook: at most 10 short lines on where things stand now (what the person knows or finds rusty here, what to check next, what's open). You see it at the start of every conversation. Pass every line you want to keep: unchanged lines with their id, reworded lines with their id and new text, new lines without an id. Lines you leave out are forgotten; the notes behind them stay. Each new line needs refs to what it rests on.",
-        "inputSchema": [
-            "type": "object",
-            "properties": [
-                "lines": ["type": "array", "items": [
-                    "type": "object",
-                    "properties": ["id": ["type": "string"], "text": ["type": "string"], "refs": ["type": "array", "items": ["type": "string"]]],
-                    "required": ["text"]
-                ]]
-            ],
-            "required": ["lines"]
-        ]
+        "description": "Revise the ordinary Markdown Working memory page. Supply its complete body with supporting references; keep it concise and preserve protected personal contributions. An empty body explicitly clears only unprotected content.",
+        "inputSchema": ["type": "object", "properties": ["content": ["type": "string", "description": "Complete Markdown body; preserve existing content the person still wants and every protected personal line."],"refs": ["type": "array", "items": ["type": "string"], "description": "Existing message, historical record, criterion or page references supporting this change."]], "required": ["content","refs"]]
+
     ],
     [
         "name": "recall",
@@ -148,17 +130,9 @@ let notebookTools: [[String: Any]] = [
     ],
     [
         "name": "set_goal",
-        "description": "Record a goal for this notebook, or revise one. It appears in the notebook's Goals as provisional until the person confirms it.",
-        "inputSchema": [
-            "type": "object",
-            "properties": [
-                "text": ["type": "string", "description": "The goal, in the person's terms."],
-                "criteria": ["type": "array", "items": ["type": "string"], "description": "Concrete signs of what reaching the goal would look like. When revising, existing criteria are kept."],
-                "goal": ["type": "string", "description": "Id of the goal to revise, such as \"g-1\". Omit for a new goal."],
-                "quote": ["type": "string", "description": "The person's exact words this goal comes from."]
-            ],
-            "required": ["text"]
-        ]
+        "description": "Propose a complete Markdown replacement for the notebook Goals page. Quote the person’s actual words supporting the change. Only the person accepts or rejects it; prose does not automatically mark a goal confirmed, met or dropped.",
+        "inputSchema": ["type": "object", "properties": ["content": ["type": "string", "description": "Complete Markdown body; preserve existing content the person still wants and every protected personal line."],"quote": ["type": "string", "description": "The person’s exact words supporting this change."]], "required": ["content","quote"]]
+
     ]
 ]
 
@@ -254,13 +228,14 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
         let library = LibraryStore(root: notebook.deletingLastPathComponent())
         switch name {
         case "write_page":
+            store.reload()
             let title = (a["title"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
             let content = a["content"] as? String ?? ""
             guard !title.isEmpty, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "Not saved: a page needs a title and content." }
             let page = (a["page"] as? String).flatMap { $0.isEmpty ? nil : $0 }
             store.reload()
             if let page, !store.pageFiles.contains(page) { return "Not saved: there is no page named \(page). Omit `page` to add a new page." }
-            let e = try store.writePage(title: title, content: content, revising: page, session: session, toolUseID: toolUse,
+            let e = try store.writeConversationPage(title: title, content: content, revising: page, session: session, toolUseID: toolUse,
                                         why: a["why"] as? String, thread: thread)
             if e["refused"] == .bool(true) { return refusalText(e) }
             let file = e.str("file") ?? ""
@@ -286,28 +261,24 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
                                         "chapter": .string(c.heading), "files": .array(files.map { .string($0) })])
             return "\(c.heading) now has: " + c.pages.map(\.title).joined(separator: "; ") + "."
         case "note":
-            var fields: JSONObject = ["text": .string((a["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines))]
-            if let k = a["kind"] as? String { fields["kind"] = .string(k) }
-            let quote = (a["quote"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
-            fields["refs"] = .array((a["refs"] as? [String] ?? []).map { .string($0) })
-            let revising = (a["note"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            if revising == nil && fields["kind"] == nil { return "Not saved: give the note a kind." }
-            store.reload()
-            let (saved, problems) = try store.writeNote(fields, quote: quote, revising: revising, session: session, thread: thread)
-            guard let saved else { return "Not saved. " + problems.joined(separator: " ") }
-            return "Noted as \(saved.str("id") ?? ""). The person can see, correct, or delete it." + (problems.isEmpty ? "" : " " + problems.joined(separator: " "))
+            guard let content = a["content"] as? String else { return "Not saved: supply the complete Markdown content." }
+            let result = try store.writeNotebookNotes(content: content, quote: a["quote"] as? String,
+                refs: a["refs"] as? [String] ?? [], session: session, thread: thread)
+            if result["refused"] == .bool(true) { return refusalText(result) }
+            return result["unchanged"] == .bool(true) ? "Notes unchanged." : "Saved Sophia’s notes as Markdown; the person can edit or undo the change."
         case "set_memory":
-            let lines = (a["lines"] as? [[String: Any]] ?? []).map {
-                NotebookStore.MemoryLine(id: ($0["id"] as? String).flatMap { $0.isEmpty ? nil : $0 }, text: $0["text"] as? String ?? "",
-                                         refs: $0["refs"] as? [String] ?? [])
-            }
-            let (memory, problems) = try store.setMemory(lines, session: session)
-            let now = memory.map { "- \($0.str("id") ?? ""): \($0.str("text") ?? "")" }.joined(separator: "\n")
-            return "Your memory now:\n" + (now.isEmpty ? "(empty)" : now) + (problems.isEmpty ? "" : "\n\n" + problems.joined(separator: "\n"))
+            guard let content = a["content"] as? String else { return "Not saved: supply the complete Markdown content." }
+            let result = try store.writeNotebookMemory(content: content, refs: a["refs"] as? [String] ?? [], session: session, thread: thread)
+            if result["refused"] == .bool(true) { return refusalText(result) }
+            return result["unchanged"] == .bool(true) ? "Working memory unchanged." : "Saved Working memory as Markdown; the person can edit or undo the change."
         case "recall":
             store.reload()
             let (notes, messages) = store.recall(ids: a["notes"] as? [String] ?? [], page: a["page"] as? String, words: a["words"] as? String)
-            if notes.isEmpty && messages.isEmpty { return "Nothing found." }
+            try store.ensureNotebookPages(session: session)
+            var current: [String] = []
+            for role in [NotebookStore.PageRole.notes, .memory] {
+                if let page = store.notebookPage(role: role), let body = store.readPage(page.file)?.body { current.append("Current " + page.title + ":\n" + body) }
+            }
             var out = notes.map { n -> String in
                 var line = "- \(n.str("id") ?? "") [\(n.str("kind") ?? ""), \(String((n.str("at") ?? "").prefix(10)))]: \(n.str("text") ?? "")"
                 if let q = n["quote"]?["text"]?.string { line += " (their words: \"\(q)\")" }
@@ -318,7 +289,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
                 out.append("Their messages:")
                 out += messages.map { "- \($0.str("id") ?? "") [\(String(($0.str("at") ?? "").prefix(10)))]: \(String(($0.str("text") ?? "").prefix(300)))" }
             }
-            return out.joined(separator: "\n")
+            return current.joined(separator: "\n\n") + "\n\nHistorical source records (not current facts):\n" + (out.isEmpty ? "None matching." : out.joined(separator: "\n"))
         case "about_you":
             store.reload()
             let saved = try library.proposeAboutPage(content: a["content"] as? String ?? "", quote: a["quote"] as? String ?? "", from: store, session: session)
@@ -334,17 +305,9 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             try store.appendTranscript(["role": .string("tool"), "tool": .string("link"), "session": .string(session), "page": .string(thread), "record": saved["id"]!])
             return "Proposed link \(saved.str("id") ?? ""). The person can confirm or remove it; once confirmed you can read that page."
         case "set_goal":
-            let text = (a["text"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else { return "Not recorded: the goal needs text." }
-            let criteria = (a["criteria"] as? [String] ?? []).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-            let goal = (a["goal"] as? String).flatMap { $0.isEmpty ? nil : $0 }
-            if let goal, store.record(goal.split(separator: "#").first.map(String.init) ?? goal) == nil {
-                return "Not recorded: there is no goal \(goal). Omit `goal` to record a new one."
-            }
-            let r = try store.writeGoal(text: text, criteria: criteria, revising: goal, quote: a["quote"] as? String, session: session, thread: thread)
-            let root = store.rootID(of: r.str("id") ?? "")
-            let quoteNote = (a["quote"] as? String).map { q in r["quote"] == nil && !q.isEmpty ? " The quote didn't match the person's words exactly, so it was left out." : "" } ?? ""
-            return "Recorded \(goal == nil ? "goal" : "a revision of goal") \(root) as provisional; the person can confirm, change, or remove it.\(quoteNote)"
+            guard let content = a["content"] as? String else { return "Not proposed: supply the complete Markdown content." }
+            let proposal = try store.proposeGoalsPage(content: content, quote: a["quote"] as? String ?? "", session: session, thread: thread)
+            return "Proposed Goals page change \(proposal.str("id") ?? ""). The person must review and accept it; the saved page is unchanged."
         default:
             return "Unknown tool."
         }
