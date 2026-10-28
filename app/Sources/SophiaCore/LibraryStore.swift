@@ -105,6 +105,7 @@ public final class LibraryStore {
     /// Sophia proposes a line about the person, resting on their exact words in `store`.
     public func proposeAbout(text: String, quote: String, revising id: String?, from store: NotebookStore) throws -> (saved: JSONObject?, problem: String?) {
         try locked {
+            guard !hasSharedAboutMigration else { return (nil, "About you is a Markdown page now; propose a whole-page change instead.") }
             let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !t.isEmpty, t.count <= NotebookStore.memoryLineLength else { return (nil, "A line about the person is one short sentence.") }
             let q = quote.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -129,6 +130,7 @@ public final class LibraryStore {
     @discardableResult
     public func setAbout(text: String, replacing id: String?, notebook: String?) throws -> JSONObject {
         try locked {
+            guard !hasSharedAboutMigration else { throw SharedAboutError.legacyReadOnly }
             var rec: JSONObject = ["kind": .string("about"), "text": .string(text.trimmingCharacters(in: .whitespacesAndNewlines))]
             if let id, let cur = about.first(where: { $0.str("id") == id }) {
                 rec["replaces"] = .string(id)
@@ -138,7 +140,10 @@ public final class LibraryStore {
         }
     }
 
-    public func deleteAbout(_ id: String) throws { try locked { try remove(id, from: &about, at: aboutURL) } }
+    public func deleteAbout(_ id: String) throws { try locked {
+        guard !hasSharedAboutMigration else { throw SharedAboutError.legacyReadOnly }
+        try remove(id, from: &about, at: aboutURL)
+    } }
 
     // MARK: Links
 

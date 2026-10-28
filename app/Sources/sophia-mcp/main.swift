@@ -119,16 +119,12 @@ let tools: [[String: Any]] = [
     ],
     [
         "name": "about_you",
-        "description": "Propose a line for \"About you\", which every notebook shares: the person's background or a standing preference that carries across topics (for example \"PhD in computer science; away from ML research for 10–15 years\"). Quote their exact words. Nothing about a specific topic, and no judgments of ability. It stays provisional, and visible only in this notebook, until they confirm it.",
-        "inputSchema": [
-            "type": "object",
-            "properties": [
-                "text": ["type": "string"],
-                "quote": ["type": "string", "description": "The person's exact words it rests on."],
-                "line": ["type": "string", "description": "Id of your provisional line to revise, such as \"a-2\"."]
-            ],
-            "required": ["text", "quote"]
-        ]
+        "description": "Propose a complete Markdown replacement for the shared About you page. Keep accepted content the person still wants. Quote their exact words supporting the change. Nothing topic-specific or judgments of ability. Only this notebook sees the pending proposal; the person reviews and accepts before it becomes shared.",
+        "inputSchema": ["type": "object", "properties": [
+            "content": ["type": "string", "description": "The complete proposed Markdown body."],
+            "quote": ["type": "string", "description": "The person's exact words supporting the change."]
+        ], "required": ["content", "quote"]]
+
     ],
     [
         "name": "link",
@@ -281,11 +277,9 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             return out.joined(separator: "\n")
         case "about_you":
             store.reload()
-            let (saved, problem) = try library.proposeAbout(text: a["text"] as? String ?? "", quote: a["quote"] as? String ?? "",
-                                                           revising: (a["line"] as? String).flatMap { $0.isEmpty ? nil : $0 }, from: store)
-            guard let saved else { return problem ?? "Not saved." }
+            let saved = try library.proposeAboutPage(content: a["content"] as? String ?? "", quote: a["quote"] as? String ?? "", from: store, session: session)
             try store.appendTranscript(["role": .string("tool"), "tool": .string("about_you"), "session": .string(session), "page": .string(thread), "record": saved["id"]!])
-            return "Proposed \(saved.str("id") ?? "") for About you. It's provisional until the person confirms it."
+            return "Proposed \(saved.str("id") ?? "") for About you. The person must review and accept the whole page; it is not saved to the shared page yet."
         case "link":
             store.reload()
             let (saved, problem) = try library.proposeLink(from: store, page: (a["from_page"] as? String).flatMap { $0.isEmpty ? nil : $0 },
