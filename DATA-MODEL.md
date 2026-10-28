@@ -13,7 +13,7 @@ A notebook holds Markdown pages that both the person and Sophia read, rely on, a
 
 ## Requirements and constraints
 
-- Sophia saves pages directly with `write_page`; there are no drafts to accept (the person's decision, 2026-10-14). Authored content-changing page writes are recorded, a revision keeps the version it replaced, and the latest eligible action can be undone. An unchanged request has no Undo; unknown-provenance interrupted disk states are preserved for inspection instead of inferred destructive Undo. Tools never delete pages.
+- Sophia saves ordinary content directly with `write_page`; whole-page Goals and About changes instead require person review (the person's decision, 2026-10-14). Authored content-changing page writes are recorded, a revision keeps the version it replaced, and the latest eligible action can be undone. An unchanged request has no Undo; unknown-provenance interrupted disk states are preserved for inspection instead of inferred destructive Undo. Tools never delete pages.
 - The person's actual words, Sophia's interpretations, and source material stay distinguishable. (AGENTS.md product principles; SOPHIA.md, teaching and evidence)
 - Progress toward goals is shown as evidence, never as a score. Sophia records goals Sophia hears in the conversation (`set_goal`); they are provisional until the person confirms them, and only the person marks a goal met or dropped. (SOPHIA.md, goals)
 - Reading or agreeing is not evidence of understanding; assessments stay tentative. (PLAN.md, companion requirements; SOPHIA.md:33)
@@ -212,7 +212,7 @@ Every record has the same envelope:
 
 Any other field is kept exactly as written and shown as-is. Code depends only on the envelope. This is the "specified, but flexible" rule: a new kind of knowledge is a new `kind` value, with no migration, but who said it and what it rests on are always fixed fields the client checks.
 
-The kinds used now:
+Historical kinds retained for evidence:
 
 | Kind | Written by | Required beyond the envelope | Shown as |
 |---|---|---|---|
@@ -289,36 +289,16 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 
 ### How each side reads the state back
 
-- **The person** sees each page's thread beside the page. They also see:
-  - successful note/memory update lines or compact groups during conversation, with the original details/actions available;
-  - goals with their criteria, evidence, Sophia's dated reads and their own takes;
-  - notes with quote, read and correction, and one next step.
+The person reads every current role page in the main reader, with the same source editor and Undo. Goals, Notes and Working memory open from notebook context/settings actions; they add no permanent sidebar rows. The page’s notebook context remains visible when the sidebar is hidden. Notebook history/evidence and source references expose original JSONL, exact quotes, interpretations and IDs without a second authoring surface.
 
-  "Show record" exposes any raw entry.
-- **Sophia**, when a thread's conversation starts, receives:
-  - the goals, About you, Sophia's memory, other notebooks by title, and the page list;
-  - for a page thread:
-    - that page's body;
-    - Sophia's notes that cite the page or a message in its thread;
-    - if the page was written from another conversation, the derived exchange that created it;
-  - the thread's carried exchanges and its later messages, word for word.
-
-  Other pages come through `read_page`, and older exchanges through `recall`.
-- **With each message**, the app sends Sophia:
-  - the page edits, releases and undos since Sophia's last turn in that thread;
-  - a line if Sophia's page was revised from another conversation, or a change by Sophia to it was undone;
-  - one line per other thread active since then.
-
-  Sophia never gets another thread's words.
-
-  The briefing Sophia writes must reference the records it rests on, so the person can follow every claim to its evidence and correct it.
+Ordinary fresh context includes current Goals, Notes, Working memory, accepted About, the selected page and that page’s carried/window conversation. Pending proposals are explicitly unaccepted and origin-scoped. Ongoing prefixes refresh canonical prose and relevant page changes; the engine does not silently regain unrelated threads’ conversations. Saved child outlines are deterministic metadata projections, never generated prose. Other notebooks’ title indexes exclude auxiliary role pages; explicit confirmed links still govern cross-notebook reads. About’s dedicated scoped conversation remains separate as described above.
 
 ## Why each retained part is needed
 
 - **One kind-tagged envelope:** keeps authorship and evidence checkable across goals, notes and corrections. The client still allowlists accepted kinds; extending those checks need not introduce another storage format.
 - **Client-stamped `by`, kind allowlist, and evidence-required rule with references that must resolve:** needed because the model's output is untrusted (AGENTS.md). Without them, Sophia could store a statement as the person's, mark a goal met, or store a free-floating judgment of the person. A list of forbidden kinds was rejected: with an open `kind`, a renamed kind evades it.
 - **Verified quotes:** needed so "your words" is true (PLAN.md, companion requirements). Cost: one substring check per quote. Risk: typographic substitutions may drop valid quotes; see Verification.
-- **`replaces` on current learning records:** needed for corrections, goal history and provisional confirmation without a separate history store. Old proposal chains use the same field only for compatibility.
+- **`replaces` on historical learning records:** preserves earlier corrections and goal confirmation chains. Current proposal decisions and canonical Markdown do not use those chains as a parallel editable authority.
 - **Briefing records:** needed so the return test (PLAN.md §5, correcting a mistaken account) can show whether a correction carries forward. A transcript checkpoint entry separately records the covered message boundary; the session stamp alone cannot establish that boundary.
 - **Session stamp and `through`:** needed so quotes can be limited to the messages a checkpoint covers (which prevents a deleted attempt being recreated) and so the app can count what each checkpoint noted.
 - **Chapter structure only in notebook.json:** one source of truth for structure; a chapter field in each page header would duplicate it.
