@@ -183,6 +183,26 @@ struct LibraryProposalCard: View {
     var body: some View {
         let isLink = entry.str("tool") == "link"
         let id = entry.str("record") ?? ""
+        if !isLink {
+            let history = model.sharedAboutStore?.pageProposalHistory ?? []
+            let proposal = history.first { $0.str("id") == id || $0.str("legacyID") == id }
+            let pending = model.sharedAboutStore?.pendingPageProposals().first { $0.str("id") == proposal?.str("id") }
+            let decision = history.last { $0.str("proposal") == proposal?.str("id") }?.str("decision")
+            let legacy = session.library.about.first { $0.str("id") == id }
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    Image(systemName: "person.crop.circle").foregroundStyle(.secondary)
+                    Text(pending != nil ? "About you change proposed" : decision == "accepted" ? "You accepted this About you proposal" : decision == "rejected" ? "You rejected this About you proposal" : "Earlier About you record").font(.callout)
+                    Spacer(minLength: 8)
+                    Button(pending == nil ? "About you" : "Review") {
+                        if model.openAbout() { model.open?.reviewProposalID = pending?.str("id") }
+                    }.buttonStyle(.bordered).controlSize(.small)
+                }
+                if let source = proposal ?? legacy {
+                    DisclosureGroup("Source record") { Text(verbatim: source.line).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }.font(.caption)
+                }
+            }.padding(12).background(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.1)))
+        } else {
         let rec = (isLink ? session.library.currentLinks : session.library.aboutLines).first { $0.str("id") == id }
         let confirmed = (isLink ? session.library.currentLinks : session.library.aboutLines).contains { $0.str("replaces") == id }
         HStack(alignment: .center, spacing: 10) {
@@ -212,5 +232,6 @@ struct LibraryProposalCard: View {
         .padding(.horizontal, 12).padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.1)))
+        }
     }
 }

@@ -45,6 +45,8 @@ final class AppModel: ObservableObject {
     let almanac: AlmanacModel
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
+    private var aboutSession: NotebookSession?
+    let sharedAboutStore: NotebookStore?
     @Published var problem: String?
     @Published var notebookSettings: NotebookSettingsSelection?
     private let preferences: UserDefaults
@@ -63,11 +65,12 @@ final class AppModel: ObservableObject {
         conversationCollapsed = preferences.bool(forKey: "conversationCollapsed")
         let library = Library(), connection = ConnectionState()
         self.library = library; self.connection = connection
+        sharedAboutStore = try? LibraryStore(root: library.root).ensureSharedAboutPage(session: "library-open").store
         almanac = MainActor.assumeIsolated { AlmanacModel(root: library.root, connection: connection) }
         notebooks = library.notebooks
         if let first = notebooks.first { openNotebook(first, at: .contents) }
         MainActor.assumeIsolated {
-            almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true }
+            almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true || self?.aboutSession?.isResponding == true }
             almanac.onSaved = { [weak self] _ in
                 guard let self else { return }
                 notebooks = library.notebooks
@@ -86,13 +89,27 @@ final class AppModel: ObservableObject {
         if open?.store.url != url {
             do {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
-                open?.shutdown()
+                if open?.isSharedAbout == true { open?.prepareForNavigationAway() } else { open?.shutdown() }
                 notebookSettings = nil
                 open = next
             } catch { problem = error.localizedDescription; return false }
         }
         if let place { open?.show(place) }
         return true
+    }
+
+    @discardableResult
+    func openAbout() -> Bool {
+        do {
+            if aboutSession == nil {
+                let shared = try LibraryStore(root: library.root).ensureSharedAboutPage(session: "about-open")
+                aboutSession = try NotebookSession(url: shared.store.url, allowAutomaticReturn: false, conversationScope: .sharedAbout, libraryRoot: library.root)
+            }
+            guard let aboutSession else { return false }
+            if open !== aboutSession { open?.shutdown(); notebookSettings = nil; open = aboutSession }
+            aboutSession.store.reload(); aboutSession.show(.about); aboutSession.changed()
+            return true
+        } catch { problem = "About you could not be opened: " + error.localizedDescription; return false }
     }
 
     func readAlmanacEntry(_ entry: AlmanacEntry) {

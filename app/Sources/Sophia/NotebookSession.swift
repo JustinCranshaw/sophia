@@ -19,11 +19,19 @@ final class NotebookSession: ObservableObject {
     let store: NotebookStore
     let library: LibraryStore          // About you and links, shared by every notebook
     let session: String
+    let conversationScope: ClaudeEngine.ConversationScope
+    var isSharedAbout: Bool { conversationScope == .sharedAbout }
 
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
         if oldValue != place { pendingSection = nil; navigationProblem = nil }
-        switch place { case .contents, .chapter, .about: activeThread = ""; case .page(let file): activeThread = file; default: break }
+        if isSharedAbout { activeThread = ClaudeEngine.sharedAboutFile }
+        else { switch place {
+        case .contents, .about: activeThread = ""
+        case .chapter(let id): activeThread = store.chapters.first { $0.id == id }?.intro?.file ?? ""
+        case .page(let file): activeThread = file
+        default: break
+        } }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
         pendingSource = engines[activeThread]?.pendingSource
         if visiblePage?.file == editing?.file, editing != nil { return }; commitEdit()
@@ -31,7 +39,8 @@ final class NotebookSession: ObservableObject {
     var visiblePage: NotebookStore.Page? {
         switch place {
         case .page(let file): return store.page(file)
-        case .contents: return store.overviewPage
+        case .about where isSharedAbout: return store.page(ClaudeEngine.sharedAboutFile)
+        case .contents: return isSharedAbout ? store.page(ClaudeEngine.sharedAboutFile) : store.overviewPage
         case .chapter(let id): return store.chapters.first { $0.id == id }?.intro
         default: return nil
         }
@@ -110,16 +119,21 @@ final class NotebookSession: ObservableObject {
     private var terminating: Any?
     private var shuttingDown = false
 
-    init(url: URL, allowAutomaticReturn: Bool = true) throws {
+    init(url: URL, allowAutomaticReturn: Bool = true, conversationScope: ClaudeEngine.ConversationScope = .notebook, libraryRoot: URL? = nil) throws {
+        self.conversationScope = conversationScope
+        if conversationScope == .sharedAbout {
+            guard let root = libraryRoot, ClaudeEngine.isSharedAboutLocation(url, libraryRoot: root, page: ClaudeEngine.sharedAboutFile) else { throw ClaudeEngine.ConfigurationError.invalidSharedAboutScope }
+        }
         store = try NotebookStore.open(url: url)
-        library = LibraryStore(root: url.deletingLastPathComponent())
+        library = LibraryStore(root: libraryRoot ?? url.deletingLastPathComponent())
         session = store.newSessionID()
-        do { try store.ensureOverviewPages(session: session) }
+        do { if !isSharedAbout { try store.ensureOverviewPages(session: session) } }
         catch { problem = "The introduction could not be prepared. Existing pages remain available. " + error.localizedDescription }
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
         store.endEdit()
-        store.fileUndecidedDrafts(session: session)
-        if allowAutomaticReturn, Snapshot.outDir == nil, store.isReturn(after: Self.returnGap) {
+        if !isSharedAbout { store.fileUndecidedDrafts(session: session) }
+        if isSharedAbout { place = .about; activeThread = ClaudeEngine.sharedAboutFile }
+        if !isSharedAbout && allowAutomaticReturn, Snapshot.outDir == nil, store.isReturn(after: Self.returnGap) {
             DispatchQueue.main.async { [weak self] in self?.pickUp() }
         }
         terminating = NotificationCenter.default.addObserver(forName: .prepareToTerminate, object: nil, queue: .main) { [weak self] _ in
@@ -133,7 +147,7 @@ final class NotebookSession: ObservableObject {
     }
 
     func changed() {
-        if store.needsOverviewPages {
+        if !isSharedAbout && store.needsOverviewPages {
             do { try store.ensureOverviewPages(session: session) }
             catch { if problem == nil { problem = "The introduction could not be prepared. " + error.localizedDescription } }
         }
@@ -156,16 +170,17 @@ final class NotebookSession: ObservableObject {
     }
 
     private func ensureEngine(thread: String, before: String? = nil, internalRequest: Bool = false) -> Bool {
-        guard !shuttingDown else { return false }
+        guard !shuttingDown, !isSharedAbout || !internalRequest else { return false }
         if !internalRequest, let e = engines[thread], e.isRunning { engine = e; return true }
         guard let claude = ClaudeEngine.locateClaude() else { if !internalRequest { problem = "Claude Code isn’t installed. Open the setup guide, install it and sign in from Terminal, then choose Retry on your saved question." }; return false }
         guard let prompt = Self.sophiaPrompt() else { if !internalRequest { problem = "SOPHIA.md is missing from the app." }; return false }
         let tools = Bundle.main.executableURL!.deletingLastPathComponent().appendingPathComponent("sophia-mcp").path
-        let permissions = internalRequest ? nil : try? SourcePermissionBridge()
+        let permissions = internalRequest || isSharedAbout ? nil : try? SourcePermissionBridge()
         permissions?.setActive(thread == activeThread)
         let e = ClaudeEngine(config: .init(claudePath: claude, toolServerPath: tools, notebookURL: store.url,
-                                           systemPrompt: prompt, context: Prompts.context(store, thread: thread, before: before, canOpenSources: permissions != nil),
-                                           session: session, page: thread, readOnly: internalRequest, sourcePermissions: permissions))
+                                           systemPrompt: prompt, context: isSharedAbout ? Prompts.sharedAboutContext(store, libraryRoot: library.root, thread: thread, before: before) : Prompts.context(store, thread: thread, before: before, canOpenSources: permissions != nil),
+                                           session: session, page: thread, readOnly: internalRequest, sourcePermissions: permissions,
+                                           conversationScope: conversationScope, libraryRoot: isSharedAbout ? library.root : nil))
         let identity = ObjectIdentifier(e)
         e.onEvent = { [weak self] event in self?.handle(event, identity: identity, thread: thread, internalRequest: internalRequest) }
         do { try e.start() } catch { if !internalRequest { problem = "Couldn't start Claude Code: \(error.localizedDescription)" }; return false }
@@ -194,7 +209,9 @@ final class NotebookSession: ObservableObject {
         guard let source, ObjectIdentifier(source) == identity else { return }
         let current = engine.map { ObjectIdentifier($0) == identity } == true
         switch event {
-        case .started(_, let source, _, _):
+        case .started(let engineSession, let source, let tools, let model):
+            try? store.appendTranscript(["role": .string("client"), "purpose": .string("engine_started"), "page": .string(thread), "session": .string(session),
+                "engine_session": .string(engineSession), "apiKeySource": .string(source), "model": .string(model), "tools": .array(tools.map { .string($0) }), "scope": .string(conversationScope.rawValue)])
             if source != "none" {
                 engine?.cancel()
                 if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
@@ -326,7 +343,9 @@ final class NotebookSession: ObservableObject {
             running = turn; turnTexts = []; isResponding = true
             let music = musicWarnings.keys.sorted().flatMap { musicWarnings[$0]! }.filter { !toldMusic.contains($0) }
             toldMusic.formUnion(music)
-            engine?.send(Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music) + turn.text)
+            store.reload()
+            let prefix = isSharedAbout ? Prompts.sharedAboutTurnPrefix(store, libraryRoot: library.root) : Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music)
+            engine?.send(prefix + turn.text)
             return
         }
     }
@@ -341,7 +360,7 @@ final class NotebookSession: ObservableObject {
         dispatchNext(); changed()
     }
 
-    var hasUncheckpointedMessages: Bool { !store.unnotedMessages.isEmpty }
+    var hasUncheckpointedMessages: Bool { !isSharedAbout && !store.unnotedMessages.isEmpty }
     private func pickUp() {
         if !store.unnotedMessages.isEmpty, writeNotes(catchUp: true) { briefAfterNotes = true } else { requestBriefing() }
     }
@@ -350,7 +369,7 @@ final class NotebookSession: ObservableObject {
     @discardableResult
     private func writeNotes(catchUp: Bool) -> Bool {
         let messages = store.unnotedMessages
-        guard !shuttingDown, !isResponding, let last = messages.last?.str("id") else { return false }
+        guard !isSharedAbout, !shuttingDown, !isResponding, let last = messages.last?.str("id") else { return false }
         // Only Finish for now uses catchUp:false; automatic return work stays quiet.
         if !catchUp { problem = nil }
         guard ensureEngine(thread: "", internalRequest: true) else {
@@ -364,7 +383,7 @@ final class NotebookSession: ObservableObject {
     }
 
     func requestBriefing() {
-        guard !isResponding, ensureEngine(thread: "", internalRequest: true) else { return }
+        guard !isSharedAbout, !isResponding, ensureEngine(thread: "", internalRequest: true) else { return }
         request = .briefing; requestText = ""; dropBriefing = false; isResponding = true; activity = nil
         engine?.send(Prompts.briefing(store))
     }
@@ -407,6 +426,26 @@ final class NotebookSession: ObservableObject {
         }
         if briefAfterNotes { briefAfterNotes = false; requestBriefing() } else { dispatchNext() }
         changed()
+    }
+
+    /// A cached shared conversation keeps its own process/history when another notebook opens.
+    func prepareForNavigationAway() {
+        commitEdit()
+        engines.values.forEach { $0.setSourceAccessActive(false) }
+        pendingSource = nil
+    }
+    @Published var reviewProposalID: String?
+    var visiblePageProposals: [JSONObject] {
+        guard let page = visiblePage else { return [] }
+        return store.pendingPageProposals().filter { $0.str("file") == page.file }
+    }
+    func acceptProposal(_ id: String) throws {
+        _ = try store.acceptPageProposal(id, session: session)
+        reviewProposalID = nil; changed()
+    }
+    func rejectProposal(_ id: String) throws {
+        try store.rejectPageProposal(id, session: session)
+        reviewProposalID = nil; changed()
     }
 
     // MARK: Pages Sophia writes

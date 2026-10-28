@@ -82,7 +82,7 @@ struct ConversationView: View {
                 .buttonStyle(.borderless)
                 .accessibilityLabel(conversationToggleTitle)
                 .help(expanded ? "Collapse the conversation" : "Show the conversation")
-                if expanded {
+                if expanded && !session.isSharedAbout {
                     Button("Finish for now") { session.endSession() }
                         .disabled(session.isResponding || !session.hasUncheckpointedMessages)
                         .help("Finish for now")

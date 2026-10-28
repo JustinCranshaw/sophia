@@ -36,12 +36,14 @@ enum Snapshot {
             func shoot(_ i: Int) {
                 guard i < places.count else { exit(0) }
                 // SOPHIA_SNAPSHOT_SECTION: open the page scrolled to that section, as a followed link does.
-                s.place = places[i].1
-                if case .page = places[i].1 { s.pendingSection = ProcessInfo.processInfo.environment["SOPHIA_SNAPSHOT_SECTION"] }
+                if places[i].1 == .about { model.openAbout() }
+                else { model.openNotebook(s.store.url, at: places[i].1, allowAutomaticReturn: false) }
+                guard let current = model.open else { exit(1) }
+                if case .page = places[i].1 { current.pendingSection = ProcessInfo.processInfo.environment["SOPHIA_SNAPSHOT_SECTION"] }
                 // SOPHIA_SNAPSHOT_EDIT: open that section ("(opening)", "(page)", or a section title) in the editor.
                 if case .page(let file) = places[i].1, let want = ProcessInfo.processInfo.environment["SOPHIA_SNAPSHOT_EDIT"],
-                   let r = s.store.editRanges(of: file).first(where: { $0.key == want || $0.section == want }) {
-                    s.beginEdit(file: file, key: r.key)
+                   let r = current.store.editRanges(of: file).first(where: { $0.key == want || $0.section == want }) {
+                    current.beginEdit(file: file, key: r.key)
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     save(window, to: out.appendingPathComponent(places[i].0 + ".png"))
