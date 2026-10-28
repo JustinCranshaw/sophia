@@ -9,6 +9,9 @@ import tempfile
 binary = Path(sys.argv[1] if len(sys.argv) > 1 else '.build/debug/sophia-mcp').resolve()
 with tempfile.TemporaryDirectory(prefix='sophia-root-mcp-') as directory:
     book = Path(directory) / 'Notebook'
+    # Notebook creation is person-owned. MCP may only open an existing notebook.
+    (book / 'pages').mkdir(parents=True)
+    (book / 'notebook.json').write_text(json.dumps({'chapters': [], 'unfiled': []}))
     process = subprocess.Popen([str(binary), str(book), 'root-regression'], stdin=subprocess.PIPE,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     sequence = 0
