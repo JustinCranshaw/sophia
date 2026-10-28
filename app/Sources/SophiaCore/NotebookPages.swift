@@ -30,12 +30,21 @@ extension NotebookStore {
                       obj["pages"]?.object != nil, let records = obj["learning"]?.array, records.allSatisfy({ $0.object != nil }) else { throw NotebookPageError.migrationDamaged }
                 snapshot = obj
             } else {
-                try checkLearningIdentities(learning)
+                // A lenient log projection must not become an irreversible partial migration.
+                let records: [JSONObject]
+                if FileManager.default.fileExists(atPath: learningURL.path) {
+                    guard let data = try? Data(contentsOf: learningURL), let text = String(data: data, encoding: .utf8) else { throw NotebookPageError.migrationDamaged }
+                    records = try text.split(separator: "\n").map { line in
+                        guard let record = JSON.parse(String(line))?.object else { throw NotebookPageError.migrationDamaged }
+                        return record
+                    }
+                } else { records = [] }
+                try checkLearningIdentities(records)
                 var files: JSONObject = [:]
                 for role in Self.learningPageRoles {
                     files[role.rawValue] = .string(notebookPage(role: role)?.file ?? uniqueFile(for: Self.learningPageTitle(role)))
                 }
-                snapshot = ["pages": .object(files), "learning": .array(learning.map { .object($0) })]
+                snapshot = ["pages": .object(files), "learning": .array(records.map { .object($0) })]
                 try Data(snapshot.line.utf8).write(to: notebookPagesMigrationURL, options: .atomic)
             }
             let records = snapshot["learning"]!.array!.compactMap(\.object)

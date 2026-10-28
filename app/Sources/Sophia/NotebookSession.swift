@@ -137,7 +137,7 @@ final class NotebookSession: ObservableObject {
             try store.ensureOverviewPages(session: session)
             try store.ensureNotebookPages(session: session)
         } }
-        catch { problem = "The introduction could not be prepared. Existing pages remain available. " + error.localizedDescription }
+        catch { problem = "Some notebook pages could not be prepared. Existing pages and history remain available. " + error.localizedDescription }
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
         store.endEdit()
         if !isSharedAbout { store.fileUndecidedDrafts(session: session) }
@@ -206,7 +206,7 @@ final class NotebookSession: ObservableObject {
             try? store.appendTranscript(["role": .string("client"), "page": .string(turn.thread), "session": .string(session), "purpose": .string("interrupted")])
         }
         running = nil; briefAfterNotes = false
-        if request != nil { finishRequest(failed: true) }
+        if request != nil { finishRequest(failed: true, failureReason: "Notebook session closed") }
         engines.values.forEach { $0.stop() }; checkpointEngine?.stop()
         engines = [:]; checkpointEngine = nil; engine = nil
         queue = []; isResponding = false; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
@@ -270,7 +270,7 @@ final class NotebookSession: ObservableObject {
             guard current else { return }
             turnTexts = []; pendingTools = [:]; isResponding = false; activity = nil; streaming = ""
             if isError && !internalRequest { problem = "Sophia stopped with an error: \(message ?? "Unknown error")" }
-            if internalRequest { finishRequest(failed: isError) }
+            if internalRequest { finishRequest(failed: isError, failureReason: message) }
             else {
                 if !isError && !source.stopRequested, running != nil {
                     try? store.appendTranscript(["role": .string("client"), "page": .string(thread), "session": .string(session), "purpose": .string("replied")])
@@ -283,7 +283,7 @@ final class NotebookSession: ObservableObject {
             if internalRequest { checkpointEngine = nil } else { engines[thread] = nil }
             guard current else { return }
             engine = nil; isResponding = false; streaming = ""; activity = nil
-            if internalRequest { finishRequest(failed: true) }
+            if internalRequest { finishRequest(failed: true, failureReason: ClaudeEngine.routeFailureMessage(status, retaining: nil)) }
             else {
                 problem = ClaudeEngine.routeFailureMessage(status, retaining: problem)
                 running = nil; dispatchNext()
@@ -296,7 +296,7 @@ final class NotebookSession: ObservableObject {
             if !stopRequested && isResponding {
                 if !internalRequest { problem = "The connection to Claude Code closed (exit \(code)). \(stderr.split(separator: "\n").last.map(String.init) ?? "")" }
                 isResponding = false; streaming = ""; activity = nil
-                if internalRequest { finishRequest(failed: true) } else { running = nil; dispatchNext() }
+                if internalRequest { finishRequest(failed: true, failureReason: "Engine exited \(code)") } else { running = nil; dispatchNext() }
             }
             changed()
         }
@@ -397,16 +397,29 @@ final class NotebookSession: ObservableObject {
         engine?.send(Prompts.briefing(store))
     }
 
-    private func finishRequest(failed: Bool) {
+    private func finishRequest(failed: Bool, failureReason: String? = nil) {
         guard let r = request else { return }
         request = nil
         let text = requestText; requestText = ""
+        func recordCheckpointResult(_ result: String) {
+            #if DEBUG
+            // Only the explicitly opted-in, disposable native harness records diagnostic replies.
+            guard case .checkpoint(let through, _, let catchUp) = r,
+                  let directory = ProcessInfo.processInfo.environment["SOPHIA_UX_HARNESS"] else { return }
+            var record: JSONObject = ["response": .string(text), "providerFailed": .bool(failed), "result": .string(result),
+                                      "through": .string(through), "catchUp": .bool(catchUp)]
+            if let failureReason { record["failureReason"] = .string(failureReason) }
+            let file = URL(fileURLWithPath: directory).appendingPathComponent("checkpoint-" + UUID().uuidString + ".json")
+            try? Data(JSON.object(record).pretty.utf8).write(to: file, options: .atomic)
+            #endif
+        }
         // Detach before stopping: its expected exit cannot clear the next conversation process.
         let finished = checkpointEngine; checkpointEngine = nil; engine = nil; finished?.stop()
         switch r {
         case .checkpoint(let through, let entries, let catchUp):
             do {
                 let result = try store.finishNotebookPageCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
+                recordCheckpointResult(String(describing: result))
                 if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
                 else {
                     briefAfterNotes = false
@@ -417,8 +430,9 @@ final class NotebookSession: ObservableObject {
                     }
                 }
             } catch {
+                recordCheckpointResult("Persistence error: " + error.localizedDescription)
                 briefAfterNotes = false
-                store.reload() // Some learning records may precede the failed completion marker.
+                store.reload() // Some page writes may precede the failed completion marker.
                 if !catchUp && !shuttingDown {
                     problem = "Couldn't confirm Finish for now. Some notes may already have been kept. Review Sophia's notes before trying Finish for now again."
                 }

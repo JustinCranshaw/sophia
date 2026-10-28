@@ -68,7 +68,7 @@ struct LiveRunner {
                 store.reload()
             case .turnDone(let isError, let message, _):
                 if isError { print("  turn error: \(message ?? "")") }
-                if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false" }
+                if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false"; info[p + "_error"] = message ?? "" }
                 else if !isError { try! store.appendTranscript(["role": .string("client"), "purpose": .string("replied"), "page": .string(page), "session": .string(session)]) }
                 next()
             case .routeBlocked:

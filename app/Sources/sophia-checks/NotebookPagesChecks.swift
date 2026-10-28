@@ -96,3 +96,28 @@ func notebookPageCheckpointValidatesBeforeWriting() throws {
     expectThrows { try store.writeNotebookNotes(content: "Should not replace notes when evidence cannot be recorded", refs: [ref], session: "another") }
     expect(store.readPage(notes.file)!.body == notesBefore)
 }
+
+func notebookPageMigrationRequiresReadableCompleteLegacyLog() throws {
+    let store = try tempStore()
+    defer { try? FileManager.default.removeItem(at: store.url) }
+    let source = try store.appendLearning(["kind": .string("goal"), "text": .string("Actual retained aim"), "status": .string("working")], by: "person", session: "s")
+    let log = store.url.appendingPathComponent("learning.jsonl")
+    let original = try Data(contentsOf: log)
+    let snapshot = store.url.appendingPathComponent("notebook-pages-migration.json")
+    for broken in [original + Data("not valid JSON\n".utf8), Data([0xff])] {
+        try broken.write(to: log, options: .atomic)
+        expectThrows { try store.ensureNotebookPages(session: "migration") }
+        expect(!FileManager.default.fileExists(atPath: snapshot.path) && store.notebookPage(role: .goals) == nil)
+        expect(try Data(contentsOf: log) == broken)
+    }
+    try FileManager.default.removeItem(at: log)
+    try FileManager.default.createDirectory(at: log, withIntermediateDirectories: false)
+    expectThrows { try store.ensureNotebookPages(session: "migration") }
+    expect(!FileManager.default.fileExists(atPath: snapshot.path))
+    try FileManager.default.removeItem(at: log)
+    try original.write(to: log, options: .atomic)
+    try store.ensureNotebookPages(session: "retry")
+    expect(store.readPage(store.notebookPage(role: .goals)!.file)!.body.contains("Actual retained aim"))
+    let retained = try Data(contentsOf: log)
+    expect(store.record(source.str("id")!) != nil && retained == original)
+}
