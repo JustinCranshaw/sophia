@@ -4,8 +4,11 @@ import SophiaReader
 
 struct BookView: View {
     @ObservedObject var session: NotebookSession
+    @EnvironmentObject private var model: AppModel
 
     var body: some View {
+        VStack(spacing: 0) {
+        if model.conversationCollapsed && !session.editRecovery.edits.isEmpty { PageRecoveryView(session: session).padding(12) }
         Group {
             switch session.place {
             case .contents:
@@ -24,6 +27,7 @@ struct BookView: View {
                 // A different page starts a fresh reader, including the same filename in another notebook.
                 PageView(session: session, file: file).id(session.store.url.appendingPathComponent(file))
             }
+        }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .textBackgroundColor))

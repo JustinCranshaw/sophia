@@ -428,9 +428,30 @@ final class NotebookSession: ObservableObject {
         changed()
     }
 
-    /// A cached shared conversation keeps its own process/history when another notebook opens.
-    func prepareForNavigationAway() {
+    /// Navigation and closing may commit once, but never turn a prior conflict into Keep mine.
+    @discardableResult
+    func prepareForNavigationAway() -> Bool {
+        if editing?.conflict != nil || !editRecovery.edits.isEmpty {
+            revealUnresolvedEdit(); return false
+        }
         commitEdit()
+        guard editing == nil, editRecovery.edits.isEmpty else {
+            revealUnresolvedEdit(); return false
+        }
+        return true
+    }
+    private func revealUnresolvedEdit() {
+        reviewProposalID = nil
+        if let edit = editing {
+            if store.readPage(edit.file) == nil {
+                editRecovery.keep(file: edit.file, title: edit.title, section: edit.range.section, text: editDraft ?? edit.range.text)
+                endEditing()
+            } else { show(.page(edit.file)) }
+        }
+        if problem == nil { problem = "Resolve the page edit or review your kept text before leaving this conversation." }
+        changed()
+    }
+    func deactivateSourceAccess() {
         engines.values.forEach { $0.setSourceAccessActive(false) }
         pendingSource = nil
     }

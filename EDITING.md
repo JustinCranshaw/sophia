@@ -92,6 +92,10 @@ No automatic turn. The edited page's conversation shows a one-line marker ("You 
 - Select a passage → "Ask Sophia…", answered as a suggestion anchored to that range.
 - Title editing; history beyond one previous version, if a lost version is ever missed.
 
+## Leaving or closing with an unresolved page edit
+
+Notebook/About navigation, Quit and the main workspace’s close button first check the existing page editor and temporary recovery text. An existing conflict is never committed as an implicit “Keep mine.” A new commit is attempted once; if it fails or creates a conflict/recovery item, the current session stays open and the source or kept-text review remains available. The person explicitly resolves the editor or copies/dismisses kept text before trying again. Settings-window close keeps its ordinary behavior. This is an in-memory safety boundary, not crash persistence; unsent conversation drafts remain window-local.
+
 ## Checks
 
 Implemented: the store checks are in `swift run sophia-checks`, the WebKit checks in `swift run sophia-reader-checks` (with the scroll spike under `--scroll-spike`). The ⌘E-with-repeated-title no-op and a titled page in the byte-identity check were added at the panel's request.
