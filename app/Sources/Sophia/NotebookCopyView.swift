@@ -8,7 +8,7 @@ struct NotebookCopyActions: ViewModifier {
     @State private var helpShown = false
     func body(content: Content) -> some View {
         HStack(spacing: 4) {
-            content
+            content.frame(maxWidth: .infinity, alignment: .leading)
             Menu { actions } label: {
                 Text("…").font(.system(size: 16, weight: .semibold)).frame(width: 20, height: 20)
             }
@@ -16,6 +16,8 @@ struct NotebookCopyActions: ViewModifier {
             .accessibilityLabel("Notebook actions")
             .help("Notebook actions for “\(url.lastPathComponent)”")
         }
+        .background(model.open?.store.url == url && model.open?.place == .contents ? Brand.selectionFill : .clear,
+                    in: RoundedRectangle(cornerRadius: 6))
         .contextMenu { actions }
         .sheet(isPresented: $helpShown) {
             NotebookCopyView(url: url, close: { helpShown = false })

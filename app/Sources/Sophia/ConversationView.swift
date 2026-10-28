@@ -29,7 +29,7 @@ struct ConversationView: View {
     private var collapsedRail: some View {
         VStack(spacing: 16) {
             Button { model.conversationCollapsed = false } label: {
-                Image(systemName: "bubble.left.and.bubble.right").frame(width: 28, height: 28)
+                Label("Show conversation", systemImage: "sidebar.left").labelStyle(.iconOnly).frame(width: 28, height: 28)
             }
             .accessibilityLabel(conversationToggleTitle)
             .help(conversationToggleTitle + " · " + session.conversationName)
@@ -38,7 +38,8 @@ struct ConversationView: View {
                     .accessibilityLabel("Source approval pending · Show conversation")
                     .help("A source needs your decision")
             }
-            if session.problem != nil || !session.editRecovery.edits.isEmpty {
+            if session.problem != nil || !session.editRecovery.edits.isEmpty
+                || session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread)) != nil {
                 Button { model.conversationCollapsed = false } label: { Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange) }
                     .accessibilityLabel("Conversation needs attention · Show conversation")
                     .help("Open the conversation to review the error or kept edit")
@@ -63,7 +64,7 @@ struct ConversationView: View {
                     .font(.subheadline.weight(.semibold)).lineLimit(2).help(session.conversationName)
                 Spacer(minLength: 8)
                 Button { model.conversationCollapsed.toggle() } label: {
-                    if expanded { Image(systemName: "chevron.down") }
+                    if expanded { Image(systemName: "sidebar.left") }
                     else { Text(conversationToggleTitle) }
                 }
                 .buttonStyle(.borderless)
@@ -347,8 +348,7 @@ struct EntryView: View {
                         Text(session.store.hasPartialReply(to: question) ? "Reply interrupted." : "Not answered yet.")
                             .foregroundStyle(.secondary)
                         Button("Retry") { session.retry(id) }
-                        Link("Claude Code setup", destination: NotebookSession.setupURL)
-                    ConnectionDetailsButton()
+                        ConnectionDetailsButton()
                     }
                     .font(.caption).buttonStyle(.link)
                 }

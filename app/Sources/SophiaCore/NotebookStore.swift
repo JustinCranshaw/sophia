@@ -758,7 +758,7 @@ public final class NotebookStore {
                 if let p = e.str("proposal"), let d = e.str("decision"), ["accept", "reject", "replaced"].contains(d) { decided.insert(p) }
                 if let p = e.str("proposal"), e.str("purpose") == "filed_draft" { decided.insert(p) }
             }
-            for e in transcript where e.str("role") == "tool" {
+            for e in transcript where e.str("role") == "tool" && e["purpose"] == nil {
                 guard let pid = e.str("proposal"), !decided.contains(pid), let payload = e["payload"]?.object else { continue }
                 let w = try writePage(title: payload.str("title") ?? "Untitled", content: payload.str("content") ?? "",
                                       revising: nil, session: session, toolUseID: e.str("tool_use") ?? "")

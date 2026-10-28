@@ -41,7 +41,6 @@ final class NotebookSession: ObservableObject {
     var visibleActivity: String? { running?.thread == activeThread && request == nil ? activity : nil }
     var visibleThinking: Bool { isResponding && running?.thread == activeThread && request == nil }
     var visibleStreaming: String { running?.thread == activeThread && request == nil ? streaming : "" }
-    @Published var bookShown = true { didSet { if !bookShown { commitEdit() } } }
     @Published var streaming = ""
     @Published var isResponding = false
     @Published var activity: String?
@@ -415,7 +414,6 @@ final class NotebookSession: ObservableObject {
         if case .page(let file) = p, store.overviewPage?.file == file { place = .contents }
         else if case .page(let file) = p, let chapter = store.chapters.first(where: { $0.intro?.file == file }) { place = .chapter(chapter.id) }
         else { place = p }
-        bookShown = true
     }
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
@@ -515,7 +513,7 @@ final class NotebookSession: ObservableObject {
 
     /// ⌘E: the whole page, with the caret where the person is reading.
     func editWholePage() {
-        guard bookShown, let page = visiblePage else { return }
+        guard let page = visiblePage else { return }
         beginEdit(file: page.file, key: "(page)", atVisibleTop: true)
     }
 

@@ -279,7 +279,7 @@ struct PageView: View {
                         }
                     }
                 }
-                let chapter = store.chapter(of: file)
+                let chapter = store.chapter(of: file) ?? store.chapters.first(where: { $0.intro?.file == file })
                 let hidden = NotebookStore.repeatedHeadingLines(in: page.body, title: page.title, chapter: chapter)
                 let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
@@ -289,9 +289,6 @@ struct PageView: View {
                                  scope: store.page(file)?.role == .notebook ? "Notebook" : nil)
                 }
                 HStack {
-                    Button("Edit") { session.beginEdit(file: file, key: "(page)", atVisibleTop: true) }
-                        .buttonStyle(.borderless).controlSize(.small).disabled(session.editing != nil)
-                        .accessibilityLabel("Edit page")
                     if let entry = NotebookPresentation.almanacEntries(store)[file] {
                         Text(NotebookPresentation.publicationDate(entry)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
                     }
@@ -305,9 +302,14 @@ struct PageView: View {
                         }.controlSize(.small).disabled(session.editing?.file == file)
                     }
                     Spacer(minLength: 8)
+                    Button("Edit") { session.beginEdit(file: file, key: "(page)", atVisibleTop: true) }
+                        .buttonStyle(.bordered).controlSize(.small).disabled(session.editing != nil)
+                        .accessibilityLabel("Edit page")
                     if let write = session.undoableWrite(for: file), let action = store.transcript.first(where: { $0.str("id") == write }) {
-                        Button { session.undoWrite(write) } label: { Label("Undo", systemImage: "arrow.uturn.backward") }
-                            .buttonStyle(.borderless).controlSize(.small)
+                        Button { session.undoWrite(write) } label: {
+                            Label(action.str("purpose") == "edit_page" ? "Undo edit" : action.str("purpose") == "release_edit" ? "Undo permission" : "Undo change", systemImage: "arrow.uturn.backward")
+                        }
+                            .buttonStyle(.bordered).controlSize(.small)
                             .accessibilityLabel(undoLabel(action) + " on “" + page.title + "”")
                             .help(undoLabel(action) + ". Available until the next action on this page.")
                     }

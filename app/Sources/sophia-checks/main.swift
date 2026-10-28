@@ -1043,6 +1043,15 @@ func scenario10IntentionalEngineExit() throws {
     }
 }
 
+func purposeBearingPageProposalsRemainPendingOnReopen() throws {
+    let store = try tempStore()
+    _ = try store.appendTranscript(["role": .string("tool"), "purpose": .string("propose_page"), "proposal": .string("pending-1"),
+                                    "payload": .object(["title": .string("Do not accept"), "content": .string("Unconfirmed personal information")])])
+    let reopened = try NotebookStore.open(url: store.url)
+    expect(reopened.pages.isEmpty)
+    expect(reopened.transcript.count == 1)
+}
+
 func overviewPagesUseTheSameWritesEditsAndUndo() throws {
     let store = try tempStore()
     let original = try Data(contentsOf: store.url.appendingPathComponent("notebook.json"))
@@ -1087,6 +1096,7 @@ func overviewPagesUseTheSameWritesEditsAndUndo() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("purposeBearingPageProposalsRemainPendingOnReopen", purposeBearingPageProposalsRemainPendingOnReopen),
     ("overviewPagesUseTheSameWritesEditsAndUndo", overviewPagesUseTheSameWritesEditsAndUndo),
     ("almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes", almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes),
     ("almanacContextAndCapabilitiesExcludeUnselectedPrivateMaterial", almanacContextAndCapabilitiesExcludeUnselectedPrivateMaterial),

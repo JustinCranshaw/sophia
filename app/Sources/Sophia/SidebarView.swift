@@ -8,6 +8,7 @@ struct SidebarView: View {
     @EnvironmentObject private var almanac: AlmanacModel
 
     var body: some View {
+        VStack(spacing: 0) {
         List {
             Section("Library") {
                 if let worker = almanac.worker {
@@ -19,9 +20,18 @@ struct SidebarView: View {
                     NotebookRows(url: url)
                 }
             }
-            if let s = model.open { Section("Shared across notebooks") { AboutRow(session: s) } }
+            if let s = model.open { Section("Shared across your Library") { AboutRow(session: s) } }
         }
         .listStyle(.sidebar)
+        Divider()
+        Button { NotificationCenter.default.post(name: .newNotebook, object: nil) } label: {
+            Label("New Notebook…", systemImage: "plus")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16).padding(.vertical, 12).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).help("New notebook · ⌘N")
+        .accessibilityLabel("New Notebook")
+        }
     }
 }
 
@@ -141,7 +151,6 @@ struct OpenNotebookRows: View {
             .padding(.leading, indentBy ?? (indent ? 14 : 0))
             .padding(.vertical, 3).padding(.horizontal, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(session.place == place ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

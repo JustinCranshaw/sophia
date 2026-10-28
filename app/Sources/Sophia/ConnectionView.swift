@@ -58,7 +58,7 @@ final class ConnectionState: ObservableObject {
 struct ConnectionView: View {
     @ObservedObject var connection: ConnectionState
     var compact = false
-    var close: (() -> Void)? = nil
+    var inSettings = false
     private var statusText: String {
         switch connection.status {
         case .missing: return "Claude Code not found"
@@ -76,7 +76,7 @@ struct ConnectionView: View {
             Text("Claude access and usage are separate from Sophia. Check your Claude plan’s limits and charges.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !compact {
-                Text("About you is personal background shared across your notebooks, not an account, and is included with requests from any notebook. After you dismiss this information, a later return can prepare a briefing or catch-up notes automatically; dismissal itself starts nothing. This development build intends to use your Claude account through Claude Code, excluding API-key and alternate-provider environment overrides. Installation/login status is not a successful request, billing proof, or commercial permission, and does not guarantee every notebook’s effective route.")
+                Text("About you is personal background shared across your notebooks, not an account, and is included with requests from any notebook. \(connection.acknowledged ? "Later returns can prepare a briefing or catch-up notes automatically." : "After you choose Keep reading in the main window, later returns can prepare a briefing or catch-up notes automatically.") Opening or closing Settings starts no request. This development build intends to use your Claude account through Claude Code, excluding API-key and alternate-provider environment overrides. Installation/login status is not a successful request, billing proof, or commercial permission, and does not guarantee every notebook’s effective route.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if connection.isStatusFixture { Text("Synthetic status fixture — not this Mac’s login result").font(.caption) }
@@ -86,12 +86,13 @@ struct ConnectionView: View {
                 Link("Claude Code setup", destination: NotebookSession.setupURL)
                 Spacer()
                 if compact { Button("Details") { connection.detailsShown = true } }
-                Button(connection.acknowledged ? "Close" : "Keep reading") {
-                    connection.acknowledge(); connection.detailsShown = false
-                    close?()
+                if !inSettings {
+                    Button(connection.acknowledged ? "Close" : "Keep reading") {
+                        connection.acknowledge(); connection.detailsShown = false
+                    }
                 }
             }
-            Text("Reading and drafts work without a connection. Recheck sends no notebook content. Keep reading starts no request.")
+            Text("Reading and drafts work without a connection. Recheck sends no notebook content." + (!inSettings && !connection.acknowledged ? " Keep reading starts no request." : ""))
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }.padding(16)
     }

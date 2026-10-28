@@ -51,7 +51,6 @@ final class AppModel: ObservableObject {
     @Published var conversationCollapsed: Bool {
         didSet { preferences.set(conversationCollapsed, forKey: "conversationCollapsed") }
     }
-    private var bookVisibility: [String: Bool] = [:]
 
     init() {
         #if DEBUG
@@ -85,13 +84,10 @@ final class AppModel: ObservableObject {
     func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil, allowAutomaticReturn: Bool = true) -> Bool {
         guard library.notebooks.contains(url) else { problem = "This notebook is no longer available."; return false }
         if open?.store.url != url {
-            // A page/Open action counts as choosing the book; an untouched empty default does not.
-            if let current = open, current.bookShown { bookVisibility[current.store.url.path] = true }
             do {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
                 open?.shutdown()
                 notebookSettings = nil
-                next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.contentPages.isEmpty
                 open = next
             } catch { problem = error.localizedDescription; return false }
         }
@@ -141,12 +137,6 @@ final class AppModel: ObservableObject {
         notebookSettings = NotebookSettingsSelection(url: url, section: section)
     }
 
-    func toggleBook() {
-        guard let current = open else { return }
-        current.bookShown.toggle()
-        bookVisibility[current.store.url.path] = current.bookShown
-    }
-
     @discardableResult
     func create(_ name: String) -> Bool {
         do {
@@ -190,7 +180,7 @@ struct SophiaApp: App {
             }
         }
         Settings {
-            ConnectionView(connection: model.connection, close: { NSApp.keyWindow?.close() })
+            ConnectionView(connection: model.connection, inSettings: true)
                 .frame(width: 560)
         }
 
@@ -224,7 +214,23 @@ struct RootView: View {
                 SidebarView()
                     .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 340)
             } detail: {
-                if let s = model.open { NotebookView(session: s, drafts: $drafts) } else { EmptyLibraryView(naming: $naming) }
+                Group {
+                    if let s = model.open { NotebookView(session: s, drafts: $drafts) }
+                    else { EmptyLibraryView(naming: $naming) }
+                }
+            }
+            .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if let worker = almanac.worker {
+                    AlmanacReadyControl(worker: worker, read: model.readAlmanacEntry)
+                }
+            }
+            if #available(macOS 26, *) {
+                ToolbarItem(placement: .principal) { BrandLockup() }
+                    .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .principal) { BrandLockup() }
+        }
             }
         }
         .sheet(isPresented: $connection.detailsShown) {
@@ -244,23 +250,6 @@ struct RootView: View {
                 model.problem = "This Almanac entry is no longer available."; return
             }
             model.readAlmanacEntry(entry)
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                if let worker = almanac.worker {
-                    AlmanacReadyControl(worker: worker, read: model.readAlmanacEntry)
-                }
-            }
-            ToolbarItem(placement: .navigation) {
-                Button { naming = true } label: { Label("New Notebook", systemImage: "plus") }
-                    .help("New notebook")
-            }
-            if #available(macOS 26, *) {
-                ToolbarItem(placement: .principal) { BrandLockup() }
-                    .sharedBackgroundVisibility(.hidden)
-            } else {
-                ToolbarItem(placement: .principal) { BrandLockup() }
-            }
         }
         .sheet(isPresented: $naming) {
             VStack(alignment: .leading, spacing: 12) {
@@ -326,7 +315,7 @@ struct RootView: View {
 }
 
 /// One workspace layout: conversation in the middle, main page on the right.
-/// Empty notebooks begin with the conversation; explicit book visibility remains the person's choice.
+/// Empty notebooks show the same editable introduction page and conversation.
 struct NotebookView: View {
     @ObservedObject var session: NotebookSession
     @EnvironmentObject private var model: AppModel
@@ -352,15 +341,12 @@ struct NotebookView: View {
                 switch surface {
                 case .conversation:
                     ConversationView(session: session, draft: draft)
-                        .frame(width: model.conversationCollapsed ? 44 : (session.bookShown ? 360 : nil))
-                        .frame(maxWidth: !model.conversationCollapsed && !session.bookShown ? .infinity : nil,
-                               maxHeight: .infinity)
+                        .frame(width: model.conversationCollapsed ? 44 : 360)
+                        .frame(maxHeight: .infinity)
                 case .divider:
-                    if session.bookShown { Divider() }
+                    Divider()
                 case .book:
-                    if session.bookShown {
-                        BookView(session: session).frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    BookView(session: session).frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
         }
@@ -379,15 +365,7 @@ struct NotebookView: View {
             let destination = drafts[new] ?? ""
             drafts[new] = destination.isEmpty ? orphaned : destination + "\n\n" + orphaned
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { withAnimation { model.toggleBook() } } label: {
-                    Label(session.bookShown ? "Hide Book" : "Show Book", systemImage: "sidebar.right")
-                }
-                .help(session.bookShown ? "Hide the book" : "Show the book")
-                .keyboardShortcut("b", modifiers: [.command, .option])
-            }
-        }
+
     }
 }
 
