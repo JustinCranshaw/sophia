@@ -274,7 +274,7 @@ public enum Prompts {
         null leaves that page alone; use it when nothing useful changed. These are ordinary Markdown pages, not arrays of records or memory lines. Read the existing bodies below and preserve what remains useful, every personal contribution, and quotes of their words. No curriculum, mastery claim or judgment of ability. Notes distinguish the person’s actual attempt from your tentative interpretation and what remains unshown. Working memory stays concise about where the inquiry stands. Every changed body needs supporting refs or an exact quote from the messages below. Existing n-/g-/criterion refs name historical evidence, not current authoritative page content. Do not invent identities or overwrite a person’s correction.
 
         Historical source records (not current page content; replacement chains remain evidence):
-        \(store.learning.suffix(40).map { $0.line }.joined(separator: "\n"))
+        \(store.learning.filter { $0.str("kind") != "page_evidence" }.suffix(40).map { $0.line }.joined(separator: "\n"))
 
         Current notes:
         \(notesText(store))
@@ -358,7 +358,7 @@ public enum Prompts {
 
     /// The return briefing. It must link every claim to records, messages, or pages.
     public static func briefing(_ store: NotebookStore) -> String {
-        let records = store.currentLearning.filter { $0.str("kind") != "memory" }.suffix(40).map { r -> String in
+        let records = store.currentLearning.filter { $0.str("kind") != "memory" && $0.str("kind") != "page_evidence" }.suffix(40).map { r -> String in
             var s = "\(r.str("id") ?? "") [\(r.str("kind") ?? ""), by \(r.str("by") ?? "")]: \(r.str("text") ?? "")"
             if let q = r["quote"]?.object { s += " (their words: \"\(q.str("text") ?? "")\")" }
             if let c = store.correction(of: r.str("id") ?? "") { s += " (corrected by the person: \(c.str("text") ?? ""))" }

@@ -61,7 +61,7 @@ struct MemoryChangedLine: View {
             Image(systemName: "brain").foregroundStyle(.tertiary)
             Text("Updated what Sophia is keeping in mind" + (parts.isEmpty ? "" : ": " + parts.joined(separator: ", ")))
                 .foregroundStyle(.secondary)
-            Button("See") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
+            Button("See") { model.showNotebookSettings(session.store.url, section: .memory) }.buttonStyle(.link)
         }
         .font(.caption)
     }

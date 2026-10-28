@@ -135,3 +135,54 @@ func queuedAndRetriedTurnsKeepTheirOwnEvidenceIDs() throws {
     expect(!Prompts.turnPrefix(store, thread: "a.md", before: b).contains(marker(b)))
     expect(!Prompts.turnPrefix(store, thread: "a.md").contains("Evidence ID for the person’s message that follows:"))
 }
+
+func notebookCheckpointQuotaDoesNotConsumeLiveUpdates() throws {
+    let store = try tempStore()
+    defer { try? FileManager.default.removeItem(at: store.url) }
+    let message = try store.appendTranscript(["role": .string("person"), "text": .string("Use musical examples."), "session": .string("s")])
+    let ref = message.str("id")!
+    for i in 0..<7 { _ = try store.writeNotebookNotes(content: "Live thought \(i)", refs: [ref], session: "s") }
+    func checkpoint(_ body: String, through: String) throws -> NotebookStore.CheckpointResult {
+        try store.finishNotebookPageCheckpoint(JSON.object(["notes": .string(body), "memory": .null, "refs": .array([.string(through)])]).line,
+            failed: false, through: through, entries: [through], session: "s", catchUp: false)
+    }
+    expect(try checkpoint("Checkpoint thought", through: ref) == .saved)
+    _ = try store.writeNotebookNotes(content: "Eighth live thought", refs: [ref], session: "s")
+    expectThrows { try store.writeNotebookNotes(content: "Ninth live thought", refs: [ref], session: "s") }
+    let next = try store.appendTranscript(["role": .string("person"), "text": .string("Keep the example open."), "session": .string("s")]).str("id")!
+    expect(try checkpoint("Checkpoint after the live quota", through: next) == .saved)
+    expect(store.unnotedMessages.isEmpty)
+    expect(store.readPage(store.notebookPage(role: .notes)!.file)!.body.contains("Checkpoint after the live quota"))
+}
+
+func notebookCheckpointParaphraseStillRequiresValidEvidence() throws {
+    let store = try tempStore()
+    defer { try? FileManager.default.removeItem(at: store.url) }
+    let ref = try store.appendTranscript(["role": .string("person"), "text": .string("I don't remember this."), "session": .string("s")]).str("id")!
+    let payload: JSONObject = ["notes": .string("Return to the example."), "memory": .string("The example remains open."), "refs": .array([.string(ref)]), "quote": .string("I don’t remember this.")]
+    expect(try store.finishNotebookPageCheckpoint(payload.line, failed: false, through: ref, entries: [ref], session: "s", catchUp: true) == .saved)
+    let evidence = store.learning.filter { $0.str("kind") == "page_evidence" }
+    expect(evidence.count == 2 && evidence.allSatisfy { $0["quote"] == nil && $0["paraphrase"] == .bool(true) && ($0["refs"]?.array ?? []).contains(.string(ref)) })
+    var invalid = payload; invalid["refs"] = .array([])
+    let before = store.pageHash(store.notebookPage(role: .notes)!.file)
+    expectThrows { try store.finishNotebookPageCheckpoint(JSON.object(invalid).line, failed: false, through: ref, entries: [ref], session: "s", catchUp: true) }
+    expect(store.pageHash(store.notebookPage(role: .notes)!.file) == before)
+    expectThrows { try store.proposeGoalsPage(content: "Unverified aim", quote: "No such person words", session: "s") }
+}
+
+func notebookAutomaticPromptsExcludeUndoneBodySnapshots() throws {
+    let store = try tempStore()
+    defer { try? FileManager.default.removeItem(at: store.url) }
+    let message = try store.appendTranscript(["role": .string("person"), "text": .string("Use this actual source."), "session": .string("s")])
+    let ref = message.str("id")!
+    let notes = try store.writeNotebookNotes(content: "UNDONE_NOTES_BODY_CANARY", refs: [ref], session: "s")
+    let memory = try store.writeNotebookMemory(content: "UNDONE_MEMORY_BODY_CANARY", refs: [ref], session: "s")
+    try store.undoPageWrite(notes.str("id")!, session: "s")
+    try store.undoPageWrite(memory.str("id")!, session: "s")
+    expect(store.learning.contains { $0.str("text") == "UNDONE_NOTES_BODY_CANARY" })
+    expect(store.learning.contains { $0.str("text") == "UNDONE_MEMORY_BODY_CANARY" })
+    for prompt in [Prompts.checkpoint(store, messages: [message], catchUp: false), Prompts.briefing(store)] {
+        expect(!prompt.contains("UNDONE_NOTES_BODY_CANARY") && !prompt.contains("UNDONE_MEMORY_BODY_CANARY"))
+        expect(prompt.contains(ref))
+    }
+}

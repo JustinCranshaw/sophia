@@ -508,6 +508,15 @@ final class NotebookSession: ObservableObject {
         let destination: Place
         if case .page(let file) = p, store.overviewPage?.file == file { destination = .contents }
         else if case .page(let file) = p, let chapter = store.chapters.first(where: { $0.intro?.file == file }) { destination = .chapter(chapter.id) }
+        else if case .page(let file) = p, let role = store.page(file)?.role {
+            switch role {
+            case .goals: destination = .goals
+            case .notes: destination = .notes
+            case .memory: destination = .memory
+            case .about where isSharedAbout && file == ClaudeEngine.sharedAboutFile: destination = .about
+            default: destination = p
+            }
+        }
         else { destination = p }
         place = destination
         return place == destination

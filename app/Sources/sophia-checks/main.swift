@@ -1143,6 +1143,9 @@ func overviewPagesUseTheSameWritesEditsAndUndo() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("notebookCheckpointQuotaDoesNotConsumeLiveUpdates", notebookCheckpointQuotaDoesNotConsumeLiveUpdates),
+    ("notebookCheckpointParaphraseStillRequiresValidEvidence", notebookCheckpointParaphraseStillRequiresValidEvidence),
+    ("notebookAutomaticPromptsExcludeUndoneBodySnapshots", notebookAutomaticPromptsExcludeUndoneBodySnapshots),
     ("queuedAndRetriedTurnsKeepTheirOwnEvidenceIDs", queuedAndRetriedTurnsKeepTheirOwnEvidenceIDs),
     ("notebookPageMigrationRequiresReadableCompleteLegacyLog", notebookPageMigrationRequiresReadableCompleteLegacyLog),
     ("notebookLearningPagesKeepMarkdownAndHistoricalEvidence", notebookLearningPagesKeepMarkdownAndHistoricalEvidence),

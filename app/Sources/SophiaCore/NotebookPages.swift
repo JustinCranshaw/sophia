@@ -172,8 +172,9 @@ extension NotebookStore {
     private func checkedPageEvidence(content: String, quote: String?, refs: [String], session: String, quoteEntries: Set<String>? = nil) throws -> JSONObject {
         var candidate: JSONObject = ["kind": .string("background"), "text": .string(content.isEmpty ? "Clear working memory" : content), "refs": .array(refs.map { .string($0) })]
         if let q = quote, !q.isEmpty {
-            guard let entry = transcript.last(where: { Self.isPersonMessage($0) && (quoteEntries?.contains($0.str("id") ?? "") ?? ($0.str("session") == session)) && RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }) else { throw NotebookPageError.invalidEvidence }
-            candidate["quote"] = .object(["entry": entry["id"]!, "text": .string(q)])
+            if let entry = transcript.last(where: { Self.isPersonMessage($0) && (quoteEntries?.contains($0.str("id") ?? "") ?? ($0.str("session") == session)) && RecordChecks.normalize($0.str("text") ?? "").contains(RecordChecks.normalize(q)) }) {
+                candidate["quote"] = .object(["entry": entry["id"]!, "text": .string(q)])
+            } else { candidate["paraphrase"] = .bool(true) }
         }
         let allowed = quoteEntries ?? Set(transcript.filter { $0.str("session") == session }.compactMap { $0.str("id") })
         let result = RecordChecks(store: self).check([.object(candidate)], allowedKinds: ["background"], quoteEntries: allowed)
@@ -181,14 +182,14 @@ extension NotebookStore {
         return kept
     }
 
-    private func writeNotebookLearningPage(role: PageRole, content: String, quote: String?, refs: [String], session: String, thread: String, quoteEntries: Set<String>? = nil) throws -> JSONObject {
+    private func writeNotebookLearningPage(role: PageRole, content: String, quote: String?, refs: [String], session: String, thread: String, quoteEntries: Set<String>? = nil, liveQuota: Bool = true) throws -> JSONObject {
         try locked {
             guard [.notes, .memory].contains(role) else { throw NotebookPageError.invalidRole }
             try ensureNotebookPages(session: session)
             let evidence = try checkedPageEvidence(content: content, quote: quote, refs: refs, session: session, quoteEntries: quoteEntries)
             let page = notebookPage(role: role)!
-            if role == .notes && readPage(page.file)?.body != content + "\n" {
-                let count = transcript.filter { $0.str("purpose") == "notebook_page_evidence" && $0.str("session") == session && $0.str("pageRole") == role.rawValue }.count
+            if liveQuota && role == .notes && readPage(page.file)?.body != content + "\n" {
+                let count = transcript.filter { $0.str("purpose") == "notebook_page_evidence" && $0.str("session") == session && $0.str("pageRole") == role.rawValue && $0["checkpoint"] != .bool(true) }.count
                 guard count < Self.liveNotesPerSession else { throw NotebookPageError.quota }
             }
             let expected = "---\ntitle: \(JSON.string(page.title).line)\n---\n" + content + "\n"
@@ -205,7 +206,7 @@ extension NotebookStore {
             audit["basehash"] = .string(pageHash(page.file)!)
             let record = try appendLearning(audit, by: "sophia", session: session)
             let result = try writePage(title: page.title, content: content, revising: page.file, session: session, toolUseID: "learning-page-" + UUID().uuidString, thread: thread)
-            try appendTranscript(["role": .string("tool"), "purpose": .string("notebook_page_evidence"), "pageRole": .string(role.rawValue), "file": .string(page.file), "page": .string(thread), "record": record["id"]!, "write": result["id"]!, "session": .string(session)])
+            try appendTranscript(["role": .string("tool"), "purpose": .string("notebook_page_evidence"), "pageRole": .string(role.rawValue), "file": .string(page.file), "page": .string(thread), "record": record["id"]!, "write": result["id"]!, "session": .string(session), "checkpoint": .bool(!liveQuota)])
             return result
         }
     }
@@ -230,7 +231,7 @@ extension NotebookStore {
             }
             for role in [PageRole.notes, .memory] {
                 guard let body = object[role.rawValue]?.string else { continue }
-                let result = try writeNotebookLearningPage(role: role, content: body, quote: quote, refs: refs, session: session, thread: "", quoteEntries: entries)
+                let result = try writeNotebookLearningPage(role: role, content: body, quote: quote, refs: refs, session: session, thread: "", quoteEntries: entries, liveQuota: false)
                 if result["refused"] == .bool(true) { return .failed }
             }
             try appendTranscript(["role": .string("client"), "purpose": .string("checkpoint"), "page": .string(""), "through": .string(through), "session": .string(session), "catch_up": .bool(catchUp), "page_format": .string("markdown"), "kept": .array([])])

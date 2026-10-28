@@ -385,7 +385,7 @@ struct EntryView: View {
                     if entry.str("tool") == "note", let record = entry.str("record") {
                         NoteLine(session: session, recordID: record, revised: entry["revised"] == .bool(true))
                     } else {
-                        Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link).font(.caption)
+                        Button(entry.str("tool") == "memory" ? "Working memory" : "Notes") { model.showNotebookSettings(session.store.url, section: entry.str("tool") == "memory" ? .memory : .notes) }.buttonStyle(.link).font(.caption)
                     }
                 }
             } else if let pid = entry.str("proposal") {
