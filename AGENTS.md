@@ -22,7 +22,7 @@ The user's latest instructions take precedence over earlier proposals. PLAN.md i
 - Preserve source evidence, the person's actual statements, and Sophia's interpretations as distinguishable material.
 - Keep the return experience concrete: the open question, relevant prior idea or attempt, uncertainty, and a useful next step.
 - The notebook is an emergent textbook: it grows page by page as the person directs the inquiry. Sophia may suggest directions for the person to choose, but does not write ahead of them or fill out a predetermined curriculum.
-- The conversation sits beside the book. Sophia writes and revises pages directly as the conversation calls for them; the person can undo or ask for changes. She also records the person's goals as she hears them, provisional until the person confirms.
+- The conversation sits beside the book. Sophia writes and revises pages directly as the conversation calls for them; the person can undo or ask for changes. Sophia also records the person's goals as Sophia hears them, provisional until the person confirms.
 - The person can edit pages directly, a section at a time, in a byte-exact source editor; Sophia must not overwrite their edits. See [EDITING.md](EDITING.md). A social platform is outside the initial scope.
 
 ## Current implementation priority

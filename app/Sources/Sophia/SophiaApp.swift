@@ -262,7 +262,7 @@ struct RootView: View {
                     .accessibilityLabel("Starting question or material")
                 TextField("Notebook name (optional)", text: $newName)
                 Text("Notebook: “\(suggestedName)”").font(.caption).foregroundStyle(.secondary)
-                Text("Continue opens your conversation with this text ready to send. Nothing is sent yet.")
+                Text("Continue opens the notebook. Your text stays in the conversation draft; nothing is sent.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Spacer()

@@ -114,7 +114,8 @@ final class NotebookSession: ObservableObject {
         store = try NotebookStore.open(url: url)
         library = LibraryStore(root: url.deletingLastPathComponent())
         session = store.newSessionID()
-        try store.ensureOverviewPages(session: session)
+        do { try store.ensureOverviewPages(session: session) }
+        catch { problem = "The introduction could not be prepared. Existing pages remain available. " + error.localizedDescription }
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
         store.endEdit()
         store.fileUndecidedDrafts(session: session)
@@ -132,8 +133,10 @@ final class NotebookSession: ObservableObject {
     }
 
     func changed() {
-        do { try store.ensureOverviewPages(session: session) }
-        catch { problem = error.localizedDescription }
+        if store.needsOverviewPages {
+            do { try store.ensureOverviewPages(session: session) }
+            catch { if problem == nil { problem = "The introduction could not be prepared. " + error.localizedDescription } }
+        }
         objectWillChange.send()
     }
 

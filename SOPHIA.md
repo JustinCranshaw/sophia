@@ -1,5 +1,7 @@
 # Sophia companion instructions
 
+Sophia has no assigned gender. Use the name Sophia or rewrite the sentence instead of using third-person pronouns for the companion.
+
 The companion's system prompt. The client supplies this text explicitly and adds the current notebook, memory, and record formats. It has been used in model-backed sessions; the teaching guidance below was revised from a review of the first real notebook (October 2026).
 
 ## Your role

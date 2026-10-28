@@ -1,10 +1,10 @@
 import SwiftUI
 import SophiaCore
 
-// What Sophia keeps beyond a single note: her working memory for the notebook, "About you"
+// What Sophia keeps beyond a single note: Sophia's working memory for the notebook, "About you"
 // (shared by every notebook), and links between notebooks. The person can see and change all of it.
 
-/// "What Sophia is keeping in mind": her working memory, at the top of Sophia's notes.
+/// "What Sophia is keeping in mind": Sophia's working memory, at the top of Sophia's notes.
 struct MemoryCard: View {
     @ObservedObject var session: NotebookSession
     @State private var correcting: String?
@@ -15,7 +15,7 @@ struct MemoryCard: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("WHAT SOPHIA IS KEEPING IN MIND").font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(Brand.plum)
             if store.memory.isEmpty {
-                Text("Nothing yet. Sophia keeps a few lines here on where things stand, and looks up her notes when she needs more.")
+                Text("Nothing yet. Sophia keeps a few lines here on where things stand, and looks up Sophia's notes when Sophia needs more.")
                     .font(.callout).foregroundStyle(.secondary)
             }
             ForEach(store.memory, id: \.self.line) { m in
@@ -62,7 +62,7 @@ struct AboutView: View {
         let lines = session.library.aboutLines
         Sheet {
             ReadingTitle(title: "About you", scope: "Shared across your Library")
-            Intro("What Sophia knows about you in every notebook: your background and how you like to work. She proposes lines from what you say. A line stays in the notebook it came from until you confirm it. Topic details stay in each notebook's notes.")
+            Intro("What Sophia knows about you in every notebook: your background and how you like to work. Sophia proposes lines from what you say. A line stays in the notebook it came from until you confirm it. Topic details stay in each notebook's notes.")
             if lines.isEmpty {
                 Text("Nothing yet.").foregroundStyle(.secondary)
             }
@@ -155,7 +155,7 @@ struct LinksList: View {
     }
 }
 
-/// A conversation line when Sophia rewrites her memory.
+/// A conversation line when Sophia rewrites Sophia's memory.
 struct MemoryChangedLine: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
@@ -167,7 +167,7 @@ struct MemoryChangedLine: View {
         }
         HStack(spacing: 6) {
             Image(systemName: "brain").foregroundStyle(.tertiary)
-            Text("Updated what she's keeping in mind" + (parts.isEmpty ? "" : ": " + parts.joined(separator: ", ")))
+            Text("Updated what Sophia is keeping in mind" + (parts.isEmpty ? "" : ": " + parts.joined(separator: ", ")))
                 .foregroundStyle(.secondary)
             Button("See") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link)
         }

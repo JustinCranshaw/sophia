@@ -62,7 +62,7 @@ Test three assumptions separately: people get value beyond an ordinary chat; the
 
 - One Mac, one person, local notebook files, and one supported provider route. No Sophia account is required to use the notebook.
 - Create and reopen notebooks; converse beside the book; write and revise sourced Markdown/math pages through conversation; undo a write; inspect, correct, and remove Sophia's notes; confirm provisional goals; return with a grounded briefing.
-- Edit a page section directly, with Sophia unable to overwrite the edit unless the person lets her ([EDITING.md](EDITING.md), Phase 1; implemented, with remaining native/manual checks identified there).
+- Edit a page section directly, with Sophia unable to overwrite the edit unless the person lets Sophia ([EDITING.md](EDITING.md), Phase 1; implemented, with remaining native/manual checks identified there).
 - Keep chapters optional. Do not hold launch for automated chapter organization, guided reading, document ingestion, semantic search, or executable artifacts.
 - Setup identifies the supported provider installation, sign-in, and billing route. Explain limits, expired login, cancellation, offline state, and recovery. Provider usage is billed directly to the person; never silently change the billing route.
 - Local means storage and orchestration, not offline AI. Prompts and relevant notebook context go to the chosen provider, and research may contact the web. State this before the first request. Existing pages remain readable without a working provider connection.
@@ -230,14 +230,14 @@ Replace individual page files atomically. If an unrecorded page exists on disk, 
 For the return briefing, supply a bounded selection of recent inquiry/learning records and saved pages. Sophia should ground its account in those records and invite correction.
 
 **Rebuilding context.** Sophia's context for a thread is rebuilt from storage whenever that thread's conversation starts:
-- her standing context;
+- Sophia's standing context;
 - the page;
-- her notes on it;
+- Sophia's notes on it;
 - the thread's last few exchanges before the latest notes, and everything since, word for word.
 
-A checkpoint ends every thread's conversation process, so her view always follows her notes.
+A checkpoint ends every thread's conversation process, so Sophia's view always follows Sophia's notes.
 
-**Not resuming.** Provider sessions are not stored or resumed, and nothing is shown to the person when context is rebuilt. A rebuilt thread lacks what its earlier process held privately, such as search results or pages read; SOPHIA.md tells her to look again rather than assume she still has them, and never to claim to restore private provider state she does not possess.
+**Not resuming.** Provider sessions are not stored or resumed, and nothing is shown to the person when context is rebuilt. A rebuilt thread lacks what its earlier process held privately, such as search results or pages read; SOPHIA.md tells Sophia to look again rather than assume Sophia still has them, and never to claim to restore private provider state Sophia does not possess.
 
 **Deferred: resuming provider sessions.** Resuming a thread's provider session is deferred behind one test, run with the app's exact flags:
 1. Resume with a changed `--append-system-prompt` containing a sentinel word, and ask Sophia to quote it.
@@ -266,7 +266,7 @@ The book and the conversation are separate surfaces. Before a notebook has a pag
 
 **Unrecorded disk changes.** Hashes and orphan files cannot distinguish a crash-before-entry from outside edits. Index them with unknown provenance, preserve current and previous bytes until a later content-changing recorded write or edit replaces the single previous slot, and offer inspection/manual restoration rather than destructive Undo. Unchanged requests retain both versions and inspection. Normal recorded page writes and personal edits keep durable one-way Undo; automatic Undo of an unrecorded interrupted write is outside the current promise.
 
-**Selection and focus.** Selecting a page selects its conversation, and the title above the composer names it ("1.3 The convolution theorem"; on Contents, "Fourier analysis · notebook conversation"). A write by Sophia never changes the selection or takes focus from the composer: her card in the conversation names the page and offers Open. Goals and Sophia's notes have no conversation of their own; opening them keeps the current conversation beside them, still named. A reply that finishes after the person has moved on marks its row until that conversation is next shown; nothing about it is stored.
+**Selection and focus.** Selecting a page selects its conversation, and the title above the composer names it ("1.3 The convolution theorem"; on Contents, "Fourier analysis · notebook conversation"). A write by Sophia never changes the selection or takes focus from the composer: Sophia's card in the conversation names the page and offers Open. Goals and Sophia's notes have no conversation of their own; opening them keeps the current conversation beside them, still named. A reply that finishes after the person has moved on marks its row until that conversation is next shown; nothing about it is stored.
 
 **Return (implemented boundary).** On an informed opening after the six-hour quiet threshold, the client may catch up outstanding notes and request a checked, short briefing in the Contents thread. Unacknowledged first use suppresses that opening's automatic request; dismissing the information starts nothing. Opening a notebook starts at Contents. A persistent “Continue on …” navigation affordance, a sticky briefing above a different page, and restoring a saved selection are design ideas, not implemented promises.
 

@@ -1043,6 +1043,50 @@ func scenario10IntentionalEngineExit() throws {
     }
 }
 
+func missingRootsAndLegacyEmptyChaptersPreserveReadablePages() throws {
+    let store = try tempStore()
+    let saved = try store.writePage(title: "Existing content", content: "Kept bytes.", revising: nil, session: "check", toolUseID: "content")
+    let file = saved.str("file")!
+    let original = try Data(contentsOf: store.pagesURL.appendingPathComponent(file))
+    try store.ensureOverviewPages(session: "check")
+    let intro = store.overviewPage!.file
+    try FileManager.default.removeItem(at: store.pagesURL.appendingPathComponent(intro))
+    let reopened = try NotebookStore.open(url: store.url)
+    try reopened.ensureOverviewPages(session: "reopen")
+    expect(reopened.readPage(intro) == nil)
+    expect(try Data(contentsOf: reopened.pagesURL.appendingPathComponent(file)) == original)
+    expect(!reopened.needsOverviewPages)
+
+    let legacy = try tempStore()
+    let page = try legacy.writePage(title: "Undone", content: "Temporary.", revising: nil, session: "check", toolUseID: "undone")
+    _ = try legacy.fileInChapter([page.str("file")!], chapter: "Chapter 1: No longer used")
+    try legacy.undoPageWrite(page.str("id")!, session: "check")
+    try legacy.ensureOverviewPages(session: "reopen")
+    expect(legacy.chapters.isEmpty)
+    expect(legacy.meta["chapters"]?.array?.first?["intro"] == nil)
+    expect(!legacy.needsOverviewPages)
+}
+
+func filingPagesKeepsCustomizedIntroAndPersonUndo() throws {
+    let store = try tempStore()
+    let first = try store.writePage(title: "First", content: "One.", revising: nil, session: "check", toolUseID: "first").str("file")!
+    let second = try store.writePage(title: "Second", content: "Two.", revising: nil, session: "check", toolUseID: "second").str("file")!
+    _ = try store.fileInChapter([first], chapter: "Chapter 1: Patterns")
+    try store.ensureOverviewPages(session: "check")
+    let intro = store.chapters[0].intro!.file
+    _ = try store.writePage(title: "A personal introduction", content: "Original.", revising: intro, session: "check", toolUseID: "custom-title")
+    let range = try store.beginEdit(file: intro, key: "(page)", session: "check")!
+    guard case .saved(let edit) = try store.editPage(file: intro, section: "(page)", baseHash: range.hash, text: "Person-authored opening.", session: "check") else { expect(false); return }
+    store.endEdit()
+    let bytes = try Data(contentsOf: store.pagesURL.appendingPathComponent(intro))
+    _ = try store.fileInChapter([second], chapter: "Chapter 1: Patterns")
+    expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(intro)) == bytes)
+    expect(store.isUndoable(edit))
+    _ = try store.fileInChapter([second], chapter: "Chapter 1: Renamed group")
+    expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(intro)) == bytes)
+    expect(store.isUndoable(edit))
+}
+
 func purposeBearingPageProposalsRemainPendingOnReopen() throws {
     let store = try tempStore()
     _ = try store.appendTranscript(["role": .string("tool"), "purpose": .string("propose_page"), "proposal": .string("pending-1"),
@@ -1096,6 +1140,8 @@ func overviewPagesUseTheSameWritesEditsAndUndo() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("missingRootsAndLegacyEmptyChaptersPreserveReadablePages", missingRootsAndLegacyEmptyChaptersPreserveReadablePages),
+    ("filingPagesKeepsCustomizedIntroAndPersonUndo", filingPagesKeepsCustomizedIntroAndPersonUndo),
     ("purposeBearingPageProposalsRemainPendingOnReopen", purposeBearingPageProposalsRemainPendingOnReopen),
     ("overviewPagesUseTheSameWritesEditsAndUndo", overviewPagesUseTheSameWritesEditsAndUndo),
     ("almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes", almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes),

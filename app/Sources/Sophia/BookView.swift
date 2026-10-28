@@ -10,6 +10,7 @@ struct BookView: View {
             switch session.place {
             case .contents:
                 if let page = session.store.overviewPage { PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file)) }
+                else { Sheet { ReadingTitle(title: session.store.name); Banner(tone: .problem, text: "The introduction is unavailable. Existing pages are still readable."); ContentsOutline(session: session) } }
             case .goals: GoalsView(session: session)
             case .notes: NotesView(session: session)
             case .about: AboutView(session: session)
@@ -44,13 +45,16 @@ struct Sheet<Content: View>: View {
 struct ReadingTitle: View {
     let title: String
     var scope: String? = nil
+    var number: String? = nil
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             if let scope {
                 Text(scope).font(.system(size: 11, weight: .semibold)).tracking(1.2)
                     .textCase(.uppercase).foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.tail).help(scope)
             }
-            Text(title).font(.system(size: 32, weight: .semibold, design: .serif))
+            ((number.map { Text($0 + "  ").font(.system(size: 28, weight: .regular, design: .serif)).foregroundColor(.secondary) } ?? Text(""))
+                + Text(title).font(.system(size: 28, weight: .semibold, design: .serif)))
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -135,13 +139,16 @@ func pageNumber(_ store: NotebookStore, _ page: NotebookStore.Page) -> (number: 
     return (n, rest)
 }
 
-/// "CHAPTER 0 · FOUNDATIONS": the small label above a chapter's pages.
-struct ChapterLabel: View {
+/// A chapter is a heading in the outline, not a breadcrumb above a page.
+struct ChapterOutlineHeading: View {
     let chapter: NotebookStore.Chapter
     var body: some View {
-        Text((chapter.number.map { "Chapter \($0) · " } ?? "") + chapter.title)
-            .font(.system(size: 11, weight: .semibold)).tracking(1.2).textCase(.uppercase)
-            .foregroundStyle(.secondary)
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(chapter.number ?? "").foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
+            Text(chapter.title)
+        }
+        .font(.system(size: 21, weight: .semibold, design: .serif))
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -154,7 +161,7 @@ struct ContentsRow: View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(number).font(.system(size: 17, design: .serif)).monospacedDigit().foregroundStyle(.secondary).frame(width: 34, alignment: .leading)
-                Text(title).font(.system(size: 18, design: .serif)).foregroundStyle(.primary).underline(hover)
+                Text(title).font(.system(size: 17, design: .serif)).foregroundStyle(.primary).underline(hover)
             }
             .contentShape(Rectangle())
         }
@@ -170,38 +177,49 @@ struct ContentsOutline: View {
     var chapterID: String? = nil
     var body: some View {
         let store = session.store
-        VStack(alignment: .leading, spacing: 18) {
+        let intro = chapterID.flatMap { id in store.chapters.first(where: { $0.id == id })?.intro } ?? store.overviewPage
+        let hasIntroduction = intro.flatMap { store.readPage($0.file)?.body }.map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
+        VStack(alignment: .leading, spacing: 12) {
             Divider()
             if chapterID == nil, Almanac.isConfigured(url: store.url),
                let worker = model.almanac.worker, worker.url == store.url {
                 AlmanacHomeControls(worker: worker, almanac: model.almanac)
             }
-            HStack {
-                Text("Contents").font(.system(size: 23, weight: .semibold, design: .serif))
-                Spacer()
-                if chapterID == nil {
-                    Text("\(store.contentPages.count) page\(store.contentPages.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
-                }
+            if hasIntroduction {
+                Text("Contents").font(.system(size: 11, weight: .semibold)).tracking(1.2)
+                    .textCase(.uppercase).foregroundStyle(.secondary)
             }
             if let chapterID, let chapter = store.chapters.first(where: { $0.id == chapterID }) {
                 rows(chapter.pages)
                 if chapter.pages.isEmpty { Intro("No pages in this chapter yet.") }
             } else {
                 if store.contentPages.isEmpty { Intro("No pages yet. Start with a question; keep a page when there is something useful to return to.") }
-                ForEach(store.chapters) { chapter in
-                    VStack(alignment: .leading, spacing: 12) {
-                        Button { session.show(.chapter(chapter.id)) } label: { ChapterLabel(chapter: chapter) }.buttonStyle(.plain)
-                        rows(chapter.pages)
+                VStack(alignment: .leading, spacing: 20) {
+                    ForEach(store.chapters) { chapter in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button { session.show(.chapter(chapter.id)) } label: { ChapterOutlineHeading(chapter: chapter) }
+                                .buttonStyle(.plain).help("Open " + chapter.heading)
+                            rows(chapter.pages)
+                        }
+                    }
+                    if !store.unfiledPages.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if !store.chapters.isEmpty {
+                                Text("Not in a chapter").font(.system(size: 11, weight: .semibold)).tracking(1.2)
+                                    .textCase(.uppercase).foregroundStyle(.secondary)
+                            }
+                            rows(store.unfiledPages)
+                        }
                     }
                 }
-                rows(store.unfiledPages)
                 Button("Goals & intentions…") { model.showNotebookSettings(store.url, section: .goals) }.buttonStyle(.borderless)
             }
         }
     }
+
     func rows(_ pages: [NotebookStore.Page]) -> some View {
         let entries = NotebookPresentation.almanacEntries(session.store)
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: 10) {
             ForEach(pages) { p in
                 let (n, t) = pageNumber(session.store, p)
                 VStack(alignment: .leading, spacing: 3) {
@@ -283,11 +301,10 @@ struct PageView: View {
                 let hidden = NotebookStore.repeatedHeadingLines(in: page.body, title: page.title, chapter: chapter)
                 let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
-                VStack(alignment: .leading, spacing: 8) {
-                    if let chapter { ChapterLabel(chapter: chapter) }
-                    ReadingTitle(title: (number.map { $0 + "  " } ?? "") + title,
-                                 scope: store.page(file)?.role == .notebook ? "Notebook" : nil)
-                }
+                let rootChapter = store.chapters.first(where: { $0.intro?.file == file })
+                ReadingTitle(title: title,
+                             scope: rootChapter != nil ? store.name : chapter?.heading,
+                             number: rootChapter?.number ?? number)
                 HStack {
                     if let entry = NotebookPresentation.almanacEntries(store)[file] {
                         Text(NotebookPresentation.publicationDate(entry)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
@@ -333,6 +350,8 @@ struct PageView: View {
                         return MusicWarnings(file: file, page: page.title, section: section, tune: t.title, warnings: t.warnings)
                     })
                 })
+                .frame(height: page.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && session.editing?.file != file ? 0 : nil)
+                .clipped()
                 if store.page(file)?.role == .notebook {
                     ContentsOutline(session: session)
                 } else if store.page(file)?.role == .chapter,
@@ -371,7 +390,14 @@ struct PageView: View {
                 }.padding(20).frame(width: 620, height: 460)
             }
         } else {
-            Sheet { Text("This page isn't in the book.").foregroundStyle(.secondary) }
+            Sheet {
+                Text("This page file is unavailable.").foregroundStyle(.secondary)
+                if session.store.page(file)?.role == .notebook { ContentsOutline(session: session) }
+                else if let chapter = session.store.chapters.first(where: { $0.intro?.file == file }) {
+                    ReadingTitle(title: chapter.title)
+                    ContentsOutline(session: session, chapterID: chapter.id)
+                }
+            }
         }
     }
 
@@ -416,7 +442,7 @@ struct NotesView: View {
         let notes = store.shownNotes
         Sheet {
             Text("Sophia's notes").font(.system(size: 28, weight: .semibold, design: .serif))
-            Intro("Sophia keeps these as you talk, and adds to them when you come back after a break or end a session. She uses them to follow up and to pick up where you left off. They aren't pages and they aren't a score. Every note rests on something you said or did. Correct or delete anything.")
+            Intro("Sophia keeps these as you talk, and adds to them when you come back after a break or end a session. Sophia uses them to follow up and to pick up where you left off. They aren't pages and they aren't a score. Every note rests on something you said or did. Correct or delete anything.")
             if let problem = session.learningProblem {
                 HStack(alignment: .top) {
                     Banner(tone: .problem, text: problem)

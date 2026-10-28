@@ -24,6 +24,13 @@ struct ConversationView: View {
             if expanded { expandedConversation }
             else { collapsedRail }
         }
+        .onAppear { seenSophiaID = latestSophiaMessage?.str("id") }
+        .onChange(of: conversationKey) { _, _ in seenSophiaID = latestSophiaMessage?.str("id") }
+        .onChange(of: expanded) { _, value in
+            if value { seenSophiaID = latestSophiaMessage?.str("id") }
+            else { focused = false; session.composerFocused = false }
+        }
+        .onChange(of: latestSophiaMessage?.str("id")) { _, id in if expanded { seenSophiaID = id } }
     }
 
     private var collapsedRail: some View {
@@ -34,13 +41,13 @@ struct ConversationView: View {
             .accessibilityLabel(conversationToggleTitle)
             .help(conversationToggleTitle + " · " + session.conversationName)
             if session.pendingSource != nil {
-                Button { model.conversationCollapsed = false } label: { Image(systemName: "hand.raised") }
+                Button { model.conversationCollapsed = false } label: { Label("Source approval pending", systemImage: "hand.raised").labelStyle(.iconOnly) }
                     .accessibilityLabel("Source approval pending · Show conversation")
                     .help("A source needs your decision")
             }
             if session.problem != nil || !session.editRecovery.edits.isEmpty
                 || session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread)) != nil {
-                Button { model.conversationCollapsed = false } label: { Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange) }
+                Button { model.conversationCollapsed = false } label: { Label("Conversation needs attention", systemImage: "exclamationmark.triangle").labelStyle(.iconOnly).foregroundStyle(.orange) }
                     .accessibilityLabel("Conversation needs attention · Show conversation")
                     .help("Open the conversation to review the error or kept edit")
             }
@@ -49,6 +56,11 @@ struct ConversationView: View {
             } else if latestSophiaMessage?.str("id") != seenSophiaID, latestSophiaMessage != nil {
                 Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(Brand.plum)
                     .accessibilityLabel("New reply").help("New reply · Show conversation")
+            }
+            if !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Button { model.conversationCollapsed = false } label: { Label("Draft ready", systemImage: "square.and.pencil").labelStyle(.iconOnly) }
+                    .accessibilityLabel("Draft ready · Show conversation")
+                    .help("Your unsent draft is ready in this conversation")
             }
             Spacer(minLength: 0)
         }
@@ -238,15 +250,7 @@ struct ConversationView: View {
             .padding(.horizontal, 24).padding(.vertical, 14)
             .frame(maxWidth: .infinity)
         }
-        .onAppear {
-            focused = Snapshot.outDir == nil
-            seenSophiaID = latestSophiaMessage?.str("id")
-        }
-        .onChange(of: conversationKey) { _, _ in
-            seenSophiaID = latestSophiaMessage?.str("id")
-        }
-        .onChange(of: expanded) { _, value in if value { seenSophiaID = latestSophiaMessage?.str("id") } }
-        .onChange(of: latestSophiaMessage?.str("id")) { _, id in if expanded { seenSophiaID = id } }
+        .onAppear { focused = Snapshot.outDir == nil }
         .disabled(Snapshot.outDir != nil)
     }
 
@@ -485,7 +489,7 @@ private struct NotebookUpdatesView: View {
     }
 }
 
-/// A note Sophia wrote during the conversation: one quiet line, so the person can see what she keeps.
+/// A note Sophia wrote during the conversation: one quiet line, so the person can see what Sophia keeps.
 struct NoteLine: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
@@ -612,8 +616,8 @@ struct EditLine: View {
 }
 
 /// A revision of Sophia's that was refused. When it ran into lines the person wrote, this is the
-/// release marker: their text, her reason, and a button that lets her change it (nothing is
-/// applied for them; she is told and may try again).
+/// release marker: their text, Sophia's reason, and a button that lets Sophia change it (nothing is
+/// applied for them; Sophia is told and may try again).
 struct RefusalCard: View {
     @ObservedObject var session: NotebookSession
     let entry: JSONObject

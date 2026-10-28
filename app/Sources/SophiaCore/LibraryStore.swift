@@ -6,7 +6,7 @@ import Foundation
 ///     links.jsonl   connections between pages in different notebooks
 ///
 /// Both follow the goals pattern: Sophia proposes, and a line or link is provisional until the
-/// person confirms it (a record by the person replaces hers). The person can add, reword, or
+/// person confirms it (a record by the person replaces Sophia’s proposal). The person can add, reword, or
 /// delete anything. Only pointers cross notebooks: Sophia sees other notebooks' chapter and page
 /// titles, and can read another notebook's page only through a confirmed link. A notebook marked
 /// "separate" is left out of all of this.
@@ -94,7 +94,7 @@ public final class LibraryStore {
 
     // MARK: About you
 
-    /// Current lines. Sophia sees confirmed lines in every notebook, and her provisional lines
+    /// Current lines. Sophia sees confirmed lines in every notebook, and Sophia’s provisional lines
     /// only in the notebook they came from.
     public var aboutLines: [JSONObject] { Self.current(about) }
 

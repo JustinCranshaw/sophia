@@ -11,7 +11,7 @@ import Darwin
 ///     learning.jsonl           goals, notes, takes, corrections, briefings
 ///
 /// Two processes write through this class: the app, and Sophia's tool server (sophia-mcp),
-/// which saves her pages and goals. Every write takes a lock on the notebook and rereads
+/// which saves Sophia's pages and goals. Every write takes a lock on the notebook and rereads
 /// the files first, so neither works from a stale copy.
 public final class NotebookStore {
     public let url: URL
@@ -453,7 +453,8 @@ public final class NotebookStore {
 
     /// Puts pages in a chapter, in the order given, after any pages already there. The chapter is
     /// matched by number or title, or created; a new numbered chapter goes in number order.
-    /// Pages leave wherever they were. Chapters left empty are removed.
+    /// Pages leave wherever they were. Empty chapters with an introduction are retained.
+    /// Explicit renames update only an unchanged default introduction title, as a recorded revision.
     public func fileInChapter(_ files: [String], chapter heading: String, session: String = "", thread: String = "") throws -> Chapter {
         try locked {
             var seen = Set<String>()
@@ -470,8 +471,10 @@ public final class NotebookStore {
                 return c.str("title")?.lowercased() == title.lowercased()
             }
             if let i = chapters.firstIndex(where: same) {
-                if let intro = chapters[i].str("intro"), let page = readPage(intro), page.title != title {
-                    let outcome = try writePage(title: title, content: page.body, revising: intro,
+                if chapters[i].str("title") != title, let intro = chapters[i].str("intro"),
+                   let page = readPage(intro), page.title == chapters[i].str("title") {
+                    let body = page.body.hasSuffix("\n") ? String(page.body.dropLast()) : page.body
+                    let outcome = try writePage(title: title, content: body, revising: intro,
                                                 session: session, toolUseID: "chapter-title:" + UUID().uuidString, thread: thread)
                     guard outcome["refused"] != .bool(true) else { throw StoreError.notFound }
                 }
@@ -531,6 +534,12 @@ public final class NotebookStore {
     /// Add real, initially empty overview pages without replacing any existing content.
     /// Metadata reserves each filename first, so an interrupted initialization resumes at the same file.
     /// Existing JSONL and Markdown remain untouched; the original ordering metadata is retained once.
+    public var needsOverviewPages: Bool {
+        meta.str("overview") == nil || (meta["chapters"]?.array ?? []).contains {
+            !($0["pages"]?.array ?? []).isEmpty && $0["intro"]?.string == nil
+        }
+    }
+
     public func ensureOverviewPages(session: String) throws {
         try locked {
             if meta.str("overview") == nil {
@@ -546,6 +555,7 @@ public final class NotebookStore {
             if let file = meta.str("overview") { try initializePage(file, title: name, session: session) }
             var chapters = (meta["chapters"]?.array ?? []).compactMap(\.object)
             for i in chapters.indices {
+                guard !(chapters[i]["pages"]?.array ?? []).isEmpty || chapters[i].str("intro") != nil else { continue }
                 if chapters[i].str("intro") == nil {
                     let file = uniqueFile(for: "Chapter " + (chapters[i].str("number") ?? "") + " " + (chapters[i].str("title") ?? "Introduction"))
                     chapters[i]["intro"] = .string(file)
@@ -582,7 +592,7 @@ public final class NotebookStore {
         guard ExistingNotebook.validComponent(file) else { throw StoreError.notFound }
         let destination = pagesURL.appendingPathComponent(file)
         guard !FileManager.default.fileExists(atPath: destination.path) else { return }
-        guard !transcript.contains(where: { $0.str("file") == file }) else { throw StoreError.notFound }
+        guard !transcript.contains(where: { $0.str("file") == file }) else { return }
         let text = "---\ntitle: " + JSON.string(title).line + "\n---\n"
         try Data(text.utf8).write(to: destination, options: .atomic)
         _ = try appendTranscriptLocked(["role": .string("client"), "purpose": .string("initialize_page"),
@@ -597,7 +607,7 @@ public final class NotebookStore {
     ///
     /// A revision that would change the section the person has open, drop or alter lines they
     /// wrote (unless they released that edit), or drop a quote of their words is not saved:
-    /// the returned entry has `refused: true`, with Sophia's `why` if she gave one.
+    /// the returned entry has `refused: true`, with Sophia's `why` if Sophia gave one.
     @discardableResult
     public func writePage(title: String, content: String, revising file: String?, session: String, toolUseID: String,
                           why: String? = nil, thread: String = "") throws -> JSONObject {
@@ -712,7 +722,7 @@ public final class NotebookStore {
     }
 
     /// Undoes a page write: removes a page Sophia added, or puts back the previous version after
-    /// her revision or the person's edit. Only the latest write to a page can be undone.
+    /// Sophia's revision or the person's edit. Only the latest write to a page can be undone.
     public func undoPageWrite(_ entryID: String, session: String) throws {
         try locked {
             guard let e = transcript.first(where: { $0.str("id") == entryID }), let file = e.str("file"),
@@ -770,8 +780,8 @@ public final class NotebookStore {
 
     // MARK: Goals Sophia writes
 
-    /// Sophia records a goal she heard in the conversation, or revises one. Her goals are provisional
-    /// until the person confirms them. She can't mark a goal met or dropped, and criteria only grow,
+    /// Sophia records a goal Sophia heard in the conversation, or revises one. Sophia's goals are provisional
+    /// until the person confirms them. Sophia can't mark a goal met or dropped, and criteria only grow,
     /// because notes refer to criteria by position ("g-1#2").
     @discardableResult
     public func writeGoal(text: String, criteria: [String], revising goalID: String?, quote: String?, session: String, thread: String = "") throws -> JSONObject {
@@ -808,7 +818,7 @@ public final class NotebookStore {
 
     /// A note Sophia writes during the conversation. It passes the same checks as checkpoint notes:
     /// quotes must be the person's exact words from this session, and every note must rest on
-    /// something they said or did. Sophia may revise her own notes (for example, to close a
+    /// something they said or did. Sophia may revise Sophia's own notes (for example, to close a
     /// follow-up), never the person's corrections. Returns the saved record, or why it wasn't saved.
     public func writeNote(_ fields: JSONObject, quote: String?, revising noteID: String?, session: String, thread: String = "") throws -> (saved: JSONObject?, problems: [String]) {
         try locked {

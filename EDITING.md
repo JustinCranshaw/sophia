@@ -2,7 +2,7 @@
 
 Status: Phase 1 built and checked by machine, October 15, 2026; the by-hand checks below are still open. Revised after a three-voice UX review (Design, Product, CEO); Justin chose to build now rather than wait for a week's log.
 
-The person can edit pages directly. Reading stays the default. Editing is a deliberate mode, scoped to one section, and byte-exact: nothing changes in the file except what the person typed. Sophia sees each edit, and the store, not the prompt, stops her from overwriting the person's words.
+The person can edit pages directly. Reading stays the default. Editing is a deliberate mode, scoped to one section, and byte-exact: nothing changes in the file except what the person typed. Sophia sees each edit, and the store, not the prompt, stops Sophia from overwriting the person's words.
 
 This reverses the earlier "no conventional editor" scope. It came from outside research (October 2026). That research was documented and anecdotal; nothing in it was tried hands-on.
 
@@ -44,35 +44,35 @@ The Cursor lesson: a prompt asking the agent to keep manual edits is a guideline
 
 ### When Sophia wants to change the person's text
 
-A refused `write_page` is recorded in the transcript (`{role: "tool", tool: "write_page", refused: true, file, section, edit, why}`) and shown in the page's conversation. A refusal for a section that is open in the editor says only that Sophia answered in the conversation; there is nothing to release, and finishing or reverting the edit is what reopens the section to her. A refusal for a protected line is shown as a release marker. Without one, "go ahead, rewrite §2" could never work. The marker shows, from data the store already has:
+A refused `write_page` is recorded in the transcript (`{role: "tool", tool: "write_page", refused: true, file, section, edit, why}`) and shown in the page's conversation. A refusal for a section that is open in the editor says only that Sophia answered in the conversation; there is nothing to release, and finishing or reverting the edit is what reopens the section to Sophia. A refusal for a protected line is shown as a release marker. Without one, "go ahead, rewrite §2" could never work. The marker shows, from data the store already has:
 
 1. the person's own edited text, quoted from the `edit_page` hunk and marked as theirs: "Your edit in §2: 'λ₂ ≈ 0.44'";
 2. Sophia's one-line reason, from an optional `why` argument on `write_page`;
 3. a button named for its scope, "Let Sophia change this" (not "Unlock §2").
 
-The button writes `{role: "person", purpose: "release_edit", entry: <edit_page id>}`, which lifts protection from that edit's hunks only; other protected lines stay protected. It can be undone while it is the latest change to that page, like an edit. Nothing happens until the person's next message: the card says so ("She can revise it on your next message"), and Sophia learns of the release in that turn's context and may retry. Nothing is applied on the person's behalf, so this is not a blind unlock.
+The button writes `{role: "person", purpose: "release_edit", entry: <edit_page id>}`, which lifts protection from that edit's hunks only; other protected lines stay protected. It can be undone while it is the latest change to that page, like an edit. Nothing happens until the person's next message: the card says so ("Sophia can revise it on your next message"), and Sophia learns of the release in that turn's context and may retry. Nothing is applied on the person's behalf, so this is not a blind unlock.
 
-Phase 3 adds a **suggestion**: her refused revision is kept as a pending change, shown as a compact word-level diff with Accept and Reject. Accepting is an ordinary undoable Sophia revision.
+Phase 3 adds a **suggestion**: Sophia's refused revision is kept as a pending change, shown as a compact word-level diff with Accept and Reject. Accepting is an ordinary undoable Sophia revision.
 
-Her own untouched prose keeps today's behavior: direct write, undo, "say what you changed".
+Sophia's own untouched prose keeps today's behavior: direct write, undo, "say what you changed".
 
 ### How Sophia hears about an edit
 
-No automatic turn. The edited page's conversation shows a one-line marker ("You edited §2 of *Fiedler vector*") with Undo. Refusals and the release marker also appear in that page's conversation. Each conversation's next message to Sophia summarizes, as hunks, the edits, releases and undos to any page since her last turn in that conversation. An edit made while talking on another page therefore still reaches her there. She mentions an edit only when it matters (a corrected sign that later steps depend on), and fixes dependent steps through the normal rules above. SOPHIA.md supplies the effective acknowledgement/refusal guidance; changing it is a runtime change, not documentation-only cleanup.
+No automatic turn. The edited page's conversation shows a one-line marker ("You edited §2 of *Fiedler vector*") with Undo. Refusals and the release marker also appear in that page's conversation. Each conversation's next message to Sophia summarizes, as hunks, the edits, releases and undos to any page since Sophia's last turn in that conversation. An edit made while talking on another page therefore still reaches Sophia there. Sophia mentions an edit only when it matters (a corrected sign that later steps depend on), and fixes dependent steps through the normal rules above. SOPHIA.md supplies the effective acknowledgement/refusal guidance; changing it is a runtime change, not documentation-only cleanup.
 
 ## States to handle
 
 **Transient kept edits.** If an edited range disappears before saving while the notebook stays open, Review kept edits offers selectable read-only text, Copy and individual Dismiss; Close only hides the sheet. Connection errors, Send and Retry do not replace earlier kept edits. Recovery is held only by that open notebook session, not durably across notebook switches or relaunch. This is not a substitute for completing an edit or copying its text before closure.
 
 
-- **Refused commit.** Sophia changed the open section after editing began: the editor stays open with the person's text, a strip line says "Sophia revised this section while you were editing · Show her version", and Done is disabled until the person chooses Keep mine (commits against the new base) or Revert.
+- **Refused commit.** Sophia changed the open section after editing began: the editor stays open with the person's text, a strip line says "Sophia revised this section while you were editing · Show Sophia's version", and Done is disabled until the person chooses Keep mine (commits against the new base) or Revert.
 - **Sophia revises another section** while one is open: allowed; the open editor keeps its text and caret, and the rendered sections around it update without moving it.
 - **Two undos.** The page header’s contextual Undo (`BookView.swift`) offers the latest action on this page (write, edit, release or undo), by either author, labelled "Undo your edit", "Undo Sophia's change" or "Undo permission to change your edit", "until the next change to this page". The conversation marker's Undo does the same for its entry, and an older marker whose action is no longer the latest offers none. An undo cannot itself be undone. Both are worked out from the transcript and the files on disk, so they survive switching pages and relaunching (DATA-MODEL.md, "The conversation log"). ⌘Z belongs to the focused text, the section editor or the composer; a page action is undone only through these buttons.
 - **Strings** that become false: the mock's "Read-only · changes go through Sophia" and the app's "To change it, ask Sophia". Replace with the Edit affordance and nothing else.
 
 ## Delivery history and deferred phases
 
-**Phase 1 (implemented): edit a section, safely.** The original acceptance was the person can fix a typo and a sign in a math-heavy page, Sophia is told, she cannot overwrite it, and the person can let her change it.
+**Phase 1 (implemented): edit a section, safely.** The original acceptance was the person can fix a typo and a sign in a math-heavy page, Sophia is told, Sophia cannot overwrite it, and the person can let Sophia change it.
 
 0. **Scroll spike first.** The page is a content-sized web view inside a SwiftUI `ScrollView` (`BookView.swift`), and CodeMirror expects to own its scroller. Mount CodeMirror in that view on a long math page; arrow through a section taller than the window; have `write_page` revise the section above the open one. If the caret stays visible and the editor doesn't jump, keep this layout. If not, the reader gets its own scroller while editing.
 
