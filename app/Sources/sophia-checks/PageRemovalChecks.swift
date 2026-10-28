@@ -6,12 +6,13 @@ func deletedPagesRecoverExactBytesAndFiling() throws {
     defer { try? FileManager.default.removeItem(at: store.url) }
     let write = try store.writePage(title: "A page", content: "First body", revising: nil, session: "s", toolUseID: "first")
     let file = write.str("file")!
-    _ = try store.writePage(title: "A page", content: "Second body", revising: file, session: "s", toolUseID: "second")
+    let revision = try store.writePage(title: "A page", content: "Second body", revising: file, session: "s", toolUseID: "second")
     _ = try store.fileInChapter([file], chapter: "1. A chapter")
     try store.ensureOverviewPages(session: "s"); try store.ensureNotebookPages(session: "s")
     let current = try Data(contentsOf: store.pagesURL.appendingPathComponent(file))
     let previous = try Data(contentsOf: store.pagesURL.appendingPathComponent(NotebookStore.previousName(file)))
     let chapter = store.chapters[0].id
+    expect(store.isUndoable(revision))
     let cached = try NotebookStore(url: store.url)
     let id = try store.deletePage(file, session: "person")
     expect(store.readPage(file) == nil && store.contentPages.isEmpty)
@@ -27,10 +28,24 @@ func deletedPagesRecoverExactBytesAndFiling() throws {
     expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(file)) == current)
     expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(NotebookStore.previousName(file))) == previous)
     expect(reopened.chapters[0].pages.first?.file == file)
-    expect(!reopened.isUndoable(write))
+    expect(!reopened.isUndoable(revision))
     expectThrows { try cached.appendTranscript(["role": .string("client")]) }
     expectThrows { try reopened.deletePage(reopened.overviewPage!.file, session: "s") }
     for role in [NotebookStore.PageRole.goals, .notes, .memory] { expect(!reopened.canDeletePage(reopened.notebookPage(role: role)!.file)) }
+    let range = try reopened.beginEdit(file: file, key: "(page)", session: "person")!
+    let edit = try reopened.editPage(file: file, section: "(page)", baseHash: range.hash, text: "Protected personal sentence.", session: "person")
+    reopened.endEdit()
+    guard case .saved(let personal) = edit else { throw NotebookStore.StoreError.notFound }
+    expect(reopened.isUndoable(personal))
+    let personalBytes = try Data(contentsOf: reopened.pagesURL.appendingPathComponent(file))
+    let secondArchive = try reopened.deletePage(file, session: "person")
+    _ = try reopened.restoreDeletedPage(secondArchive, session: "person")
+    expect(try Data(contentsOf: reopened.pagesURL.appendingPathComponent(file)) == personalBytes)
+    expect(!reopened.isUndoable(personal))
+    let refusal = try reopened.writePage(title: "A page", content: "Dropped the personal sentence", revising: file, session: "s", toolUseID: "after-restore")
+    expect(refusal["refused"] == .bool(true))
+    expect(reopened.readPage(file)!.body.contains("Protected personal sentence."))
+
 }
 
 func removalRecoveryRefusesCollisionAndSurvivesLeftovers() throws {

@@ -38,6 +38,7 @@ struct DeletedPagesView: View {
     @EnvironmentObject private var model: AppModel
     let notebook: URL
     @State private var pages: [NotebookStore.DeletedPage] = []
+    @State private var restoreProblem: String?
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Deleted Pages").font(.headline)
@@ -53,11 +54,14 @@ struct DeletedPagesView: View {
                         }
                         Spacer()
                         Button("Restore") {
-                            model.restorePage(page.id, notebook: notebook)
+                            restoreProblem = model.restorePage(page.id, notebook: notebook)
                             load()
                         }.accessibilityLabel("Restore “\(page.title)”")
                     }.padding(.vertical, 5)
                 }.frame(minHeight: 140, maxHeight: 320)
+            }
+            if let restoreProblem {
+                Label(restoreProblem, systemImage: "exclamationmark.triangle").font(.callout).foregroundStyle(.red).textSelection(.enabled)
             }
             HStack {
                 Button("Show Notebook in Finder") { NSWorkspace.shared.activateFileViewerSelecting([notebook]) }
