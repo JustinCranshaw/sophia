@@ -17,6 +17,10 @@ func sharedAboutConversationHasOwnHistoryAndNarrowCapabilities() throws {
     let context = Prompts.sharedAboutContext(reopened, libraryRoot: root)
     for text in ["Accepted shared background.", "OWN_ABOUT_CONVERSATION_WORDS", "OWN_ABOUT_REPLY", "OWN_ABOUT_PENDING"] { expect(context.contains(text)) }
     for text in ["ORDINARY_NOTEBOOK_PRIVATE_QUOTE", "ORDINARY_PENDING_PRIVATE", "Other notebooks:", "Your memory for this notebook:"] { expect(!context.contains(text)) }
+    let prefix = Prompts.sharedAboutTurnPrefix(reopened, libraryRoot: root)
+    expect(prefix.contains("Accepted shared background.") && prefix.contains("OWN_ABOUT_PENDING"))
+    for text in ["OWN_ABOUT_CONVERSATION_WORDS", "OWN_ABOUT_REPLY", "ORDINARY_PENDING_PRIVATE", "ORDINARY_NOTEBOOK_PRIVATE_QUOTE", "Your memory for this notebook:"] { expect(!prefix.contains(text)) }
+    expect(!Prompts.sharedAboutTurnPrefix(ordinary, libraryRoot: root).contains("Accepted shared background."))
     expect(shared.store.pendingPageProposals(originNotebook: "about").count == 1)
     expect(shared.store.pendingPageProposals(originNotebook: ClaudeEngine.sharedAboutOrigin).count == 1)
     expect(!Prompts.sharedAboutContext(ordinary, libraryRoot: root).contains("Accepted shared background."))
@@ -41,4 +45,6 @@ func sharedAboutConversationHasOwnHistoryAndNarrowCapabilities() throws {
     shared.store.endEdit()
     expectThrows { try shared.store.acceptPageProposal(proposal.str("id")!, session: "s") }
     expect(shared.store.readPage(shared.page.file)!.body.contains("My personal edit"))
+    reopened.reload()
+    expect(Prompts.sharedAboutTurnPrefix(reopened, libraryRoot: root).contains("My personal edit"))
 }

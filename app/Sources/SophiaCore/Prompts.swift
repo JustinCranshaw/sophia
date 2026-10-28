@@ -191,6 +191,19 @@ public enum Prompts {
         """
     }
 
+    /// Refresh a warm About engine without replaying history or notebook-only context.
+    public static func sharedAboutTurnPrefix(_ store: NotebookStore, libraryRoot: URL) -> String {
+        let file = ClaudeEngine.sharedAboutFile
+        guard ClaudeEngine.isSharedAboutLocation(store.url, libraryRoot: libraryRoot, page: file),
+              let page = store.page(file), page.role == .about, page.scope == .library,
+              let body = store.readPage(file)?.body else { return "[Sophia app] About context is unavailable. Do not infer or retrieve another notebook’s content.\n\n" }
+        let pending = store.pendingPageProposals(originNotebook: ClaudeEngine.sharedAboutOrigin).filter { $0.str("file") == file }
+        return "[Sophia app] Current accepted About you Markdown (use this over earlier versions):\n" + body
+            + "\nPending proposals originating in this About conversation (not accepted):\n"
+            + (pending.isEmpty ? "None." : pending.map { $0.line }.joined(separator: "\n"))
+            + "\nThe person’s message follows.\n\n"
+    }
+
     static func contextLine(_ e: JSONObject) -> String? {
         if NotebookStore.isMessage(e) { return "[\(e.str("id") ?? "")] \(e.str("role") ?? ""): \(e.str("text") ?? "")" }
         if e.str("role") == "sophia", e.str("purpose") == "briefing" {
