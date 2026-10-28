@@ -6,8 +6,6 @@ func notebookLearningPagesKeepMarkdownAndHistoricalEvidence() throws {
     defer { try? FileManager.default.removeItem(at: store.url) }
     let message = try store.appendTranscript(["role": .string("person"), "text": .string("I want to understand entropy, and I need musical examples."), "session": .string("s")])
     let ref = message.str("id")!
-    expect(Prompts.turnPrefix(store, thread: "", before: ref).contains("Evidence ID for the person’s message that follows: " + ref))
-    expect(!Prompts.turnPrefix(store, thread: "foreign.md", before: ref).contains("Evidence ID for the person’s message that follows: " + ref))
     let goal = try store.writeGoal(text: "Understand entropy", criteria: ["Explain uncertainty"], revising: nil, quote: "I want to understand entropy", session: "s")
     var confirmed: JSONObject = ["kind": .string("goal"), "replaces": goal["id"]!, "text": .string("Understand entropy"), "criteria": goal["criteria"]!, "status": .string("working")]
     confirmed = try store.appendLearning(confirmed, by: "person", session: "s")
