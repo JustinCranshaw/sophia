@@ -9,7 +9,9 @@ import SophiaCore
         for (author, status, text) in [("person", "working", "Confirmed aim"), ("sophia", "working", "Unconfirmed suggestion"), ("person", "met", "Earlier aim"), ("unknown", "working", "Unattributed import")] {
             _ = try store.appendLearning(["kind": .string("goal"), "status": .string(status), "text": .string(text)], by: author, session: "controlled-check")
         }
-        require(NotebookPresentation.confirmedGoals(store).map { $0.str("text")! } == ["Confirmed aim"], "Only explicit person-confirmed working goals belong in the home purpose")
+        try store.ensureNotebookPages(session: "controlled-migration")
+        let goals = store.readPage(store.notebookPage(role: .goals)!.file)!.body
+        require(goals.contains("Confirmed aim") && goals.contains("Earlier aim") && !goals.contains("Unconfirmed suggestion") && !goals.contains("Unattributed import"), "Canonical goal prose retains person-confirmed history; unconfirmed suggestions remain separate proposals")
         _ = try store.appendTranscript(["role": .string("person"), "page": .string(""), "text": .string("hi")])
         _ = try store.appendTranscript(["role": .string("person"), "page": .string("another-page.md"), "text": .string("This page-only question must not become the notebook introduction.")])
         require(NotebookPresentation.earlyInquiry(store) == nil, "Weak greetings/page questions do not become the notebook's opening inquiry")
@@ -59,6 +61,6 @@ import SophiaCore
         try records.map { JSON.object($0).line + "\n" }.joined().write(to: transcript, atomically: true, encoding: .utf8)
         almanac.reload()
         require(NotebookPresentation.publicationDate(NotebookPresentation.almanacEntries(almanac)[first.file]!) == "Undated", "Missing recorded date never falls back to mtime or today")
-        print("Notebook presentation checks passed: explicit goals, historical inquiry, recorded dates, ordinary pages and Undo. No provider or UI invoked.")
+        print("Notebook presentation checks passed: canonical goal prose, historical inquiry, recorded dates, ordinary pages and Undo. No provider or UI invoked.")
     }
 }

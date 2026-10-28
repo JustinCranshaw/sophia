@@ -6,25 +6,39 @@ func editedCorrectionsKeepOriginalEvidenceAndReachNextTurn() throws {
     let message = try store.appendTranscript(["role": .string("person"), "text": .string("I can follow simple tab slowly.")])
     let note = try store.appendLearning(["kind": .string("background"), "text": .string("Reads tab fluently."), "refs": .array([message["id"]!])], by: "sophia", session: "s-1")
     try store.setMemory([.init(id: nil, text: "Prefers no chronology.", refs: [note.str("id")!])], session: "s-1")
-    for original in [note, store.memory[0]] {
-        let id = original.str("id")!
-        let first = "First person correction for " + id
-        let refined = "Refined person correction for " + id
-        for text in [first, refined] {
-            try store.appendLearning(["kind": .string("correction"), "replaces": .string(id), "text": .string(text)], by: "person", session: "s-1")
+    let originals = [note, store.memory[0]]
+    // Legacy corrections are imported once, with their original evidence intact.
+    for original in originals {
+        for text in ["First person correction for ", "Refined person correction for "] {
+            try store.appendLearning(["kind": .string("correction"), "replaces": original["id"]!, "text": .string(text + original.str("id")!)], by: "person", session: "s-1")
         }
-        expect(store.correction(of: id)?.str("text") == refined)
-        expect(store.record(id) == original)
-        for prompt in [Prompts.context(store), Prompts.turnPrefix(store, thread: "")] {
-            expect(prompt.contains(refined))
-            expect(!prompt.contains(first))
-            expect(prompt.contains(original.str("text")!))
-            for ref in original["refs"]!.array! { expect(prompt.contains(ref.string!)) }
-        }
-        let removed = try store.deleteLearning(id)
-        expect(removed.count == 3 && store.correction(of: id) == nil)
-        try store.restoreLearning(removed)
-        expect(store.record(id) == original)
-        expect(store.correction(of: id)?.str("text") == refined)
     }
+    try store.ensureNotebookPages(session: "migration")
+    for original in originals {
+        let id = original.str("id")!
+        expect(store.record(id) == original)
+        let history = EvidenceReference.resolve(id, in: store)
+        expect(history.correction == "Refined person correction for " + id)
+        for ref in original["refs"]!.array! { expect(store.record(id)?["refs"]?.array?.contains(ref) == true) }
+        for prompt in [Prompts.context(store), Prompts.turnPrefix(store, thread: "")] {
+            expect(prompt.contains("Refined person correction for " + id))
+            expect(!prompt.contains("First person correction for " + id))
+            expect(prompt.contains(original.str("text")!))
+        }
+    }
+    // Afterwards the actual page editor owns corrections. No log projection may overwrite it.
+    let notes = store.notebookPage(role: .notes)!
+    let range = try store.beginEdit(file: notes.file, key: "(page)", session: "s-1")!
+    let corrected = range.text + "\n\nMy current correction: I read tab slowly, with help."
+    guard case .saved = try store.editPage(file: notes.file, section: "(page)", baseHash: range.hash, text: corrected, session: "s-1") else { throw NotebookStore.StoreError.notFound }
+    store.endEdit()
+    for prompt in [Prompts.context(store), Prompts.turnPrefix(store, thread: ""), Prompts.briefing(store)] {
+        expect(prompt.contains("My current correction: I read tab slowly, with help."))
+    }
+    expect(store.protectedLines(of: notes.file).contains { $0.lines.contains("My current correction: I read tab slowly, with help.") })
+    let before = store.readPage(notes.file)!.body
+    try store.appendLearning(["kind": .string("correction"), "replaces": note["id"]!, "text": .string("A later historical-only correction")], by: "person", session: "s-1")
+    try store.ensureNotebookPages(session: "restart")
+    expect(store.readPage(notes.file)!.body == before)
+    expect(store.record(note.str("id")!) == note)
 }

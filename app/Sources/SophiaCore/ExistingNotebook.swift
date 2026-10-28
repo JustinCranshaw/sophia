@@ -27,6 +27,8 @@ public final class ExistingNotebook {
     private let overview: String?
     private let groups: [(number: String?, title: String, files: [String], intro: String?)]
     private let loose: [String]
+    private let auxiliaryFiles: Set<String>
+    private let notebookPageFiles: Set<String>
 
     static func validComponent(_ name: String) -> Bool {
         !name.isEmpty && name != "." && name != ".." && !name.contains("/") && !name.contains("\0")
@@ -44,6 +46,13 @@ public final class ExistingNotebook {
             return names.count == values.count && names.allSatisfy(Self.validComponent) ? names : nil
         }
         guard let loose = files(unfiled) else { return nil }
+        auxiliaryFiles = Set((meta["pageProperties"]?.object ?? [:]).compactMap { file, properties in
+            guard let role = properties["role"]?.string, role != NotebookStore.PageRole.content.rawValue else { return nil }
+            return file
+        })
+        notebookPageFiles = Set((meta["pageProperties"]?.object ?? [:]).compactMap { file, properties in
+            ["goals", "notes", "memory"].contains(properties["role"]?.string ?? "") ? file : nil
+        })
         var groups: [(number: String?, title: String, files: [String], intro: String?)] = []
         for chapter in chapters {
             guard let c = chapter.object, let title = c.str("title"), let values = c["pages"]?.array,
@@ -99,15 +108,16 @@ public final class ExistingNotebook {
         return Page(title: parsed.title, body: parsed.body)
     }
 
-    public func pageList(sections: Bool = false) -> String {
+    public func pageList(sections: Bool = false, includeNotebookPages: Bool = false) -> String {
         // One read per listed page for this projection. No orphan discovery or metadata repair.
         let read = Dictionary(uniqueKeysWithValues: pageFiles.compactMap { file in readPage(file).map { (file, $0) } })
         func page(_ file: String) -> NotebookStore.Page { .init(file: file, title: read[file]?.title ?? "Unavailable page") }
         let chapters = groups.filter { !$0.files.isEmpty || $0.intro != nil }.map {
-            NotebookStore.Chapter(number: $0.number, title: $0.title, pages: $0.files.map(page), intro: $0.intro.map(page))
+            NotebookStore.Chapter(number: $0.number, title: $0.title, pages: $0.files.filter { !auxiliaryFiles.contains($0) }.map(page), intro: $0.intro.map(page))
         }
         let intro = overview.map { "Notebook introduction: \($0) — \(page($0).title)\n" } ?? ""
-        return intro + Prompts.pageList(chapters: chapters, loose: loose.map(page)) { file in
+        let notebookPages = includeNotebookPages ? pageFiles.filter(notebookPageFiles.contains).map { "Notebook page: \($0) — \(page($0).title)" }.joined(separator: "\n") + "\n" : ""
+        return intro + notebookPages + Prompts.pageList(chapters: chapters, loose: loose.filter { !auxiliaryFiles.contains($0) }.map(page)) { file in
             sections ? (read[file]?.sections.map(\.title) ?? []) : []
         }
     }

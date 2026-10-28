@@ -919,7 +919,10 @@ func scenario2PageContextAndBookChanges() throws {
     _ = try s.appendTranscript(["purpose": .string("checkpoint"), "through": origin["id"]!])
     expect(Prompts.context(s, thread: r).contains("Creating question"))
     _ = try s.appendTranscript(["purpose": .string("clear"), "page": .string(r)])
-    expect(!s.creatingExchange(for: r).isEmpty && !Prompts.context(s, thread: r).contains("Creating question"))
+    let clearedContext = Prompts.context(s, thread: r)
+    expect(clearedContext.contains("Creating exchange (from") && clearedContext.contains("Conversation in hand"))
+    let creatingBlock = clearedContext.components(separatedBy: "Creating exchange (from").dropFirst().first?.components(separatedBy: "Conversation in hand").first ?? ""
+    expect(!s.creatingExchange(for: r).isEmpty && !creatingBlock.contains("Creating question"))
 
     // First turn on a never-discussed page starts at through, rather than notebook creation.
     let fresh = try tempStore(), untouched = try fixturePage(fresh, "Never discussed", body: "Base").str("file")!
@@ -1140,6 +1143,13 @@ func overviewPagesUseTheSameWritesEditsAndUndo() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("notebookCheckpointQuotaDoesNotConsumeLiveUpdates", notebookCheckpointQuotaDoesNotConsumeLiveUpdates),
+    ("notebookCheckpointParaphraseStillRequiresValidEvidence", notebookCheckpointParaphraseStillRequiresValidEvidence),
+    ("notebookAutomaticPromptsExcludeUndoneBodySnapshots", notebookAutomaticPromptsExcludeUndoneBodySnapshots),
+    ("queuedAndRetriedTurnsKeepTheirOwnEvidenceIDs", queuedAndRetriedTurnsKeepTheirOwnEvidenceIDs),
+    ("notebookPageMigrationRequiresReadableCompleteLegacyLog", notebookPageMigrationRequiresReadableCompleteLegacyLog),
+    ("notebookLearningPagesKeepMarkdownAndHistoricalEvidence", notebookLearningPagesKeepMarkdownAndHistoricalEvidence),
+    ("notebookPageCheckpointValidatesBeforeWriting", notebookPageCheckpointValidatesBeforeWriting),
     ("sharedAboutMigrationProposalsAndUndo", sharedAboutMigrationProposalsAndUndo),
     ("sharedAboutMigrationRefusesIncompleteLegacyReads", sharedAboutMigrationRefusesIncompleteLegacyReads),
     ("pageProposalAcceptanceReplacesExactWholeBody", pageProposalAcceptanceReplacesExactWholeBody),

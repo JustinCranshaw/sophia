@@ -12,7 +12,7 @@ func runMusic(dir: URL) {
     _ = runner.run(session: "s-1", resume: nil, messages: [
         ("I'm learning simple melodies on guitar. Could you make a page with the first two phrases of \"Twinkle Twinkle Little Star\" in C, notation with tab under it?", "page")])
     store.reload()
-    guard let file = store.pageFiles.first, let body = tunes(file) else { print("FAIL: no page written"); return }
+    guard let file = store.contentPages.first?.file, let body = tunes(file) else { print("FAIL: no page written"); return }
     print("\n=== Page \(file)\n\(body)")
     print(body.contains("```abc") ? "ok: abc fence" : "FAIL: no ```abc fence")
     print(body.contains("tablature") ? "ok: tablature option" : "FLAG: no tablature option")

@@ -385,7 +385,7 @@ struct EntryView: View {
                     if entry.str("tool") == "note", let record = entry.str("record") {
                         NoteLine(session: session, recordID: record, revised: entry["revised"] == .bool(true))
                     } else {
-                        Button("Notes") { model.showNotebookSettings(session.store.url, section: .notes) }.buttonStyle(.link).font(.caption)
+                        Button(entry.str("tool") == "memory" ? "Working memory" : "Notes") { model.showNotebookSettings(session.store.url, section: entry.str("tool") == "memory" ? .memory : .notes) }.buttonStyle(.link).font(.caption)
                     }
                 }
             } else if let pid = entry.str("proposal") {
@@ -402,6 +402,8 @@ struct EntryView: View {
                 } else {
                     Label("Note update record unavailable.", systemImage: "note.text").font(.caption).foregroundStyle(.secondary)
                 }
+            } else if entry.str("tool") == "set_goal", let record = entry.str("record") {
+                GoalNotedCard(session: session, recordID: record)
             } else if entry.str("tool") == "set_chapter" {
                 let n = entry["files"]?.array?.count ?? 0
                 Label("Put \(n) page\(n == 1 ? "" : "s") in \(entry.str("chapter") ?? "a chapter")", systemImage: "books.vertical")
@@ -439,8 +441,8 @@ struct EntryView: View {
             let kept = (entry["kept"]?.array ?? []).compactMap(\.string)
             let notKept = (entry["not_kept"]?.array ?? []).compactMap(\.string)
             let catchUp = entry["catch_up"] == .bool(true)
-            let noted = "Sophia noted \(kept.count) thing\(kept.count == 1 ? "" : "s")"
-            if !(catchUp && kept.isEmpty && notKept.isEmpty) {
+            let noted = entry.str("page_format") == "markdown" ? "Notebook pages reviewed" : "Sophia noted \(kept.count) thing\(kept.count == 1 ? "" : "s")"
+            if entry.str("page_format") == "markdown" || !(catchUp && kept.isEmpty && notKept.isEmpty) {
                 VStack(spacing: 6) {
                     if !catchUp { Divider() }
                     HStack(spacing: 4) {
@@ -549,43 +551,24 @@ struct PageWriteCard: View {
     }
 }
 
-/// A goal Sophia recorded from the conversation, with full review before confirmation.
+/// A proposal points to the canonical Goals page; old goal IDs remain audit evidence.
 struct GoalNotedCard: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     let recordID: String
     var body: some View {
-        let store = session.store
-        let root = store.rootID(of: recordID)
-        let current = store.goals.first { store.rootID(of: $0.str("id") ?? "") == root }
-        let noted = store.record(recordID)
-        HStack(alignment: .center, spacing: 10) {
-            Image(systemName: "scope").foregroundStyle(.secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(noted?.str("replaces") == nil ? "NOTED A GOAL" : "REVISED A GOAL")
-                    .font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(.secondary)
-                Text(noted?.str("text") ?? "").font(.system(size: 14)).fixedSize(horizontal: false, vertical: true)
-                if current == nil {
-                    Text("Removed").font(.caption).foregroundStyle(.secondary)
-                } else if let c = current, !store.isProvisional(c), c["text"] == noted?["text"], c["criteria"] == noted?["criteria"] {
-                    Text(c.str("status") == "dropped" ? "Dropped" : c.str("status") == "met" ? "Marked met" : "Confirmed").font(.caption).foregroundStyle(.secondary)
-                } else if current?.str("id") != recordID {
-                    Text("See current version in Goals").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            Spacer(minLength: 8)
-            if let c = current, store.isProvisional(c), c.str("id") == recordID {
-                Button("Review") {
-                    session.reviewGoal(recordID, navigate: false)
-                    model.showNotebookSettings(session.store.url, section: .goals)
-                }
-            }
-            Button("Goals") { model.showNotebookSettings(session.store.url, section: .goals) }
+        let history = session.store.pageProposalHistory
+        let proposal = history.first { $0.str("id") == recordID || $0.str("legacyID") == recordID }
+        let pending = session.store.pendingPageProposals().first { $0.str("id") == proposal?.str("id") }
+        let decision = history.last { $0.str("proposal") == proposal?.str("id") }?.str("decision")
+        HStack {
+            Label(pending != nil ? "Goals change proposed" : decision == "accepted" ? "You accepted this Goals proposal" : decision == "rejected" ? "You rejected this Goals proposal" : "Earlier Goals record", systemImage: "scope").font(.caption).foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Button(pending == nil ? "Goals" : "Review") {
+                model.showNotebookSettings(session.store.url, section: .goals)
+                session.reviewProposalID = pending?.str("id")
+            }.buttonStyle(.link)
         }
-        .controlSize(.small)
-        .padding(.horizontal, 12).padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.1)))
     }
 }
 

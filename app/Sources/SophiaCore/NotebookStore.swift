@@ -395,13 +395,13 @@ public final class NotebookStore {
     public var chapters: [Chapter] {
         (meta["chapters"]?.array ?? []).compactMap(\.object).filter { !($0["pages"]?.array ?? []).isEmpty || $0.str("intro") != nil }.map { c in
             Chapter(number: c.str("number"), title: c.str("title") ?? "Untitled",
-                    pages: (c["pages"]?.array ?? []).compactMap(\.string).compactMap(page), intro: c.str("intro").flatMap(page))
+                    pages: (c["pages"]?.array ?? []).compactMap(\.string).compactMap(page).filter { $0.role == .content }, intro: c.str("intro").flatMap(page))
         }
     }
 
     /// Pages not in any chapter, in book order.
     public var unfiledPages: [Page] {
-        (meta["unfiled"]?.array ?? []).compactMap(\.string).compactMap(page)
+        (meta["unfiled"]?.array ?? []).compactMap(\.string).compactMap(page).filter { $0.role == .content }
     }
 
     public func chapter(of file: String) -> Chapter? {

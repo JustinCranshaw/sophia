@@ -21,22 +21,21 @@ public enum Prompts {
     """
 
     static func goalsText(_ store: NotebookStore) -> String {
-        let goals = store.goals.filter { $0.str("status") != "dropped" }
-        guard !goals.isEmpty else { return "No goals recorded yet." }
-        return goals.map { g in
-            let root = store.rootID(of: g.str("id") ?? "")
-            let who = store.isProvisional(g) ? ", provisional: you wrote it and the person hasn't confirmed it" : ""
-            var s = "- \(root) [\(g.str("status") ?? "working")\(who)]: \(g.str("text") ?? "")"
-            for (i, c) in (g["criteria"]?.array ?? []).enumerated() { s += "\n  - \(root)#\(i + 1): \(c.string ?? "")" }
-            return s
-        }.joined(separator: "\n")
+        do {
+            try store.ensureNotebookPages(session: "context")
+            let page = store.notebookPage(role: .goals)!
+            let body = store.readPage(page.file)?.body ?? ""
+            let pending = store.pendingPageProposals(originNotebook: store.name).filter { $0.str("file") == page.file }
+            return body + (pending.isEmpty ? "" : "\nPending whole-page changes (not accepted):\n" + pending.map { $0.line }.joined(separator: "\n"))
+        } catch { return "Goals page unavailable; do not infer its content." }
     }
 
     /// The book's pages by chapter, with file names, for Sophia. With `sections`, each page's
     /// section titles follow it (used for other notebooks, so Sophia can link into a section).
-    public static func pageList(_ store: NotebookStore, sections: Bool = false) -> String {
+    public static func pageList(_ store: NotebookStore, sections: Bool = false, includeNotebookPages: Bool = false) -> String {
         let overview = store.overviewPage.map { "Notebook introduction: \($0.file) — \($0.title)\n" } ?? ""
-        return overview + pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
+        let notebookPages = includeNotebookPages ? store.pages.filter { [.goals, .notes, .memory].contains($0.role) }.map { "Notebook page: \($0.file) — \($0.title)" }.joined(separator: "\n") + "\n" : ""
+        return overview + notebookPages + pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
             sections ? store.sections(of: file).map(\.title) : []
         }
     }
@@ -69,13 +68,10 @@ public enum Prompts {
     }
 
     static func memoryText(_ store: NotebookStore) -> String {
-        let lines = store.memory
-        guard !lines.isEmpty else { return "Empty." }
-        return lines.map { m in
-            var s = "- \(m.str("id") ?? ""): \(m.str("text") ?? "") [\((m["refs"]?.array ?? []).compactMap(\.string).joined(separator: ", "))]"
-            if let c = store.correction(of: m.str("id") ?? "") { s += " (corrected by the person: \(c.str("text") ?? ""))" }
-            return s
-        }.joined(separator: "\n")
+        do {
+            try store.ensureNotebookPages(session: "context")
+            return store.notebookPage(role: .memory).flatMap { store.readPage($0.file)?.body } ?? ""
+        } catch { return "Working memory unavailable; do not infer its content." }
     }
 
     /// Other notebooks' titles and the links that touch this one.
@@ -95,13 +91,10 @@ public enum Prompts {
     }
 
     static func notesText(_ store: NotebookStore, limit: Int = 20) -> String {
-        let notes = store.shownNotes.suffix(limit)
-        guard !notes.isEmpty else { return "None yet." }
-        return notes.map { r in
-            var s = "- \(r.str("id") ?? "") [\(r.str("kind") ?? "")]: \(r.str("text") ?? "")"
-            if let c = store.correction(of: r.str("id") ?? "") { s += " (corrected by the person: \(c.str("text") ?? ""))" }
-            return s
-        }.joined(separator: "\n")
+        do {
+            try store.ensureNotebookPages(session: "context")
+            return store.notebookPage(role: .notes).flatMap { store.readPage($0.file)?.body } ?? ""
+        } catch { return "Notes page unavailable; do not infer its content." }
     }
 
     /// Keep Sophia's record and the person's authoritative correction distinguishable.
@@ -112,7 +105,8 @@ public enum Prompts {
 
     /// Added to the system prompt when the conversation process starts.
     public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil, canOpenSources: Bool = false) -> String {
-        let pages = pageList(store)
+        _ = try? store.ensureNotebookPages(session: "context")
+        let pages = pageList(store, includeNotebookPages: true)
         let library = LibraryStore(root: store.url.deletingLastPathComponent())
         let separate = store.isSeparate
         let linkTool = separate ? "" : "\n- Other notebooks are listed below by chapter and page title; that's all you see of them. Sections (§) are listed under each page. When a page or section here genuinely connects to one there, `link` proposes the link with a one-line reason; link to a section when the connection is that specific. Once the person confirms a link you can read that page, or just the section, with `read_page` (pass `notebook`, and `section`). Propose a link only when the connection would help, not for every shared word."
@@ -125,14 +119,15 @@ public enum Prompts {
         - The person sees your text as it arrives. Keep the conversation concise and useful, with the requested explanation and any important tool outcome.
         - `write_page` saves a page to the book right away; the person can open it from its conversation card; their selection and conversation stay where they are. To change an existing page, pass its file name as `page`: the new text replaces it, and the previous version is kept. Read the page first and keep what the person still wants. The person can undo any page you write.
         - Pages can be grouped into chapters. `set_chapter` puts existing pages in a chapter (created if needed) without changing them, and `write_page` takes an optional `chapter` for a new page. Number pages within a numbered chapter in their titles ("0.1 Entropy" in "Chapter 0: Foundations"); the app styles the numbers. Don't repeat the title or chapter at the top of the page body. Group pages when the person asks or when the book's structure has become clear, not on every page.
-        - `note` writes one of your notes, which you'll have when the person comes back. Write one when something comes up that you'd want to check on later ("follow_up": whether the cross-entropy idea has landed), or when you learn something about the person in relation to this topic ("background": what they already know, what's rusty, how they like to work on it), or when they make a real attempt or leave a question open. Base it on their exact words (`quote`) or on ids in `refs`. A few notes a session at most: most turns need none, and if a note exists, revise it (pass `note`) rather than adding another, for example to close a follow-up once it's checked. Stay with the topic; no judgments of their ability or character.
-        - Your memory: `set_memory` keeps at most 10 short lines on where things stand in this notebook now: what the person knows or finds rusty here, what to check next, what's open. You see it at the start of every conversation; your notes are not shown in full. Rewrite it when something changes what's true now (keep lines by id, reword by id, leave out what no longer matters; the notes behind it stay). Don't repeat what's in About you or the goals; memory is about this topic. Each line cites what it rests on: notes (n-…), their messages (t-…), pages, or goals.
+        - `note` revises the ordinary Markdown Sophia’s notes page. Read it first; supply its complete body with exact words as `quote` or existing evidence `refs` supporting the change. Keep the person’s actual words distinct from your interpretation. Preserve useful existing content and all protected personal lines. Most turns need no note update.
+        - `set_memory` revises the ordinary Markdown Working memory page. Supply its complete body and evidence refs. Keep it concise about where this inquiry stands, rather than repeating About you or Goals. Preserve protected personal contributions. The person can read, edit and undo it like any page.
         - `recall` looks up your long-term notes and the person's earlier messages by note id, page, or words. Use it when a topic comes back, before re-teaching something, or when a memory line points to notes you want in full.
         - `about_you` proposes a whole Markdown replacement for "About you", shared by all the person's notebooks: their background or a standing preference that carries across topics, in their own words. Nothing topic-specific (that belongs in your memory or notes), no judgments of ability. It stays pending until they accept it.\(linkTool)
         - The person can edit pages themselves, a section at a time. You're told about their edits at your next turn. Lines they wrote, and block quotes of their words, are protected: a `write_page` revision that drops or changes them is refused and nothing is saved. Keep their lines exactly and revise around them; if their text itself should change, say why in the conversation and pass the reason as `why`. They can let you change it, and you'll be told. While they have a section open, revisions that change it are refused; don't retry, answer in the conversation.
         - `read_page` takes a file name from the list below; without one it lists the pages. The list below is from when this conversation started, so call `read_page` for the current list.
-        - `set_goal` records a goal for this notebook in the Goals section, or revises one (pass its id as `goal`). Listen throughout the conversation for what the person wants from this notebook, and record it when they state or imply an aim, or when an aim changes or gets sharper. Use their wording where you can and pass the words you drew on as `quote`. Add `criteria`: concrete signs of what reaching the goal would look like. Your goals are provisional until the person confirms them. Don't record a goal on every turn, don't duplicate one that exists (revise it instead), and never mark a goal met or dropped; that is the person's call.
-        - Pages and your replies render Markdown with LaTeX math. Use $...$ for inline mathematics and $$ on separate lines for display equations. Use LaTeX for fractions, subscripts, matrices, and aligned derivations; don't put equations in code fences. Escape literal currency dollars as \\$ in Markdown. Music goes in ```abc fences (ABC notation), which the reader typesets as staff notation. Keep page titles, goal titles, and goal criteria in plain text.
+        - `set_goal` proposes a complete Markdown Goals page body, based on the person’s exact words as `quote`. Preserve accepted goals they still want. A proposal does not change the saved page: the person reviews and accepts it. Goals are ordinary prose; formatting does not create formal status or evidence of understanding. Do not infer confirmation, met or dropped status from a Markdown edit.
+        - Pages and your replies render Markdown with LaTeX math. Use $...$ for inline mathematics and $$ on separate lines for display equations. Use LaTeX for fractions, subscripts, matrices, and aligned derivations; don't put equations in code fences. Escape literal currency dollars as \\$ in Markdown. Music goes in ```abc fences (ABC notation), which the reader typesets as staff notation. Keep page titles in plain text; Goals uses ordinary Markdown prose.
+        - Current Markdown pages take precedence over historical note, goal and memory records. Historical source records preserve provenance and evidence; do not treat those records as a second current version of edited pages.
         - Messages that begin with "[Sophia app]" come from the app, not the person. Follow their output format exactly.
 
         \(canOpenSources ? approvedResearchAccess : researchAccess)
@@ -140,13 +135,14 @@ public enum Prompts {
         Goals:
         \(goalsText(store))
 
-        About you (confirmed by the person unless marked provisional):
+        About you (accepted Markdown; pending changes labelled separately):
         \(aboutText(library, store))
 
         Your memory for this notebook:
         \(memoryText(store))
 
-        Your long-term notes: \(store.shownNotes.count) (use `recall`).\(thread.isEmpty && store.memory.isEmpty && !store.shownNotes.isEmpty ? " Your memory is empty, so here are the latest:\n" + notesText(store, limit: 10) : "")
+        Sophia’s notes (current Markdown):
+        \(notesText(store))
         \(elsewhere)
 
         Pages:
@@ -154,13 +150,13 @@ public enum Prompts {
 
         Current conversation: \(thread.isEmpty ? "Contents" : thread).
         \(thread.isEmpty ? "" : "Page in hand:\n" + (store.readPage(thread)?.body ?? "(page unavailable)"))
-        Relevant notes:
+        Historical source notes relevant to this thread (not current page content):
         \(store.notes(for: thread).map { recordWithCorrection($0, in: store) }.joined(separator: "\n"))
         Creating exchange (from the conversation that made this page):
         \((store.threadEntries(for: thread).contains { $0.str("purpose") == "clear" } ? [] : store.creatingExchange(for: thread)).map { $0.line }.joined(separator: "\n"))
         Conversation in hand:
         \((store.carried(for: thread, before: before) + store.window(for: thread, before: before)).compactMap(contextLine).joined(separator: "\n"))
-        Earlier searches and pages read are not still in hand. Look them up again silently when needed. Before continuing a cut-off turn, check what it already saved.
+        Earlier searches and pages read are not still in hand. Look them up again silently when needed. Before continuing a cut-off turn, check Sophia’s saved changes.
         """
     }
 
@@ -192,7 +188,7 @@ public enum Prompts {
     }
 
     /// Refresh a warm About engine without replaying history or notebook-only context.
-    public static func sharedAboutTurnPrefix(_ store: NotebookStore, libraryRoot: URL) -> String {
+    public static func sharedAboutTurnPrefix(_ store: NotebookStore, libraryRoot: URL, before: String? = nil) -> String {
         let file = ClaudeEngine.sharedAboutFile
         guard ClaudeEngine.isSharedAboutLocation(store.url, libraryRoot: libraryRoot, page: file),
               let page = store.page(file), page.role == .about, page.scope == .library,
@@ -201,7 +197,14 @@ public enum Prompts {
         return "[Sophia app] Current accepted About you Markdown (use this over earlier versions):\n" + body
             + "\nPending proposals originating in this About conversation (not accepted):\n"
             + (pending.isEmpty ? "None." : pending.map { $0.line }.joined(separator: "\n"))
-            + "\nThe person’s message follows.\n\n"
+            + "\n" + messageEvidencePrefix(store, thread: file, before: before)
+            + "The person’s message follows.\n\n"
+    }
+
+    private static func messageEvidencePrefix(_ store: NotebookStore, thread: String, before: String?) -> String {
+        guard let before, let message = store.transcript.first(where: { $0.str("id") == before }),
+              NotebookStore.isPersonMessage(message), NotebookStore.thread(of: message) == thread else { return "" }
+        return "[Sophia app] Evidence ID for the person’s message that follows: \(before). Use this existing ID when the change rests on this message.\n"
     }
 
     static func contextLine(_ e: JSONObject) -> String? {
@@ -225,19 +228,17 @@ public enum Prompts {
 
     /// Derived from the origin thread's previous turn, with no foreign conversation words.
     public static func turnPrefix(_ store: NotebookStore, thread: String, before: String? = nil) -> String {
+        _ = try? store.ensureNotebookPages(session: "context")
         let end = before.flatMap { id in store.transcript.firstIndex { $0.str("id") == id } } ?? store.transcript.count
         let priorTurn = store.transcript[..<end].lastIndex { NotebookStore.thread(of: $0) == thread && NotebookStore.isPersonMessage($0) }
         let clear = store.clearPosition(for: thread, before: before)
         let previous = max(clear, priorTurn ?? store.cursor(for: thread, before: before))
         let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
         var out = bookChanges(store, since: previous + 1)
-        // Engines stay open across turns, so a Notes edit must reach the next request too.
-        // Notes stay scoped to this conversation; working memory is already notebook-wide.
-        let corrected = (store.notes(for: thread) + store.memory).filter { store.correction(of: $0.str("id") ?? "") != nil }
-        if !corrected.isEmpty {
-            out += "[Sophia app] Current corrections from the person to your relevant records. Use these instead of your earlier interpretation; acknowledge them only when relevant to the question.\n"
-                + corrected.map { recordWithCorrection($0, in: store) }.joined(separator: "\n") + "\n"
-        }
+        out += messageEvidencePrefix(store, thread: thread, before: before)
+        // A reused engine must receive the actual editable pages, including personal corrections.
+        out += "[Sophia app] Current notebook Markdown (authoritative over historical note/memory records):\nSophia’s notes:\n"
+            + notesText(store) + "\nWorking memory:\n" + memoryText(store) + "\nGoals:\n" + goalsText(store) + "\n"
         for e in changes where e["recovered"] != .bool(true) && e["unchanged"] != .bool(true) {
             if e.str("file") == thread && ((e.str("tool") == "write_page" && NotebookStore.thread(of: e) != thread) || e.str("purpose") == "undo_page") {
                 out += "[Sophia app] This page changed: \(contextLine(e) ?? e.line)\n"
@@ -266,24 +267,23 @@ public enum Prompts {
         let opening = catchUp
             ? "[Sophia app] The person has come back. Their messages below, from when they were last here, have no notes yet. Write your notes on them, and your memory as it should now stand, as one JSON object and nothing else."
             : "[Sophia app] The person ended the session. Write your notes on this session, and your memory as it should now stand, as one JSON object and nothing else."
-        let checkpointAt = store.transcript.last { $0.str("purpose") == "checkpoint" }?.str("at") ?? ""
-        let records = store.learning.filter { ($0.str("at") ?? "") >= checkpointAt }.map { "\($0.str("id") ?? "") [\($0.str("kind") ?? "")]: \($0.str("text") ?? "")" }.joined(separator: "\n")
         return """
         \(opening)
 
-        {"notes": [records…], "memory": [lines…]}
-        Each record: {"kind": ..., "text": ..., "quote": {"entry": "t-…", "text": "…"} (optional), "refs": ["…"]}
-        Kinds you may write: "attempt" (something the person tried: quote their exact words; text is your tentative read, and says how much help came before it: none, a hint, or a shown step), "read" (your read of their progress on a goal criterion; refs must include the attempt records or their message ids it rests on, and the criterion like "g-1#2"), "question" (an open question that came up), "follow_up" (something to check on later), "background" (something you learned about the person in relation to this topic), "next_step" (one useful next step; at most one).
-        Don't repeat notes you already wrote during the conversation (listed under existing records); add only what they missed.
-        Rules: quote only words that appear exactly in the person's messages below. Every record needs a quote or refs. Refs may be message ids (t-…), record ids (n-…, g-…), criteria (g-1#2), or pages (p:file.md). Never describe the person's level or ability. If nothing is worth noting, "notes" is [].
-        Memory: at most \(NotebookStore.memoryLimit) short lines on where things stand now (what they know or find rusty here, what to check next, what's open). Each line: {"id": "n-…" to keep or reword an existing line, or omit for a new one, "text": …, "refs": [message ids, existing note ids, pages, or criteria it rests on]}. Lines you leave out are forgotten. Don't repeat About you or the goals. Your current memory:
+        Return {"notes": "complete Markdown body" or null, "memory": "complete Markdown body" or null, "refs": [existing source ids], "quote": "optional exact person words"}.
+        null leaves that page alone; use it when nothing useful changed. These are ordinary Markdown pages, not arrays of records or memory lines. Read the existing bodies below and preserve what remains useful, every personal contribution, and quotes of their words. No curriculum, mastery claim or judgment of ability. Notes distinguish the person’s actual attempt from your tentative interpretation and what remains unshown. Working memory stays concise about where the inquiry stands. Every changed body needs supporting refs or an exact quote from the messages below. Existing n-/g-/criterion refs name historical evidence, not current authoritative page content. Do not invent identities or overwrite a person’s correction.
+
+        Historical source records (not current page content; replacement chains remain evidence):
+        \(store.learning.filter { $0.str("kind") != "page_evidence" }.suffix(40).map { $0.line }.joined(separator: "\n"))
+
+        Current notes:
+        \(notesText(store))
+
+        Current working memory:
         \(memoryText(store))
 
-        The person's messages:
+        The person’s messages:
         \(mine.isEmpty ? "(none)" : mine)
-
-        Existing records:
-        \(records.isEmpty ? "(none)" : records)
 
         Goals:
         \(goalsText(store))
@@ -309,7 +309,7 @@ public enum Prompts {
         }
         func entry(_ id: String?) -> JSONObject? { store.transcript.first { $0.str("id") == id } }
         var lines: [String] = []
-        for e in store.transcript[min(index, store.transcript.count)..<min(before ?? store.transcript.count, store.transcript.count)] where e["recovered"] != .bool(true) {
+        for e in store.transcript[min(index, store.transcript.count)..<min(before ?? store.transcript.count, store.transcript.count)] where e["recovered"] != .bool(true) && e["migrationSource"] == nil {
             switch e.str("purpose") {
             case "edit_page":
                 lines.append("- Edited \(place(e)):")
@@ -358,7 +358,7 @@ public enum Prompts {
 
     /// The return briefing. It must link every claim to records, messages, or pages.
     public static func briefing(_ store: NotebookStore) -> String {
-        let records = store.currentLearning.filter { $0.str("kind") != "memory" }.suffix(40).map { r -> String in
+        let records = store.currentLearning.filter { $0.str("kind") != "memory" && $0.str("kind") != "page_evidence" }.suffix(40).map { r -> String in
             var s = "\(r.str("id") ?? "") [\(r.str("kind") ?? ""), by \(r.str("by") ?? "")]: \(r.str("text") ?? "")"
             if let q = r["quote"]?.object { s += " (their words: \"\(q.str("text") ?? "")\")" }
             if let c = store.correction(of: r.str("id") ?? "") { s += " (corrected by the person: \(c.str("text") ?? ""))" }
@@ -384,7 +384,10 @@ public enum Prompts {
         Your memory for this notebook:
         \(memoryText(store))
 
-        Records:
+        Current notes:
+        \(notesText(store))
+
+        Historical source records (use as evidence, not current facts):
         \(records.isEmpty ? "(none)" : records)
 
         Pages:

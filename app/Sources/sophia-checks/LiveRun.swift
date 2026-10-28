@@ -2,7 +2,7 @@ import Foundation
 import SophiaCore
 
 /// End-to-end run against the real Claude Code binary, using the same core code as the app:
-/// conversation (Sophia records a goal she hears and writes a page) → closed without End session → on return,
+/// conversation (Sophia proposes a Goals page and writes a page) → closed without End session → on return,
 /// catch-up notes and a two-sentence briefing → a page revision.
 /// Usage: swift run sophia-checks --live <empty-dir>
 /// Uses the person's Claude Code login. Stops if Claude Code reports an API key.
@@ -15,6 +15,8 @@ struct LiveRunner {
 
     init(store: NotebookStore) {
         self.store = store
+        do { try store.ensureOverviewPages(session: "live-init"); try store.ensureNotebookPages(session: "live-init") }
+        catch { print("Cannot initialize canonical notebook pages: \(error)"); exit(2) }
         let bin = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
         toolServer = bin.appendingPathComponent("sophia-mcp").path
         var promptURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -66,7 +68,7 @@ struct LiveRunner {
                 store.reload()
             case .turnDone(let isError, let message, _):
                 if isError { print("  turn error: \(message ?? "")") }
-                if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false" }
+                if let p = currentPurpose { info[p] = reply; info[p + "_failed"] = isError ? "true" : "false"; info[p + "_error"] = message ?? "" }
                 else if !isError { try! store.appendTranscript(["role": .string("client"), "purpose": .string("replied"), "page": .string(page), "session": .string(session)]) }
                 next()
             case .routeBlocked:
@@ -106,27 +108,23 @@ func runLive(dir: URL) {
     ])
     print("  model: \(s1["model"] ?? "?"), auth source: \(s1["apiKeySource"] ?? "?"), tools: \(s1["tools"] ?? "?")")
     store.reload()
-    let goals = store.goals
-    print(goals.isEmpty ? "FAIL: Sophia recorded no goal." : "  goals: " + goals.map { "\($0.str("id") ?? "") [\(store.isProvisional($0) ? "provisional" : "confirmed")] \($0.str("text") ?? "") (\($0["criteria"]?.array?.count ?? 0) criteria\($0["quote"] == nil ? "" : ", quote verified"))" }.joined(separator: "; "))
-    let live = store.shownNotes.filter { $0.str("session") == "s-1" }
-    print("  notes during the conversation: \(live.count)" + live.map { "\n    [\($0.str("kind") ?? "")] \($0.str("text") ?? "")\($0["quote"] == nil ? "" : " (quote verified)")" }.joined())
-    guard let page = store.pages.first else { print("FAIL: Sophia wrote no page."); exit(1) }
-    print("  pages: \(store.pages.map(\.file).joined(separator: ", "))")
-    _ = page
+    let goalFile = store.notebookPage(role: .goals)!.file
+    let goals = store.pendingPageProposals(originNotebook: store.name).filter { $0.str("file") == goalFile }
+    print(goals.isEmpty ? "FLAG: no Goals proposal; inspect whether the stated aim was heard." : "  provisional Goals page changes: " + goals.map { $0.line }.joined(separator: "\n"))
+    let notes = store.notebookPage(role: .notes)!, memory = store.notebookPage(role: .memory)!
+    print("  current Notes Markdown: " + (store.readPage(notes.file)?.body ?? "(unavailable)"))
+    guard let page = store.contentPages.first else { print("FAIL: Sophia wrote no content page."); exit(1) }
+    print("  content pages: \(store.contentPages.map(\.file).joined(separator: ", "))")
 
     print("Session 2: coming back; notes on the last session, which was closed without ending it")
     let unnoted = store.unnotedMessages
     let s2a = run(session: "s-2", resume: nil, messages: [(Prompts.checkpoint(store, messages: unnoted, catchUp: true), "checkpoint")])
-    let (items, memory, _) = RecordChecks.parseCheckpoint(s2a["checkpoint"] ?? "")
-    let out = RecordChecks(store: store).check(items, allowedKinds: RecordChecks.checkpointKinds,
-                                               quoteEntries: Set(unnoted.compactMap { $0.str("id") }))
-    let checkpoint = try! store.finishCheckpoint(s2a["checkpoint"] ?? "", failed: s2a["checkpoint_failed"] != "false",
+    let checkpoint = try! store.finishNotebookPageCheckpoint(s2a["checkpoint"] ?? "", failed: s2a["checkpoint_failed"] != "false",
         through: unnoted.last?.str("id") ?? "", entries: Set(unnoted.compactMap { $0.str("id") }), session: "s-2", catchUp: true)
-    if checkpoint == .failed { print("FAIL: checkpoint could not be saved.") }
-    _ = memory
-    print("  memory after the checkpoint (\(store.memory.count) lines):" + store.memory.map { "\n    \($0.str("id") ?? ""): \($0.str("text") ?? "")" }.joined())
-    print("  Sophia wrote \(items.count) records; kept \(out.kept.count); quotes verified: \(out.kept.filter { $0["quote"] != nil }.count); messages still without notes: \(store.unnotedMessages.count)")
-    for n in out.notes { print("  not kept / changed: \(n)") }
+    guard checkpoint != .failed else { print("FAIL: canonical Markdown checkpoint could not be saved."); exit(1) }
+    print("  Notes after checkpoint: " + (store.readPage(notes.file)?.body ?? "(unavailable)"))
+    print("  Working memory after checkpoint: " + (store.readPage(memory.file)?.body ?? "(unavailable)"))
+    print("  messages still without notes: \(store.unnotedMessages.count)")
 
     print("Session 2: return briefing")
     let s2 = run(session: "s-2", resume: nil, messages: [(Prompts.briefing(store), "briefing")])
@@ -143,7 +141,9 @@ func runLive(dir: URL) {
     }
     print("Session 2: recall, About you, and links")
     library.reload()
-    print("  About you: " + (library.aboutLines.isEmpty ? "nothing proposed" : library.aboutLines.map { "\($0.str("id") ?? "") [\(LibraryStore.isProvisional($0) ? "provisional" : "confirmed")] \($0.str("text") ?? "")" }.joined(separator: "; ")))
+    let about = try! library.ensureSharedAboutPage(session: "live-inspect")
+    print("  accepted About Markdown: " + (about.store.readPage(about.page.file)?.body ?? "(unavailable)"))
+    print("  About proposals from this notebook: " + about.store.pendingPageProposals(originNotebook: store.name).map { $0.line }.joined(separator: "\n"))
     _ = run(session: "s-2", resume: nil, messages: [
         ("Remind me, what did I get wrong last time about the two triangles? Short answer.", nil),
         ("Does any of this connect to my other notebooks?", nil)])

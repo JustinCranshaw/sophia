@@ -22,7 +22,7 @@ The user's latest instructions take precedence over earlier proposals. PLAN.md i
 - Preserve source evidence, the person's actual statements, and Sophia's interpretations as distinguishable material.
 - Keep the return experience concrete: the open question, relevant prior idea or attempt, uncertainty, and a useful next step.
 - The notebook is an emergent textbook: it grows page by page as the person directs the inquiry. Sophia may suggest directions for the person to choose, but does not write ahead of them or fill out a predetermined curriculum.
-- The conversation sits beside the book. Sophia writes and revises pages directly as the conversation calls for them; the person can undo or ask for changes. Sophia also records the person's goals as Sophia hears them, provisional until the person confirms.
+- The conversation sits beside the book. Sophia writes and revises pages directly as the conversation calls for them; the person can undo or ask for changes. Sophia proposes the complete Goals Markdown page as aims emerge; the saved page changes only when the person accepts the proposal.
 - The person can edit pages directly, a section at a time, in a byte-exact source editor; Sophia must not overwrite their edits. See [EDITING.md](EDITING.md). A social platform is outside the initial scope.
 
 ## Current implementation priority
@@ -35,7 +35,7 @@ Keep the checked-in reader assets and their exact lockfile baselines; retain a l
 
 ## Implementation boundaries
 
-- Notebook tools may read pages, write or revise pages, group pages into chapters, record provisional goals, write or revise Sophia's own notes and working memory, and propose reviewed whole-page changes for "About you" and links between notebooks, all through the stores' checks and locking. Across notebooks, Sophia sees only titles, and reads another notebook's page only through a link the person confirmed; a notebook kept separate is invisible to the others. They must not delete pages, remove the person's records, change lines the person wrote or edited on a page, or mark goals met or dropped.
+- Notebook tools may read pages, write or revise pages, group pages into chapters, propose whole-page Goals changes, write or revise the evidence-checked Markdown Notes and Working memory pages, and propose reviewed whole-page changes for "About you" and links between notebooks, all through the stores' checks and locking. Across notebooks, Sophia sees only titles, and reads another notebook's page only through a link the person confirmed; a notebook kept separate is invisible to the others. They must not delete pages, remove the person's records, change lines the person wrote or edited on a page, or mark goals met or dropped.
 - Sophia page writes must be recorded and undoable (a revision keeps the previous version). If interrupted before recording, preserve the unrecorded disk change and any previous version for inspection instead of inferring destructive Undo. Only the person confirms a goal.
 - Keep the initial storage small: Markdown pages, ordering metadata, transcript and learning JSONL, and one previous page version. Add complexity only for a demonstrated failure or workflow.
 - Configure the experiment explicitly rather than inheriting personal hooks, skills, instructions, or permissive tool settings. Prefer per-process configuration over modifying global agent settings.

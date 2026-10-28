@@ -10,25 +10,29 @@ func personCorrectionsReachFreshAndOngoingThreadContext() throws {
     let note = try store.appendLearning(["kind": .string("attempt"), "text": .string("Sophia misread the phase objection."), "quote": .object(["entry": message["id"]!, "text": .string(statement)])], by: "sophia", session: "s-1")
     let foreign = try store.appendLearning(["kind": .string("background"), "text": .string("Foreign note wording."), "refs": .array([.string("p:" + b)])], by: "sophia", session: "s-1")
     try store.setMemory([.init(id: nil, text: "A shared memory interpretation.", refs: [note.str("id")!])], session: "s-1")
+    try store.ensureNotebookPages(session: "migration")
     let noteCorrection = "Their phase objection corrected Sophia, not a learner weakness."
-    let foreignCorrection = "This correction belongs only in the other inquiry."
     let memoryCorrection = "This is the person's notebook-wide memory correction."
     expect(!Prompts.turnPrefix(store, thread: a).contains(noteCorrection))
-    // The same store API used by the native Notes correction action.
-    for (record, text) in [(note, noteCorrection), (foreign, foreignCorrection), (store.memory[0], memoryCorrection)] {
-        try store.appendLearning(["kind": .string("correction"), "replaces": record["id"]!, "text": .string(text)], by: "person", session: "s-1")
+    // These are the same checked editor operations the native shared-page UI invokes.
+    for (role, correction) in [(NotebookStore.PageRole.notes, noteCorrection), (.memory, memoryCorrection)] {
+        let page = store.notebookPage(role: role)!
+        let range = try store.beginEdit(file: page.file, key: "(page)", session: "s-1")!
+        guard case .saved = try store.editPage(file: page.file, section: "(page)", baseHash: range.hash,
+            text: range.text + "\n\nYour correction: " + correction, session: "s-1") else { throw NotebookStore.StoreError.notFound }
+        store.endEdit()
+        expect(!store.protectedLines(of: page.file).isEmpty)
     }
-    let context = Prompts.context(store, thread: a)
-    let prefix = Prompts.turnPrefix(store, thread: a)
-    for text in [noteCorrection, memoryCorrection, "Sophia misread the phase objection."] {
-        expect(context.contains(text))
-        expect(prefix.contains(text))
+    for prompt in [Prompts.context(store, thread: a), Prompts.turnPrefix(store, thread: a), Prompts.turnPrefix(store, thread: b), Prompts.briefing(store)] {
+        expect(prompt.contains(noteCorrection))
+        expect(prompt.contains(memoryCorrection))
+        expect(prompt.contains("Sophia misread the phase objection."))
     }
-    expect(context.contains("\"by\":\"sophia\"") && context.contains("\"by\":\"person\""))
-    expect(prefix.contains("\"by\":\"sophia\"") && prefix.contains("\"by\":\"person\""))
-    expect(!context.contains(foreignCorrection) && !prefix.contains(foreignCorrection))
-    let otherPrefix = Prompts.turnPrefix(store, thread: b)
-    expect(otherPrefix.contains(foreignCorrection) && otherPrefix.contains(memoryCorrection))
-    expect(!otherPrefix.contains(noteCorrection))
-    expect(Prompts.briefing(store).contains(noteCorrection))
+    // Notes are now one editable notebook page. Their source identities remain historical evidence.
+    expect(store.record(note.str("id")!)?["quote"]?["entry"] == message["id"])
+    expect(store.record(foreign.str("id")!)?["refs"]?.array == [.string("p:" + b)])
+    let other = try tempStore()
+    expect(!Prompts.context(other).contains(noteCorrection))
+    expect(!Prompts.turnPrefix(other, thread: "").contains(memoryCorrection))
+    expect(!Prompts.briefing(other).contains("Sophia misread the phase objection."))
 }

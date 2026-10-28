@@ -41,7 +41,7 @@ func runProbes(dir: URL) {
     ]
     let replies = runner.run(session: "s-1", resume: nil, messages: probes.map { ($0.message, $0.name) })
     var flagged = 0
-    if let r = replies["restated"] { print("Sophia restated her reply after a tool call \(r.count) time(s); the app drops the repeat.") }
+    if let r = replies["restated"] { print("Sophia restated the reply after a tool call \(r.count) time(s); the app drops the repeat.") }
     for p in probes {
         let r = replies[p.name] ?? ""
         let problem = r.isEmpty ? "no reply" : p.check(r)
@@ -83,8 +83,9 @@ func runAttributionProbe(dir: URL) {
     for t in store.transcript where t.str("role") == "sophia" && t.str("session") == "s-1" { print("REPLY: " + (t.str("text") ?? "")) }
     func records(_ label: String) {
         print(label)
-        for n in store.shownNotes { print("NOTE \(n.str("id") ?? ""): " + (n.str("text") ?? "")) }
-        for m in store.memory { print("MEMORY \(m.str("id") ?? ""): " + (m.str("text") ?? "")) }
+        for role in [NotebookStore.PageRole.notes, .memory] {
+            if let page = store.notebookPage(role: role) { print("CURRENT \(page.title): " + (store.readPage(page.file)?.body ?? "(unavailable)")) }
+        }
     }
     records("ACTUAL MODEL RECORDS BEFORE PERSON CORRECTION")
     let pageAfter = store.readPage(page)?.body ?? ""
@@ -94,21 +95,25 @@ func runAttributionProbe(dir: URL) {
         print("FAIL: the known erroneous fixture passage was not repaired. Inspect the actual reply and records above.")
         exit(1)
     }
-    guard let note = store.shownNotes.first else {
-        print("FAIL: the directed retention request produced no note to inspect.")
+    guard let notePage = store.notebookPage(role: .notes), let currentNotes = store.readPage(notePage.file)?.body,
+          !currentNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        print("FAIL: the directed retention request produced no Notes page content to inspect.")
         exit(1)
     }
-    // Diagnostic equivalent of Notes' correction API, not a native UI interaction.
-    // This is an actual subsequent evaluation input, not attributed to the original simulated learner.
+    // Direct use of the actual page editor contract, not a native UI interaction.
+    // This is a subsequent synthetic evaluation input, not the original learner's words.
     let correction = "My opposite-sign objection was valid and corrected Sophia's wording. Keep that separate from my earlier fixed-length belief. Next time, start with the (1,0) non-mode counterexample: the second mass has zero displacement but gets a positive acceleration, so the displacements cannot keep their 1:0 ratio."
-    try! store.appendLearning(["kind": .string("correction"), "replaces": note["id"]!, "text": .string(correction)], by: "person", session: "s-2")
+    let range = try! store.beginEdit(file: notePage.file, key: "(page)", session: "s-2")!
+    let saved = try! store.editPage(file: notePage.file, section: "(page)", baseHash: range.hash, text: currentNotes + "\n\n" + correction, session: "s-2")
+    store.endEdit()
+    guard case .saved = saved else { print("FAIL: page correction was not saved."); exit(1) }
     let context = Prompts.context(store)
     let briefing = Prompts.briefing(store)
     guard context.contains(correction), briefing.contains(correction) else {
         print("FAIL: the person's correction is absent from the next context or briefing input.")
         exit(1)
     }
-    print("PERSON CORRECTION to \(note.str("id") ?? "unknown"): direct-store diagnostic, same API as Notes; present in next context and briefing input.")
+    print("PERSON CORRECTION to \(notePage.file): direct page-editor diagnostic; present in next context and briefing input.")
     // A fresh provider context explicitly exercises the corrected durable records, without a CLI
     // resume snapshot of the old instructions. This does not prove live Notes UI propagation.
     let returned = runner.run(session: "s-2", resume: nil, messages: [
