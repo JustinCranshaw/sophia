@@ -142,15 +142,22 @@ final class AlmanacModel: ObservableObject {
 
     func quiesceForRemoval(url: URL, disable: Bool, _ completion: @escaping (Error?) -> Void) {
         removals.insert(url)
-        guard let worker, worker.url == url else { completion(nil); return }
-        // Save disabled settings before archiving the notebook, so Finder Put Back cannot
-        // restart daily preparation without another explicit Enable action.
-        if disable, var settings = worker.snapshot.settings {
-            settings.enabled = false
-            do { try worker.configure(settings) } catch { completion(error); return }
+        if let worker, worker.url == url {
+            self.worker = nil
+            worker.quiesceForRemoval(disable: disable, completion)
+        } else {
+            // Multiple configured Almanacs can exist, even though only one owns a worker.
+            // Any trashed Almanac must stay disabled when its folder is restored.
+            do {
+                if disable, Almanac.isConfigured(url: url) {
+                    let store = try NotebookStore(url: url, existingOnly: true)
+                    guard var settings = store.almanacSnapshot.settings else { throw AlmanacError.notConfigured }
+                    settings.enabled = false
+                    try store.configureAlmanac(settings)
+                }
+                completion(nil)
+            } catch { completion(error) }
         }
-        self.worker = nil
-        worker.quiesceForRemoval { completion(nil) }
     }
     func finishRemoval(url: URL) { removals.remove(url); discover() }
     func removeThemeNotebook(_ name: String) throws {
