@@ -102,7 +102,7 @@ final class AppModel: ObservableObject {
                 open = next
             } catch { problem = error.localizedDescription; return false }
         }
-        if let place { open?.show(place) }
+        if let place { return open?.show(place) == true }
         return true
     }
 

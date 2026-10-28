@@ -99,7 +99,7 @@ final class NotebookSession: ObservableObject {
         switch target.resolve(in: store) {
         case .failure(let error): navigationProblem = NavigationProblem(file: target.file, text: error.localizedDescription); return false
         case .success:
-            show(.page(target.file))
+            guard show(.page(target.file)) else { return false }
             sectionNavigation = SectionNavigation(target: target)
             return true
         }
@@ -477,11 +477,15 @@ final class NotebookSession: ObservableObject {
     // MARK: Pages Sophia writes
 
     /// Shows a place in the book, opening the book if it is hidden.
-    func show(_ p: Place) {
+    @discardableResult
+    func show(_ p: Place) -> Bool {
         pendingSection = nil; navigationProblem = nil
-        if case .page(let file) = p, store.overviewPage?.file == file { place = .contents }
-        else if case .page(let file) = p, let chapter = store.chapters.first(where: { $0.intro?.file == file }) { place = .chapter(chapter.id) }
-        else { place = p }
+        let destination: Place
+        if case .page(let file) = p, store.overviewPage?.file == file { destination = .contents }
+        else if case .page(let file) = p, let chapter = store.chapters.first(where: { $0.intro?.file == file }) { destination = .chapter(chapter.id) }
+        else { destination = p }
+        place = destination
+        return place == destination
     }
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
