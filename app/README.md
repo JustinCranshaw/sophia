@@ -49,6 +49,8 @@ Add `SOPHIA_SNAPSHOT_SECTION="<section title>"` to render the first page scrolle
 
 ### Native UX simulations
 
+With the debug harness, `checkpoint-<UUID>.json` records the internal response, coverage target, provider failure flag and persistence outcome for disposable return/Finish diagnostics. Ordinary launches write no such file; use non-sensitive fixture material.
+
 The opt-in debug harness drives the same native window, accessibility actions, text editors, menus, and scroll views as the app. It never calls `NotebookSession`, stores, or the engine directly. Build a debug bundle first; from the repository root:
 
 ```sh
