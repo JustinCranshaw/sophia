@@ -60,9 +60,12 @@ public enum Prompts {
     }
 
     static func aboutText(_ library: LibraryStore, _ store: NotebookStore) -> String {
-        let lines = library.aboutLines(visibleIn: store.name)
-        guard !lines.isEmpty else { return "Nothing yet." }
-        return lines.map { "- \($0.str("id") ?? "")\(LibraryStore.isProvisional($0) ? " [provisional]" : ""): \($0.str("text") ?? "")" }.joined(separator: "\n")
+        do {
+            let shared = try library.ensureSharedAboutPage(session: "context")
+            let body = shared.store.readPage(shared.page.file)?.body ?? ""
+            let proposals = shared.store.pendingPageProposals(originNotebook: store.name)
+            return (body.isEmpty ? "Nothing yet." : body) + (proposals.isEmpty ? "" : "\nPending proposals from this notebook (not accepted):\n" + proposals.map { $0.line }.joined(separator: "\n"))
+        } catch { return "About you unavailable; do not infer its content." }
     }
 
     static func memoryText(_ store: NotebookStore) -> String {
@@ -125,7 +128,7 @@ public enum Prompts {
         - `note` writes one of your notes, which you'll have when the person comes back. Write one when something comes up that you'd want to check on later ("follow_up": whether the cross-entropy idea has landed), or when you learn something about the person in relation to this topic ("background": what they already know, what's rusty, how they like to work on it), or when they make a real attempt or leave a question open. Base it on their exact words (`quote`) or on ids in `refs`. A few notes a session at most: most turns need none, and if a note exists, revise it (pass `note`) rather than adding another, for example to close a follow-up once it's checked. Stay with the topic; no judgments of their ability or character.
         - Your memory: `set_memory` keeps at most 10 short lines on where things stand in this notebook now: what the person knows or finds rusty here, what to check next, what's open. You see it at the start of every conversation; your notes are not shown in full. Rewrite it when something changes what's true now (keep lines by id, reword by id, leave out what no longer matters; the notes behind it stay). Don't repeat what's in About you or the goals; memory is about this topic. Each line cites what it rests on: notes (n-…), their messages (t-…), pages, or goals.
         - `recall` looks up your long-term notes and the person's earlier messages by note id, page, or words. Use it when a topic comes back, before re-teaching something, or when a memory line points to notes you want in full.
-        - `about_you` proposes a line for "About you", shared by all the person's notebooks: their background or a standing preference that carries across topics, in their own words. Nothing topic-specific (that belongs in your memory or notes), no judgments of ability. It's provisional until they confirm it.\(linkTool)
+        - `about_you` proposes a whole Markdown replacement for "About you", shared by all the person's notebooks: their background or a standing preference that carries across topics, in their own words. Nothing topic-specific (that belongs in your memory or notes), no judgments of ability. It stays pending until they accept it.\(linkTool)
         - The person can edit pages themselves, a section at a time. You're told about their edits at your next turn. Lines they wrote, and block quotes of their words, are protected: a `write_page` revision that drops or changes them is refused and nothing is saved. Keep their lines exactly and revise around them; if their text itself should change, say why in the conversation and pass the reason as `why`. They can let you change it, and you'll be told. While they have a section open, revisions that change it are refused; don't retry, answer in the conversation.
         - `read_page` takes a file name from the list below; without one it lists the pages. The list below is from when this conversation started, so call `read_page` for the current list.
         - `set_goal` records a goal for this notebook in the Goals section, or revises one (pass its id as `goal`). Listen throughout the conversation for what the person wants from this notebook, and record it when they state or imply an aim, or when an aim changes or gets sharper. Use their wording where you can and pass the words you drew on as `quote`. Add `criteria`: concrete signs of what reaching the goal would look like. Your goals are provisional until the person confirms them. Don't record a goal on every turn, don't duplicate one that exists (revise it instead), and never mark a goal met or dropped; that is the person's call.
@@ -159,6 +162,46 @@ public enum Prompts {
         \((store.carried(for: thread, before: before) + store.window(for: thread, before: before)).compactMap(contextLine).joined(separator: "\n"))
         Earlier searches and pages read are not still in hand. Look them up again silently when needed. Before continuing a cut-off turn, check what it already saved.
         """
+    }
+
+    /// Shared About has its own stable conversation, without another notebook's context.
+    public static func sharedAboutContext(_ store: NotebookStore, libraryRoot: URL,
+                                          thread: String = ClaudeEngine.sharedAboutFile, before: String? = nil,
+                                          canOpenSources: Bool = false) -> String {
+        guard ClaudeEngine.isSharedAboutLocation(store.url, libraryRoot: libraryRoot, page: thread),
+              let page = store.page(thread), page.role == .about, page.scope == .library,
+              let body = store.readPage(thread)?.body else { return "About conversation unavailable. Do not infer or retrieve another notebook's content." }
+        let pending = store.pendingPageProposals(originNotebook: ClaudeEngine.sharedAboutOrigin).filter { $0.str("file") == thread }
+        return """
+        # About you conversation
+        This is the one conversation beside the Library’s shared About you page. The page and this conversation have their own durable store; this is not an ordinary topic notebook.
+        Accepted Markdown below is shared with notebooks. A pending change is private to its originating conversation until the person accepts it. You see only proposals originating here, never proposals or source conversations from other notebooks.
+        `read_page` reads only about-you.md here. `about_you` proposes a complete Markdown replacement, supported by exact words from this conversation. It does not save the shared body: the person reviews the full change and accepts or rejects it. Preserve accepted content the person still wants. Do not invent background, preferences or judgments of ability.
+        No tools for other notebook reads, links, ordinary page writes, goals, notes or working memory are available here. Answer the person's actual question in the conversation; do not force a profile-writing task.
+        \(canOpenSources ? approvedResearchAccess : researchAccess)
+
+        Accepted About you Markdown:
+        \(body)
+
+        Pending proposals from this conversation (not accepted):
+        \(pending.isEmpty ? "None." : pending.map { $0.line }.joined(separator: "\n"))
+
+        Conversation in hand:
+        \((store.carried(for: thread, before: before) + store.window(for: thread, before: before)).compactMap(contextLine).joined(separator: "\n"))
+        """
+    }
+
+    /// Refresh a warm About engine without replaying history or notebook-only context.
+    public static func sharedAboutTurnPrefix(_ store: NotebookStore, libraryRoot: URL) -> String {
+        let file = ClaudeEngine.sharedAboutFile
+        guard ClaudeEngine.isSharedAboutLocation(store.url, libraryRoot: libraryRoot, page: file),
+              let page = store.page(file), page.role == .about, page.scope == .library,
+              let body = store.readPage(file)?.body else { return "[Sophia app] About context is unavailable. Do not infer or retrieve another notebook’s content.\n\n" }
+        let pending = store.pendingPageProposals(originNotebook: ClaudeEngine.sharedAboutOrigin).filter { $0.str("file") == file }
+        return "[Sophia app] Current accepted About you Markdown (use this over earlier versions):\n" + body
+            + "\nPending proposals originating in this About conversation (not accepted):\n"
+            + (pending.isEmpty ? "None." : pending.map { $0.line }.joined(separator: "\n"))
+            + "\nThe person’s message follows.\n\n"
     }
 
     static func contextLine(_ e: JSONObject) -> String? {

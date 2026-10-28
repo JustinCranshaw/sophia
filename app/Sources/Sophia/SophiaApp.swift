@@ -28,9 +28,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
         UXHarness.startIfRequested()
         #endif
     }
+    weak var model: AppModel?
+    weak var workspaceWindow: NSWindow?
     private var terminating = false
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard !terminating else { return .terminateLater }
+        guard model?.prepareForClosing() != false else {
+            workspaceWindow?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return .terminateCancel
+        }
         terminating = true
         NotificationCenter.default.post(name: .prepareToTerminate, object: nil)
         OwnedClaudeProcess.finishForApplicationTermination { sender.reply(toApplicationShouldTerminate: true) }
@@ -45,6 +52,8 @@ final class AppModel: ObservableObject {
     let almanac: AlmanacModel
     @Published var notebooks: [URL] = []
     @Published var open: NotebookSession?
+    private var aboutSession: NotebookSession?
+    @Published private(set) var sharedAboutStore: NotebookStore?
     @Published var problem: String?
     @Published var notebookSettings: NotebookSettingsSelection?
     private let preferences: UserDefaults
@@ -63,11 +72,12 @@ final class AppModel: ObservableObject {
         conversationCollapsed = preferences.bool(forKey: "conversationCollapsed")
         let library = Library(), connection = ConnectionState()
         self.library = library; self.connection = connection
+        sharedAboutStore = try? LibraryStore(root: library.root).ensureSharedAboutPage(session: "library-open").store
         almanac = MainActor.assumeIsolated { AlmanacModel(root: library.root, connection: connection) }
         notebooks = library.notebooks
         if let first = notebooks.first { openNotebook(first, at: .contents) }
         MainActor.assumeIsolated {
-            almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true }
+            almanac.ordinaryBusy = { [weak self] in self?.open?.isResponding == true || self?.aboutSession?.isResponding == true }
             almanac.onSaved = { [weak self] _ in
                 guard let self else { return }
                 notebooks = library.notebooks
@@ -84,14 +94,55 @@ final class AppModel: ObservableObject {
     func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil, allowAutomaticReturn: Bool = true) -> Bool {
         guard library.notebooks.contains(url) else { problem = "This notebook is no longer available."; return false }
         if open?.store.url != url {
+            guard prepareCurrentForSwitch() else { return false }
             do {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
-                open?.shutdown()
+                if open?.isSharedAbout == true { open?.deactivateSourceAccess() } else { open?.shutdown() }
                 notebookSettings = nil
                 open = next
             } catch { problem = error.localizedDescription; return false }
         }
-        if let place { open?.show(place) }
+        if let place { return open?.show(place) == true }
+        return true
+    }
+
+    @discardableResult
+    func openAbout() -> Bool {
+        if open?.isSharedAbout != true, !prepareCurrentForSwitch() { return false }
+        do {
+            if aboutSession == nil {
+                let shared = try LibraryStore(root: library.root).ensureSharedAboutPage(session: "about-open")
+                sharedAboutStore = shared.store
+                aboutSession = try NotebookSession(url: shared.store.url, allowAutomaticReturn: false, conversationScope: .sharedAbout, libraryRoot: library.root)
+            }
+            guard let aboutSession else { return false }
+            if open !== aboutSession { open?.shutdown(); notebookSettings = nil; open = aboutSession }
+            aboutSession.store.reload(); aboutSession.show(.about); aboutSession.changed()
+            return true
+        } catch { problem = "About you could not be opened: " + error.localizedDescription; return false }
+    }
+
+    private func prepareCurrentForSwitch() -> Bool {
+        guard let current = open else { return true }
+        guard current.prepareForNavigationAway() else {
+            problem = "Your page edit needs attention. Resolve the editor or review your kept text before switching conversations."
+            return false
+        }
+        return true
+    }
+    /// Both Quit and the main workspace's close button use this before any cleanup.
+    func prepareForClosing() -> Bool {
+        var sessions: [NotebookSession] = []
+        if let open { sessions.append(open) }
+        if let aboutSession, !sessions.contains(where: { $0 === aboutSession }) { sessions.append(aboutSession) }
+        for session in sessions where !session.prepareForNavigationAway() {
+            if open !== session {
+                if open?.isSharedAbout == true { open?.deactivateSourceAccess() } else { open?.shutdown() }
+                open = session
+            }
+            problem = "Your page edit needs attention. Resolve the editor or review your kept text before closing Sophia."
+            return false
+        }
         return true
     }
 
@@ -139,6 +190,7 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func create(_ name: String) -> Bool {
+        guard prepareCurrentForSwitch() else { return false }
         do {
             let url = try library.create(named: name)
             notebooks = library.notebooks
@@ -160,6 +212,8 @@ struct SophiaApp: App {
                 .environmentObject(model.connection)
                 .environmentObject(model.almanac)
                 .frame(minWidth: 1140, minHeight: 600)
+                .background(WorkspaceWindowCloseGuard(shouldClose: { model.prepareForClosing() }, attached: { delegate.workspaceWindow = $0 }))
+                .onAppear { delegate.model = model }
         }
         .windowToolbarStyle(.unified(showsTitle: false))
         .commands {

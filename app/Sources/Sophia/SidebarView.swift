@@ -20,7 +20,10 @@ struct SidebarView: View {
                     NotebookRows(url: url)
                 }
             }
-            if let s = model.open { Section("Shared across your Library") { AboutRow(session: s) } }
+            Section("Shared across your Library") {
+                if let s = model.open { AboutRow(session: s) }
+                else { Button("About you") { model.openAbout() } }
+            }
         }
         .listStyle(.sidebar)
         Divider()
@@ -163,16 +166,16 @@ struct AboutRow: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     var body: some View {
-        let proposed = session.library.aboutLines.filter(LibraryStore.isProvisional).count
-        Button { session.show(.about) } label: {
+        let proposed = model.sharedAboutStore?.pendingPageProposals().count ?? 0
+        Button { model.openAbout() } label: {
             HStack(spacing: 6) {
                 Image(systemName: "person.crop.circle").foregroundStyle(.secondary).frame(width: 16)
                 Text("About you").lineLimit(1)
                 Spacer(minLength: 4)
-                if proposed > 0 { Text("\(proposed) to confirm").font(.caption).foregroundStyle(.secondary).fixedSize() }
+                if proposed > 0 { Text("\(proposed) to review").font(.caption).foregroundStyle(.secondary).fixedSize() }
             }
             .padding(.vertical, 3).padding(.horizontal, 6)
-            .background(session.place == .about ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
+            .background(session.isSharedAbout ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

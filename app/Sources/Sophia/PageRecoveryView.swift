@@ -20,7 +20,7 @@ struct PageRecoveryView: View {
                     Spacer()
                     Button("Close") { reviewing = false }.keyboardShortcut(.cancelAction)
                 }
-                Text("Copy what you need before closing or switching notebooks. These edits are kept only while this notebook stays open.")
+                Text("Copy what you need, then dismiss each kept edit before closing or switching conversations. These edits are temporary, not a saved revision.")
                     .font(.callout).foregroundStyle(.secondary)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {

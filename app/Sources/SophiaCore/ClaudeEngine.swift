@@ -18,6 +18,19 @@ public final class ClaudeEngine {
         case exited(code: Int32, stderr: String, stopRequested: Bool)
     }
 
+    public enum ConversationScope: String { case notebook, sharedAbout = "shared-about" }
+    public static let sharedAboutFile = "about-you.md"
+    public static let sharedAboutOrigin = ".sophia/about"
+    public static func isSharedAboutLocation(_ url: URL, libraryRoot: URL, page: String) -> Bool {
+        let expected = libraryRoot.standardizedFileURL.resolvingSymlinksInPath().appendingPathComponent(".sophia/about").standardizedFileURL
+        return page == sharedAboutFile && expected.resolvingSymlinksInPath().path == expected.path
+            && url.standardizedFileURL.resolvingSymlinksInPath().path == expected.path
+    }
+    public enum ConfigurationError: Error, LocalizedError {
+        case invalidSharedAboutScope
+        public var errorDescription: String? { "The About conversation needs its canonical shared store, page and explicit Library root." }
+    }
+
     public struct Config {
         public var claudePath: String
         public var toolServerPath: String
@@ -28,9 +41,12 @@ public final class ClaudeEngine {
         public var session: String
         public var almanac: Bool
         public var readOnly: Bool
+        public var conversationScope: ConversationScope
+        public var libraryRoot: URL?
         public var sourcePermissions: SourcePermissionBridge?
-        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false, sourcePermissions: SourcePermissionBridge? = nil, almanac: Bool = false) {
+        public init(claudePath: String, toolServerPath: String, notebookURL: URL, systemPrompt: String, context: String, session: String, page: String = "", readOnly: Bool = false, sourcePermissions: SourcePermissionBridge? = nil, almanac: Bool = false, conversationScope: ConversationScope = .notebook, libraryRoot: URL? = nil) {
             self.claudePath = claudePath; self.toolServerPath = toolServerPath; self.notebookURL = notebookURL
+            self.conversationScope = conversationScope; self.libraryRoot = libraryRoot
             self.systemPrompt = systemPrompt; self.context = context; self.page = page; self.session = session; self.readOnly = readOnly; self.almanac = almanac; self.sourcePermissions = readOnly || almanac ? nil : sourcePermissions
         }
     }
@@ -90,9 +106,13 @@ public final class ClaudeEngine {
     static let writingTools = ["mcp__sophia__write_page", "mcp__sophia__set_goal", "mcp__sophia__set_chapter", "mcp__sophia__note", "mcp__sophia__set_memory", "mcp__sophia__about_you", "mcp__sophia__link"]
 
     public var arguments: [String] {
+        var toolArguments = [config.notebookURL.path, config.session, config.page]
+        if config.conversationScope == .sharedAbout {
+            toolArguments += ["--scope", "shared-about", "--library-root", config.libraryRoot?.path ?? ""]
+        }
         var servers: JSONObject = ["sophia": .object([
             "command": .string(config.toolServerPath),
-            "args": .array([.string(config.notebookURL.path), .string(config.session), .string(config.page)])
+            "args": .array(toolArguments.map { .string($0) })
         ])]
         if let permissions = config.sourcePermissions {
             servers["source_permissions"] = .object(["command": .string(config.toolServerPath), "args": .array([.string("--source-permissions"), .string(permissions.directory.path)])])
@@ -106,6 +126,9 @@ public final class ClaudeEngine {
                     "--allowedTools"]
         if config.almanac {
             args += ["WebSearch", "--disallowedTools", "WebFetch"] + Self.readingTools + Self.writingTools
+        } else if config.conversationScope == .sharedAbout {
+            let permitted = config.readOnly ? ["mcp__sophia__read_page"] : ["mcp__sophia__read_page", "mcp__sophia__about_you", "WebSearch"]
+            args += permitted + ["--disallowedTools"] + (Self.readingTools + Self.writingTools).filter { !permitted.contains($0) }
         } else if config.readOnly {
             args += Self.readingTools + ["--disallowedTools"] + Self.writingTools
         } else {
@@ -121,6 +144,10 @@ public final class ClaudeEngine {
 
     /// Preparing an engine launches nothing. Every send is checked before content delivery.
     public func start() throws {
+        if config.conversationScope == .sharedAbout {
+            guard let root = config.libraryRoot, !config.almanac,
+                  Self.isSharedAboutLocation(config.notebookURL, libraryRoot: root, page: config.page) else { throw ConfigurationError.invalidSharedAboutScope }
+        }
         guard !isRunning, process == nil else { return }
         stopRequested = false
         isRunning = true

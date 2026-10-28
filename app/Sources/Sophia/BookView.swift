@@ -4,8 +4,11 @@ import SophiaReader
 
 struct BookView: View {
     @ObservedObject var session: NotebookSession
+    @EnvironmentObject private var model: AppModel
 
     var body: some View {
+        VStack(spacing: 0) {
+        if model.conversationCollapsed && !session.editRecovery.edits.isEmpty { PageRecoveryView(session: session).padding(12) }
         Group {
             switch session.place {
             case .contents:
@@ -13,7 +16,9 @@ struct BookView: View {
                 else { Sheet { ReadingTitle(title: session.store.name); Banner(tone: .problem, text: "The introduction is unavailable. Existing pages are still readable."); ContentsOutline(session: session) } }
             case .goals: GoalsView(session: session)
             case .notes: NotesView(session: session)
-            case .about: AboutView(session: session)
+            case .about:
+                if session.isSharedAbout, let page = session.visiblePage { PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file)) }
+                else { Sheet { Text("Choose About you in the Library to open its shared page and conversation.") } }
             case .chapter(let id):
                 if let page = session.store.chapters.first(where: { $0.id == id })?.intro {
                     PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file))
@@ -22,6 +27,7 @@ struct BookView: View {
                 // A different page starts a fresh reader, including the same filename in another notebook.
                 PageView(session: session, file: file).id(session.store.url.appendingPathComponent(file))
             }
+        }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(nsColor: .textBackgroundColor))
@@ -303,8 +309,11 @@ struct PageView: View {
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
                 let rootChapter = store.chapters.first(where: { $0.intro?.file == file })
                 ReadingTitle(title: title,
-                             scope: rootChapter != nil ? store.name : chapter?.heading,
+                             scope: store.page(file)?.role == .about ? "Shared across your Library" : rootChapter != nil ? store.name : chapter?.heading,
                              number: rootChapter?.number ?? number)
+                if store.page(file)?.role == .about {
+                    Text("Sophia proposes changes for you to review.").font(.callout).foregroundStyle(.secondary)
+                }
                 HStack {
                     if let entry = NotebookPresentation.almanacEntries(store)[file] {
                         Text(NotebookPresentation.publicationDate(entry)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
@@ -317,6 +326,11 @@ struct PageView: View {
                                 }
                             }
                         }.controlSize(.small).disabled(session.editing?.file == file)
+                    }
+                    if !session.visiblePageProposals.isEmpty {
+                        Text("\(session.visiblePageProposals.count) proposed change\(session.visiblePageProposals.count == 1 ? "" : "s")").font(.callout).foregroundStyle(.secondary)
+                        Button("Review changes") { session.reviewProposalID = session.visiblePageProposals.first?.str("id") }
+                            .buttonStyle(.bordered).controlSize(.small)
                     }
                     Spacer(minLength: 8)
                     Button("Edit") { session.beginEdit(file: file, key: "(page)", atVisibleTop: true) }
@@ -369,6 +383,9 @@ struct PageView: View {
                 }
             }
             .onChange(of: session.pendingSectionID) { _, _ in navigate(proxy) }
+            }
+            .sheet(isPresented: Binding(get: { session.reviewProposalID != nil }, set: { if !$0 { session.reviewProposalID = nil } })) {
+                if let id = session.reviewProposalID { PageProposalReview(session: session, proposalID: id) }
             }
             .sheet(item: $previous) { snapshot in
                 VStack(alignment: .leading, spacing: 12) {
