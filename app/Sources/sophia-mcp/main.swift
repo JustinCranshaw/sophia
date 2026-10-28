@@ -1,7 +1,7 @@
 // Sophia's notebook tools, served to Claude Code over stdio (newline-delimited JSON-RPC).
 // read_page reads or lists pages (or a linked page in another notebook). write_page saves a page,
 // set_chapter groups pages into a chapter, set_goal records a provisional goal, note writes a note,
-// set_memory rewrites Sophia's working memory, recall looks up her notes, about_you proposes a line
+// set_memory rewrites Sophia's working memory, recall looks up Sophia’s notes, about_you proposes a line
 // about the person for every notebook, and link proposes a link to another notebook's page. All
 // write through NotebookStore or LibraryStore so they follow the same rules and locking as the app.
 // Usage: sophia-mcp <notebook-directory> <session>
@@ -54,7 +54,7 @@ let tools: [[String: Any]] = [
         "inputSchema": [
             "type": "object",
             "properties": [
-                "title": ["type": "string"],
+                "title": ["type": "string", "description": "A short, specific plain-text title, usually two to six words. Put explanatory detail in the opening paragraph."],
                 "content": ["type": "string", "description": "The page body in Markdown, without the title. Put sources at the end with what you actually read. Link each source you opened or found by search as [title](url), using the URL the tool gave you; never write a URL from memory."],
                 "page": ["type": "string", "description": "File name of the page to revise. Omit to add a new page."],
                 "chapter": ["type": "string", "description": "Optional chapter to put the page in, such as \"Chapter 0: Foundations\". Created if it doesn't exist."],
@@ -218,15 +218,17 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             let content = a["content"] as? String ?? ""
             guard !title.isEmpty, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return "Not saved: a page needs a title and content." }
             let page = (a["page"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            store.reload()
             if let page, !store.pageFiles.contains(page) { return "Not saved: there is no page named \(page). Omit `page` to add a new page." }
             let e = try store.writePage(title: title, content: content, revising: page, session: session, toolUseID: toolUse,
                                         why: a["why"] as? String, thread: thread)
             if e["refused"] == .bool(true) { return refusalText(e) }
             let file = e.str("file") ?? ""
             var filed = ""
-            if let chapter = (a["chapter"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !chapter.isEmpty,
+            if store.page(file)?.role == .content,
+               let chapter = (a["chapter"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !chapter.isEmpty,
                store.chapter(of: file).map({ NotebookStore.splitNumber(chapter).rest.lowercased() != $0.title.lowercased() }) ?? true {
-                filed = " It is in \(try store.fileInChapter([file], chapter: chapter).heading)."
+                filed = " It is in \(try store.fileInChapter([file], chapter: chapter, session: session, thread: thread).heading)."
             }
             if e["unchanged"] == .bool(true) { return "Unchanged \(file): the page already matches." + filed }
             return (page == nil ? "Saved as a new page, \(file). The person can see it and undo it." : "Revised \(file). The previous version is kept, and the person can undo it.") + filed
@@ -236,7 +238,10 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
             guard !chapter.isEmpty, !files.isEmpty else { return "Not changed: name a chapter and at least one page." }
             store.reload()
             if let missing = files.first(where: { !store.pageFiles.contains($0) }) { return "Not changed: there is no page named \(missing). Call read_page without a file name to list the pages." }
-            let c = try store.fileInChapter(files, chapter: chapter)
+            if files.contains(where: { store.page($0)?.role != .content }) {
+                return "Not changed: introductions keep their existing attachment. Use write_page to revise the introduction itself."
+            }
+            let c = try store.fileInChapter(files, chapter: chapter, session: session, thread: thread)
             try store.appendTranscript(["role": .string("tool"), "tool": .string("set_chapter"), "session": .string(session), "page": .string(thread),
                                         "chapter": .string(c.heading), "files": .array(files.map { .string($0) })])
             return "\(c.heading) now has: " + c.pages.map(\.title).joined(separator: "; ") + "."

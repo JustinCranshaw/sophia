@@ -5,31 +5,84 @@ import SophiaCore
 struct ConversationView: View {
     @ObservedObject var session: NotebookSession
     @Binding private var message: String
-    private let compact: Bool
     @FocusState private var focused: Bool
-    @State private var expanded = false
+    @EnvironmentObject private var model: AppModel
+    private var expanded: Bool { !model.conversationCollapsed }
     @State private var seenSophiaID: String?
     @State private var followsLatest = true
     @State private var hasNewActivity = false
     @State private var scrollPosition: ConversationScrollPosition?
     @State private var settlingViewport = false
 
-    init(session: NotebookSession, draft: Binding<String> = .constant(""), compact: Bool = false) {
+    init(session: NotebookSession, draft: Binding<String> = .constant("")) {
         self.session = session
         _message = draft
-        self.compact = compact
     }
 
     var body: some View {
+        Group {
+            if expanded { expandedConversation }
+            else { collapsedRail }
+        }
+        .onAppear { seenSophiaID = latestSophiaMessage?.str("id") }
+        .onChange(of: conversationKey) { _, _ in seenSophiaID = latestSophiaMessage?.str("id") }
+        .onChange(of: expanded) { _, value in
+            if value { seenSophiaID = latestSophiaMessage?.str("id") }
+            else { focused = false; session.composerFocused = false }
+        }
+        .onChange(of: latestSophiaMessage?.str("id")) { _, id in if expanded { seenSophiaID = id } }
+    }
+
+    private var collapsedRail: some View {
+        VStack(spacing: 16) {
+            Button { model.conversationCollapsed = false } label: {
+                Label("Show conversation", systemImage: "sidebar.left").labelStyle(.iconOnly).frame(width: 28, height: 28)
+            }
+            .accessibilityLabel(conversationToggleTitle)
+            .help(conversationToggleTitle + " · " + session.conversationName)
+            if session.pendingSource != nil {
+                Button { model.conversationCollapsed = false } label: { Label("Source approval pending", systemImage: "hand.raised").labelStyle(.iconOnly) }
+                    .accessibilityLabel("Source approval pending · Show conversation")
+                    .help("A source needs your decision")
+            }
+            if session.problem != nil || !session.editRecovery.edits.isEmpty
+                || session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread)) != nil {
+                Button { model.conversationCollapsed = false } label: { Label("Conversation needs attention", systemImage: "exclamationmark.triangle").labelStyle(.iconOnly).foregroundStyle(.orange) }
+                    .accessibilityLabel("Conversation needs attention · Show conversation")
+                    .help("Open the conversation to review the error or kept edit")
+            }
+            if session.isReplying {
+                ProgressView().controlSize(.small).help("Sophia is replying")
+            } else if latestSophiaMessage?.str("id") != seenSophiaID, latestSophiaMessage != nil {
+                Image(systemName: "circle.fill").font(.system(size: 7)).foregroundStyle(Brand.plum)
+                    .accessibilityLabel("New reply").help("New reply · Show conversation")
+            }
+            if !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Button { model.conversationCollapsed = false } label: { Label("Draft ready", systemImage: "square.and.pencil").labelStyle(.iconOnly) }
+                    .accessibilityLabel("Draft ready · Show conversation")
+                    .help("Your unsent draft is ready in this conversation")
+            }
+            Spacer(minLength: 0)
+        }
+        .buttonStyle(.borderless).padding(.top, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .controlBackgroundColor))
+    }
+
+    private var expandedConversation: some View {
         VStack(spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(session.activeThread.isEmpty ? "Notebook conversation" : "Conversation · " + session.conversationName)
                     .font(.subheadline.weight(.semibold)).lineLimit(2).help(session.conversationName)
                 Spacer(minLength: 8)
-                if compact {
-                    Button(conversationToggleTitle) { expanded.toggle() }.buttonStyle(.borderless)
+                Button { model.conversationCollapsed.toggle() } label: {
+                    if expanded { Image(systemName: "sidebar.left") }
+                    else { Text(conversationToggleTitle) }
                 }
-                if !compact || expanded {
+                .buttonStyle(.borderless)
+                .accessibilityLabel(conversationToggleTitle)
+                .help(expanded ? "Collapse the conversation" : "Show the conversation")
+                if expanded {
                     Button("Finish for now") { session.endSession() }
                         .disabled(session.isResponding || !session.hasUncheckpointedMessages)
                         .help("Finish for now")
@@ -37,11 +90,15 @@ struct ConversationView: View {
             }
             .padding(.horizontal, 14).padding(.vertical, 9)
             Divider()
-            if !compact || expanded {
+            if expanded {
             ScrollViewReader { proxy in
                 GeometryReader { viewport in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 22) {
+                            if items.isEmpty && !session.isReplying {
+                                Text(session.activeThread.isEmpty ? "Ask about this notebook." : "Ask about this page.")
+                                    .font(.callout).foregroundStyle(.secondary)
+                            }
                             let retryQuestion = session.store.unansweredQuestion(in: session.activeThread, pending: session.isPending(session.activeThread))
                             ForEach(items, id: \.id) { item in
                                 Group {
@@ -137,7 +194,7 @@ struct ConversationView: View {
                     followIfNeeded(proxy)
                 }
             }
-            .frame(height: compact ? 230 : nil)
+
             }
             if let request = session.pendingSource {
                 VStack(alignment: .leading, spacing: 8) {
@@ -193,17 +250,7 @@ struct ConversationView: View {
             .padding(.horizontal, 24).padding(.vertical, 14)
             .frame(maxWidth: .infinity)
         }
-        .onAppear {
-            focused = Snapshot.outDir == nil && !compact
-            seenSophiaID = latestSophiaMessage?.str("id")
-        }
-        .onChange(of: conversationKey) { _, _ in
-            expanded = false
-            seenSophiaID = latestSophiaMessage?.str("id")
-        }
-        .onChange(of: expanded) { _, value in if value { seenSophiaID = latestSophiaMessage?.str("id") } }
-        .onChange(of: latestSophiaMessage?.str("id")) { _, id in if expanded { seenSophiaID = id } }
-        .onChange(of: compact) { _, value in if value { focused = false } }
+        .onAppear { focused = Snapshot.outDir == nil }
         .disabled(Snapshot.outDir != nil)
     }
 
@@ -222,6 +269,7 @@ struct ConversationView: View {
         }
     }
     private var conversationToggleTitle: String {
+        if !expanded && session.isReplying { return "Sophia is replying… · Show conversation" }
         if expanded { return "Hide conversation" }
         guard let entry = latestSophiaMessage, let id = entry.str("id"), id != seenSophiaID else { return "Show conversation" }
         return entry.str("purpose") == "briefing" ? "Welcome back · Show conversation" : "New reply · Show conversation"
@@ -254,7 +302,6 @@ struct ConversationView: View {
         hasNewActivity = false
         settlingViewport = false
         message = ""
-        expanded = true
         session.send(t)
     }
 }
@@ -305,7 +352,7 @@ struct EntryView: View {
                         Text(session.store.hasPartialReply(to: question) ? "Reply interrupted." : "Not answered yet.")
                             .foregroundStyle(.secondary)
                         Button("Retry") { session.retry(id) }
-                        Link("Claude Code setup", destination: NotebookSession.setupURL)
+                        ConnectionDetailsButton()
                     }
                     .font(.caption).buttonStyle(.link)
                 }
@@ -442,7 +489,7 @@ private struct NotebookUpdatesView: View {
     }
 }
 
-/// A note Sophia wrote during the conversation: one quiet line, so the person can see what she keeps.
+/// A note Sophia wrote during the conversation: one quiet line, so the person can see what Sophia keeps.
 struct NoteLine: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
@@ -569,8 +616,8 @@ struct EditLine: View {
 }
 
 /// A revision of Sophia's that was refused. When it ran into lines the person wrote, this is the
-/// release marker: their text, her reason, and a button that lets her change it (nothing is
-/// applied for them; she is told and may try again).
+/// release marker: their text, Sophia's reason, and a button that lets Sophia change it (nothing is
+/// applied for them; Sophia is told and may try again).
 struct RefusalCard: View {
     @ObservedObject var session: NotebookSession
     let entry: JSONObject
@@ -644,5 +691,13 @@ struct SourceEvidence: View {
             }.font(.caption)
         }
         .padding(10).background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+/// Contextual access remains available beside a failed request after setup is dismissed.
+private struct ConnectionDetailsButton: View {
+    @EnvironmentObject private var connection: ConnectionState
+    var body: some View {
+        Button("Connection & data…") { connection.detailsShown = true }
     }
 }

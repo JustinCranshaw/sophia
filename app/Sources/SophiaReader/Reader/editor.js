@@ -231,7 +231,7 @@ window.sophiaEditor = (() => {
       const line = document.createElement("div");
       line.className = "conflict";
       line.append("Sophia revised this section while you were editing · ",
-        button("Show her version", () => {
+        button("Show Sophia's version", () => {
           theirs.hidden = !theirs.hidden;
           if (!theirs.hidden) show(theirs, current.conflict);
         }), dot(), button("Keep mine", () => post({ keepMine: current.id })));

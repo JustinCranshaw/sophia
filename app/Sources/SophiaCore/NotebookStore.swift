@@ -11,7 +11,7 @@ import Darwin
 ///     learning.jsonl           goals, notes, takes, corrections, briefings
 ///
 /// Two processes write through this class: the app, and Sophia's tool server (sophia-mcp),
-/// which saves her pages and goals. Every write takes a lock on the notebook and rereads
+/// which saves Sophia's pages and goals. Every write takes a lock on the notebook and rereads
 /// the files first, so neither works from a stale copy.
 public final class NotebookStore {
     public let url: URL
@@ -345,43 +345,63 @@ public final class NotebookStore {
 
     // MARK: Pages
 
+    public enum PageRole: String, Codable { case content, notebook, chapter, about, goals, notes, memory }
+    public enum PageScope: String, Codable { case notebook, library }
+
     public struct Page: Identifiable, Equatable {
         public let file: String
         public let title: String
+        public let role: PageRole
+        public let scope: PageScope
         public var id: String { file }
-        public init(file: String, title: String) { self.file = file; self.title = title }
+        public init(file: String, title: String, role: PageRole = .content, scope: PageScope = .notebook) {
+            self.file = file; self.title = title; self.role = role; self.scope = scope
+        }
     }
 
     public var pageFiles: [String] {
         let chaptered = (meta["chapters"]?.array ?? []).flatMap { $0["pages"]?.array ?? [] }.compactMap(\.string)
         let unfiled = (meta["unfiled"]?.array ?? []).compactMap(\.string)
-        return chaptered + unfiled
+        let roots = [meta.str("overview")] + (meta["chapters"]?.array ?? []).map { $0["intro"]?.string }
+        var seen = Set<String>()
+        return (roots.compactMap { $0 } + chaptered + unfiled).filter { seen.insert($0).inserted }
     }
 
-    public var pages: [Page] {
-        pageFiles.map { Page(file: $0, title: readPage($0)?.title ?? $0) }
+    public func page(_ file: String) -> Page? {
+        guard pageFiles.contains(file) else { return nil }
+        let properties = meta["pageProperties"]?[file]
+        return Page(file: file, title: readPage(file)?.title ?? file,
+                    role: properties?["role"]?.string.flatMap(PageRole.init(rawValue:)) ?? .content,
+                    scope: properties?["scope"]?.string.flatMap(PageScope.init(rawValue:)) ?? .notebook)
     }
+    public var pages: [Page] { pageFiles.compactMap(page) }
+    public var contentPages: [Page] { pages.filter { $0.role == .content } }
+    public var overviewPage: Page? { meta.str("overview").flatMap(page) }
 
     /// A chapter groups pages in the book. Its number is optional ("0" in "Chapter 0: Foundations").
     public struct Chapter: Identifiable, Equatable {
         public let number: String?
         public let title: String
         public let pages: [Page]
-        public var id: String { (number ?? "") + "|" + title }
+        public let intro: Page?
+        public init(number: String?, title: String, pages: [Page], intro: Page? = nil) {
+            self.number = number; self.title = title; self.pages = pages; self.intro = intro
+        }
+        public var id: String { intro?.file ?? (number ?? "") + "|" + title }
         /// "Chapter 0: Foundations", or the title alone.
         public var heading: String { number.map { "Chapter \($0): \(title)" } ?? title }
     }
 
     public var chapters: [Chapter] {
-        (meta["chapters"]?.array ?? []).compactMap(\.object).filter { !($0["pages"]?.array ?? []).isEmpty }.map { c in
+        (meta["chapters"]?.array ?? []).compactMap(\.object).filter { !($0["pages"]?.array ?? []).isEmpty || $0.str("intro") != nil }.map { c in
             Chapter(number: c.str("number"), title: c.str("title") ?? "Untitled",
-                    pages: (c["pages"]?.array ?? []).compactMap(\.string).map { Page(file: $0, title: readPage($0)?.title ?? $0) })
+                    pages: (c["pages"]?.array ?? []).compactMap(\.string).compactMap(page), intro: c.str("intro").flatMap(page))
         }
     }
 
     /// Pages not in any chapter, in book order.
     public var unfiledPages: [Page] {
-        (meta["unfiled"]?.array ?? []).compactMap(\.string).map { Page(file: $0, title: readPage($0)?.title ?? $0) }
+        (meta["unfiled"]?.array ?? []).compactMap(\.string).compactMap(page)
     }
 
     public func chapter(of file: String) -> Chapter? {
@@ -433,12 +453,13 @@ public final class NotebookStore {
 
     /// Puts pages in a chapter, in the order given, after any pages already there. The chapter is
     /// matched by number or title, or created; a new numbered chapter goes in number order.
-    /// Pages leave wherever they were. Chapters left empty are removed.
-    public func fileInChapter(_ files: [String], chapter heading: String) throws -> Chapter {
+    /// Pages leave wherever they were. Empty chapters with an introduction are retained.
+    /// Explicit renames update only an unchanged default introduction title, as a recorded revision.
+    public func fileInChapter(_ files: [String], chapter heading: String, session: String = "", thread: String = "") throws -> Chapter {
         try locked {
             var seen = Set<String>()
             let files = files.filter { seen.insert($0).inserted }
-            let known = Set(pageFiles)
+            let known = Set(contentPages.map(\.file))
             guard !files.isEmpty, files.allSatisfy(known.contains) else { throw StoreError.notFound }
             let (number, title) = Self.splitNumber(heading)
             var chapters = (meta["chapters"]?.array ?? []).compactMap(\.object)
@@ -450,6 +471,13 @@ public final class NotebookStore {
                 return c.str("title")?.lowercased() == title.lowercased()
             }
             if let i = chapters.firstIndex(where: same) {
+                if chapters[i].str("title") != title, let intro = chapters[i].str("intro"),
+                   let page = readPage(intro), page.title == chapters[i].str("title") {
+                    let body = page.body.hasSuffix("\n") ? String(page.body.dropLast()) : page.body
+                    let outcome = try writePage(title: title, content: body, revising: intro,
+                                                session: session, toolUseID: "chapter-title:" + UUID().uuidString, thread: thread)
+                    guard outcome["refused"] != .bool(true) else { throw StoreError.notFound }
+                }
                 chapters[i]["pages"] = .array((chapters[i]["pages"]?.array ?? []) + files.map { .string($0) })
                 if let number { chapters[i]["number"] = .string(number) }
                 chapters[i]["title"] = .string(title)
@@ -459,7 +487,7 @@ public final class NotebookStore {
                 let at = number.flatMap { n in chapters.firstIndex { ($0.str("number")).map { Self.numberSorts($0, after: n) } ?? true } } ?? chapters.count
                 chapters.insert(c, at: at)
             }
-            chapters.removeAll { ($0["pages"]?.array ?? []).isEmpty }
+            chapters.removeAll { ($0["pages"]?.array ?? []).isEmpty && $0.str("intro") == nil }
             meta["chapters"] = .array(chapters.map { .object($0) })
             try writeMeta()
             return self.chapters.first { $0.pages.contains { $0.file == files[0] } }!
@@ -503,6 +531,74 @@ public final class NotebookStore {
         try? writeMeta()
     }
 
+    /// Add real, initially empty overview pages without replacing any existing content.
+    /// Metadata reserves each filename first, so an interrupted initialization resumes at the same file.
+    /// Existing JSONL and Markdown remain untouched; the original ordering metadata is retained once.
+    public var needsOverviewPages: Bool {
+        meta.str("overview") == nil || (meta["chapters"]?.array ?? []).contains {
+            !($0["pages"]?.array ?? []).isEmpty && $0["intro"]?.string == nil
+        }
+    }
+
+    public func ensureOverviewPages(session: String) throws {
+        try locked {
+            if meta.str("overview") == nil {
+                let backup = url.appendingPathComponent("notebook.before-page-roots.json")
+                if !FileManager.default.fileExists(atPath: backup.path) {
+                    try Data(contentsOf: metaURL).write(to: backup, options: .atomic)
+                }
+                let file = uniqueFile(for: "Notebook introduction")
+                meta["overview"] = .string(file)
+                setPageProperties(file, role: .notebook)
+                try writeMeta()
+            }
+            if let file = meta.str("overview") { try initializePage(file, title: name, session: session) }
+            var chapters = (meta["chapters"]?.array ?? []).compactMap(\.object)
+            for i in chapters.indices {
+                guard !(chapters[i]["pages"]?.array ?? []).isEmpty || chapters[i].str("intro") != nil else { continue }
+                if chapters[i].str("intro") == nil {
+                    let file = uniqueFile(for: "Chapter " + (chapters[i].str("number") ?? "") + " " + (chapters[i].str("title") ?? "Introduction"))
+                    chapters[i]["intro"] = .string(file)
+                    setPageProperties(file, role: .chapter)
+                    meta["chapters"] = .array(chapters.map(JSON.object))
+                    try writeMeta()
+                }
+                if let file = chapters[i].str("intro") {
+                    try initializePage(file, title: chapters[i].str("title") ?? "Chapter", session: session)
+                }
+            }
+        }
+    }
+
+    /// Attach purpose and sharing metadata to an existing ordinary Markdown page.
+    /// This does not change its bytes, write permissions, history, or editor path.
+    public func setPageProperties(file: String, role: PageRole, scope: PageScope = .notebook) throws {
+        try locked {
+            guard pageFiles.contains(file), readPage(file) != nil else { throw StoreError.notFound }
+            var properties = meta["pageProperties"]?.object ?? [:]
+            properties[file] = .object(["role": .string(role.rawValue), "scope": .string(scope.rawValue)])
+            meta["pageProperties"] = .object(properties)
+            try writeMeta()
+        }
+    }
+
+    private func setPageProperties(_ file: String, role: PageRole) {
+        var properties = meta["pageProperties"]?.object ?? [:]
+        properties[file] = .object(["role": .string(role.rawValue), "scope": .string(PageScope.notebook.rawValue)])
+        meta["pageProperties"] = .object(properties)
+    }
+
+    private func initializePage(_ file: String, title: String, session: String) throws {
+        guard ExistingNotebook.validComponent(file) else { throw StoreError.notFound }
+        let destination = pagesURL.appendingPathComponent(file)
+        guard !FileManager.default.fileExists(atPath: destination.path) else { return }
+        guard !transcript.contains(where: { $0.str("file") == file }) else { return }
+        let text = "---\ntitle: " + JSON.string(title).line + "\n---\n"
+        try Data(text.utf8).write(to: destination, options: .atomic)
+        _ = try appendTranscriptLocked(["role": .string("client"), "purpose": .string("initialize_page"),
+                                       "session": .string(session), "file": .string(file), "hash": .string(Self.hash(text))])
+    }
+
     // MARK: Page writes
 
     /// Sophia saves pages directly. A new page is added to the book; a revision keeps the
@@ -511,7 +607,7 @@ public final class NotebookStore {
     ///
     /// A revision that would change the section the person has open, drop or alter lines they
     /// wrote (unless they released that edit), or drop a quote of their words is not saved:
-    /// the returned entry has `refused: true`, with Sophia's `why` if she gave one.
+    /// the returned entry has `refused: true`, with Sophia's `why` if Sophia gave one.
     @discardableResult
     public func writePage(title: String, content: String, revising file: String?, session: String, toolUseID: String,
                           why: String? = nil, thread: String = "") throws -> JSONObject {
@@ -626,7 +722,7 @@ public final class NotebookStore {
     }
 
     /// Undoes a page write: removes a page Sophia added, or puts back the previous version after
-    /// her revision or the person's edit. Only the latest write to a page can be undone.
+    /// Sophia's revision or the person's edit. Only the latest write to a page can be undone.
     public func undoPageWrite(_ entryID: String, session: String) throws {
         try locked {
             guard let e = transcript.first(where: { $0.str("id") == entryID }), let file = e.str("file"),
@@ -672,7 +768,7 @@ public final class NotebookStore {
                 if let p = e.str("proposal"), let d = e.str("decision"), ["accept", "reject", "replaced"].contains(d) { decided.insert(p) }
                 if let p = e.str("proposal"), e.str("purpose") == "filed_draft" { decided.insert(p) }
             }
-            for e in transcript where e.str("role") == "tool" {
+            for e in transcript where e.str("role") == "tool" && e["purpose"] == nil {
                 guard let pid = e.str("proposal"), !decided.contains(pid), let payload = e["payload"]?.object else { continue }
                 let w = try writePage(title: payload.str("title") ?? "Untitled", content: payload.str("content") ?? "",
                                       revising: nil, session: session, toolUseID: e.str("tool_use") ?? "")
@@ -684,8 +780,8 @@ public final class NotebookStore {
 
     // MARK: Goals Sophia writes
 
-    /// Sophia records a goal she heard in the conversation, or revises one. Her goals are provisional
-    /// until the person confirms them. She can't mark a goal met or dropped, and criteria only grow,
+    /// Sophia records a goal Sophia heard in the conversation, or revises one. Sophia's goals are provisional
+    /// until the person confirms them. Sophia can't mark a goal met or dropped, and criteria only grow,
     /// because notes refer to criteria by position ("g-1#2").
     @discardableResult
     public func writeGoal(text: String, criteria: [String], revising goalID: String?, quote: String?, session: String, thread: String = "") throws -> JSONObject {
@@ -722,7 +818,7 @@ public final class NotebookStore {
 
     /// A note Sophia writes during the conversation. It passes the same checks as checkpoint notes:
     /// quotes must be the person's exact words from this session, and every note must rest on
-    /// something they said or did. Sophia may revise her own notes (for example, to close a
+    /// something they said or did. Sophia may revise Sophia's own notes (for example, to close a
     /// follow-up), never the person's corrections. Returns the saved record, or why it wasn't saved.
     public func writeNote(_ fields: JSONObject, quote: String?, revising noteID: String?, session: String, thread: String = "") throws -> (saved: JSONObject?, problems: [String]) {
         try locked {

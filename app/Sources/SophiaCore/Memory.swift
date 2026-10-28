@@ -1,6 +1,6 @@
 import Foundation
 
-/// Sophia's working memory for one notebook, and recall over her long-term notes.
+/// Sophia's working memory for one notebook, and recall over Sophia's long-term notes.
 ///
 /// Memory is a short set of lines about where the inquiry stands now ("rusty on cross-entropy;
 /// rebuilt it from −log p"). Each line is a `memory` record in learning.jsonl that cites the notes,

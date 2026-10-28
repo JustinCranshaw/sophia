@@ -1043,7 +1043,107 @@ func scenario10IntentionalEngineExit() throws {
     }
 }
 
+func missingRootsAndLegacyEmptyChaptersPreserveReadablePages() throws {
+    let store = try tempStore()
+    let saved = try store.writePage(title: "Existing content", content: "Kept bytes.", revising: nil, session: "check", toolUseID: "content")
+    let file = saved.str("file")!
+    let original = try Data(contentsOf: store.pagesURL.appendingPathComponent(file))
+    try store.ensureOverviewPages(session: "check")
+    let intro = store.overviewPage!.file
+    try FileManager.default.removeItem(at: store.pagesURL.appendingPathComponent(intro))
+    let reopened = try NotebookStore.open(url: store.url)
+    try reopened.ensureOverviewPages(session: "reopen")
+    expect(reopened.readPage(intro) == nil)
+    expect(try Data(contentsOf: reopened.pagesURL.appendingPathComponent(file)) == original)
+    expect(!reopened.needsOverviewPages)
+
+    let legacy = try tempStore()
+    let page = try legacy.writePage(title: "Undone", content: "Temporary.", revising: nil, session: "check", toolUseID: "undone")
+    _ = try legacy.fileInChapter([page.str("file")!], chapter: "Chapter 1: No longer used")
+    try legacy.undoPageWrite(page.str("id")!, session: "check")
+    try legacy.ensureOverviewPages(session: "reopen")
+    expect(legacy.chapters.isEmpty)
+    expect(legacy.meta["chapters"]?.array?.first?["intro"] == nil)
+    expect(!legacy.needsOverviewPages)
+}
+
+func filingPagesKeepsCustomizedIntroAndPersonUndo() throws {
+    let store = try tempStore()
+    let first = try store.writePage(title: "First", content: "One.", revising: nil, session: "check", toolUseID: "first").str("file")!
+    let second = try store.writePage(title: "Second", content: "Two.", revising: nil, session: "check", toolUseID: "second").str("file")!
+    _ = try store.fileInChapter([first], chapter: "Chapter 1: Patterns")
+    try store.ensureOverviewPages(session: "check")
+    let intro = store.chapters[0].intro!.file
+    _ = try store.writePage(title: "A personal introduction", content: "Original.", revising: intro, session: "check", toolUseID: "custom-title")
+    let range = try store.beginEdit(file: intro, key: "(page)", session: "check")!
+    guard case .saved(let edit) = try store.editPage(file: intro, section: "(page)", baseHash: range.hash, text: "Person-authored opening.", session: "check") else { expect(false); return }
+    store.endEdit()
+    let bytes = try Data(contentsOf: store.pagesURL.appendingPathComponent(intro))
+    _ = try store.fileInChapter([second], chapter: "Chapter 1: Patterns")
+    expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(intro)) == bytes)
+    expect(store.isUndoable(edit))
+    _ = try store.fileInChapter([second], chapter: "Chapter 1: Renamed group")
+    expect(try Data(contentsOf: store.pagesURL.appendingPathComponent(intro)) == bytes)
+    expect(store.isUndoable(edit))
+}
+
+func purposeBearingPageProposalsRemainPendingOnReopen() throws {
+    let store = try tempStore()
+    _ = try store.appendTranscript(["role": .string("tool"), "purpose": .string("propose_page"), "proposal": .string("pending-1"),
+                                    "payload": .object(["title": .string("Do not accept"), "content": .string("Unconfirmed personal information")])])
+    let reopened = try NotebookStore.open(url: store.url)
+    expect(reopened.pages.isEmpty)
+    expect(reopened.transcript.count == 1)
+}
+
+func overviewPagesUseTheSameWritesEditsAndUndo() throws {
+    let store = try tempStore()
+    let original = try Data(contentsOf: store.url.appendingPathComponent("notebook.json"))
+    let content = try store.writePage(title: "A saved idea", content: "Original body.", revising: nil, session: "check", toolUseID: "content")
+    let contentFile = content.str("file")!
+    _ = try store.fileInChapter([contentFile], chapter: "Chapter 1: Patterns")
+    let beforeRoots = try Data(contentsOf: store.url.appendingPathComponent("notebook.json"))
+    try store.ensureOverviewPages(session: "check")
+    let root = store.overviewPage!, chapter = store.chapters[0]
+    expect(root.role == .notebook && root.scope == .notebook)
+    expect(chapter.intro?.role == .chapter)
+    expect(store.contentPages.map(\.file) == [contentFile])
+    expect(store.readPage(root.file)?.body == "")
+    expect(try Data(contentsOf: store.url.appendingPathComponent("notebook.before-page-roots.json")) == beforeRoots)
+    expect(original != beforeRoots)
+    let unchangedMeta = try Data(contentsOf: store.url.appendingPathComponent("notebook.json"))
+    let unchangedTranscript = store.transcript
+    try store.ensureOverviewPages(session: "reopen")
+    expect(try Data(contentsOf: store.url.appendingPathComponent("notebook.json")) == unchangedMeta)
+    expect(store.transcript == unchangedTranscript)
+    let range = try store.beginEdit(file: root.file, key: "(page)", session: "check")!
+    let saved = try store.editPage(file: root.file, section: "(page)", baseHash: range.hash, text: "My introduction.\n", session: "check")
+    store.endEdit()
+    guard case .saved(let edit) = saved else { expect(false); return }
+    let refused = try store.writePage(title: root.title, content: "Overwritten intro.", revising: root.file, session: "check", toolUseID: "refused")
+    expect(refused["refused"] == .bool(true))
+    try store.undoPageWrite(edit.str("id")!, session: "check")
+    expect(store.readPage(root.file)?.body == "")
+    expect(store.pageFiles.contains(root.file))
+    let reopened = try NotebookStore.open(url: store.url)
+    expect(reopened.overviewPage?.file == root.file)
+    expect(!reopened.unfiledPages.contains(where: { $0.file == root.file }))
+    let renamed = try reopened.fileInChapter([contentFile], chapter: "Chapter 1: Renamed")
+    expect(renamed.id == chapter.id)
+    _ = try reopened.fileInChapter([contentFile], chapter: "Chapter 2: Moved")
+    expect(reopened.chapters.contains(where: { $0.id == chapter.id && $0.pages.isEmpty }))
+    expect(reopened.readPage(chapter.intro!.file) != nil)
+    let existing = ExistingNotebook(root: store.url.deletingLastPathComponent(), name: store.name)!
+    expect(existing.readPage(root.file) != nil)
+    expect(existing.pageList().contains(root.file))
+    expect(Prompts.pageList(reopened).contains(root.file))
+}
+
 let all: [(String, () throws -> Void)] = [
+    ("missingRootsAndLegacyEmptyChaptersPreserveReadablePages", missingRootsAndLegacyEmptyChaptersPreserveReadablePages),
+    ("filingPagesKeepsCustomizedIntroAndPersonUndo", filingPagesKeepsCustomizedIntroAndPersonUndo),
+    ("purposeBearingPageProposalsRemainPendingOnReopen", purposeBearingPageProposalsRemainPendingOnReopen),
+    ("overviewPagesUseTheSameWritesEditsAndUndo", overviewPagesUseTheSameWritesEditsAndUndo),
     ("almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes", almanacControlledEngineKeepsRouteGuardEvidenceAndCancelledBytes),
     ("almanacContextAndCapabilitiesExcludeUnselectedPrivateMaterial", almanacContextAndCapabilitiesExcludeUnselectedPrivateMaterial),
     ("almanacDailyAdmissionHasNoCatchupOrAutomaticRetryDebt", almanacDailyAdmissionHasNoCatchupOrAutomaticRetryDebt),

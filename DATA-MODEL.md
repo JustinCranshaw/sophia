@@ -15,7 +15,7 @@ A notebook holds knowledge that both Justin and Sophia read, rely on, and correc
 
 - Sophia saves pages directly with `write_page`; there are no drafts to accept (the person's decision, 2026-10-14). Authored content-changing page writes are recorded, a revision keeps the version it replaced, and the latest eligible action can be undone. An unchanged request has no Undo; unknown-provenance interrupted disk states are preserved for inspection instead of inferred destructive Undo. Tools never delete pages.
 - The person's actual words, Sophia's interpretations, and source material stay distinguishable. (AGENTS.md product principles; SOPHIA.md, teaching and evidence)
-- Progress toward goals is shown as evidence, never as a score. Sophia records goals she hears in the conversation (`set_goal`); they are provisional until the person confirms them, and only the person marks a goal met or dropped. (SOPHIA.md, goals)
+- Progress toward goals is shown as evidence, never as a score. Sophia records goals Sophia hears in the conversation (`set_goal`); they are provisional until the person confirms them, and only the person marks a goal met or dropped. (SOPHIA.md, goals)
 - Reading or agreeing is not evidence of understanding; assessments stay tentative. (PLAN.md, companion requirements; SOPHIA.md:33)
 - Attempts are recorded quietly, reviewable and deletable. A page may quote the person's words, as a block quote.
 - Notes reference the conversation instead of copying it; the native client requests a checkpoint through Finish for now or catch-up on return; quitting does not save notes. (PLAN.md, saving and return)
@@ -54,20 +54,20 @@ Sophia has three layers of memory.
 - **What it is:** `memory` records in learning.jsonl. At most 10 short lines on where the inquiry stands now. Each line has `refs` that must resolve: notes, messages, pages, or goal criteria. Forgetting a line therefore loses no evidence.
 - **Who writes it:** Sophia rewrites the set whole, with `set_memory` or in the checkpoint reply (`{"notes": […], "memory": […]}`). The store keeps unchanged lines, writes a replacing record for a reworded line, and writes a `retired` record for a line left out. A checkpoint reply with no memory, or an empty one, leaves the memory unchanged.
 - **The person's control:** they can correct or forget a line, and Sophia can't change or drop a line they corrected.
-- **What Sophia sees:** the memory at the start of each conversation, and her notes only through `recall`.
+- **What Sophia sees:** the memory at the start of each conversation, and Sophia's notes only through `recall`.
 
 **Long-term notes (one notebook).** The notes described below. `recall` finds them by id, by page reference, or by words (all must appear), and it also finds matching messages from the person.
 
 **About you (every notebook).**
 - **What it is:** lines in `<library>/.sophia/about.jsonl`: the person's background and standing preferences, never topic details or judgments of ability.
-- **Sophia's proposals:** she proposes a line with `about_you`. It needs a quote that matches the person's words in that notebook, records the notebook it came from, and is limited to 12 lines in all. A proposed line is provisional. It is visible to Sophia only in its notebook until the person confirms it, which writes a replacing record by the person.
+- **Sophia's proposals:** Sophia proposes a line with `about_you`. It needs a quote that matches the person's words in that notebook, records the notebook it came from, and is limited to 12 lines in all. A proposed line is provisional. It is visible to Sophia only in its notebook until the person confirms it, which writes a replacing record by the person.
 - **The person's control:** they can add, reword, or delete lines, and Sophia can't revise a confirmed line.
 
 **Links (between notebooks).**
 - **What a link is:** a `links.jsonl` record, `{from: {notebook, page?, section?}, to: {notebook, page, section?}, reason}`.
 - **How one is made:** Sophia proposes it with `link`. The target page must exist. The person confirms or removes it.
 - **Sections:** a page's `##` and `###` headings, outside code fences. A link can point into a section. The section's title must match one on the page (ignoring case, spacing, and punctuation) and is stored as written there. Following a link scrolls to that section.
-- **What Sophia sees across notebooks:** only the other notebooks' chapter, page, and section titles. She can read a page in another notebook, or one section of it, only through a confirmed link (`read_page` with `notebook` and optionally `section`).
+- **What Sophia sees across notebooks:** only the other notebooks' chapter, page, and section titles. Sophia can read a page in another notebook, or one section of it, only through a confirmed link (`read_page` with `notebook` and optionally `section`).
 - **Keeping a notebook out:** a notebook with `"separate": true` in notebook.json isn't listed, linked, or readable from others. It sees none of them, and can't be linked.
 - **Locking:** library files are written under a lock on `<library>/.sophia/.lock`. Deleting a line or link removes its whole chain.
 
@@ -75,13 +75,15 @@ Pages are Markdown because people read them as prose. The two logs are JSON Line
 
 Page bodies and Sophia's replies use LaTeX math within Markdown: `$...$` for inline expressions and `$$` on separate lines around display equations. The reader also accepts `\(...\)` and `\[...\]`. Store the original Markdown and TeX, not rendered HTML; rendering is local and does not execute page HTML, JavaScript, or LaTeX programs. Existing Unicode notation remains readable.
 
-Pages may also contain music as ABC notation in ```` ```abc ```` fences ([MUSIC.md](MUSIC.md)), optionally starting with one line of JSON options and a `---` line. The fence's text is the record; the reader typesets it locally with abcjs, and nothing about the rendering (SVG, warnings) is stored. Warnings reach Sophia only through her next turn's context.
+Pages may also contain music as ABC notation in ```` ```abc ```` fences ([MUSIC.md](MUSIC.md)), optionally starting with one line of JSON options and a `---` line. The fence's text is the record; the reader typesets it locally with abcjs, and nothing about the rendering (SVG, warnings) is stored. Warnings reach Sophia only through Sophia's next turn's context.
 
 ### Structure: notebook.json
 
 ```json
 { "chapters": [ { "number": "0", "title": "Foundations", "pages": ["0-0-probability.md", "0-1-entropy.md"] } ],
-  "unfiled": ["roadmap.md"] }
+  "unfiled": ["roadmap.md"],
+  "overview": "notebook-introduction.md",
+  "pageProperties": {"notebook-introduction.md": {"role": "notebook", "scope": "notebook"}} }
 ```
 
 `learning_ids` is a small per-prefix high watermark, for example `{"n": "37", "g": "4"}` (decimal strings avoid JSON number precision loss). Learning writes reserve the next ID here under the notebook lock before appending; failed writes may leave gaps. Deletion preserves the watermark, and reopening never recycles an issued identity. Legacy notebooks seed the floor from existing learning IDs and known structured references, not prose. Restore refuses an ID collision before changing records and keeps the pending Undo available with an error. Existing duplicated identities are not guessed apart or repaired automatically; preserve the notebook and a known-good backup before resolving past ambiguity.
@@ -89,7 +91,11 @@ Pages may also contain music as ABC notation in ```` ```abc ```` fences ([MUSIC.
 This is the only place chapter membership and order live. A page's header holds its title and sources, not its chapter.
 - **Chapter number:** optional. Numbered chapters are kept in number order.
 - **Page numbers:** a page's section number, if any, is part of its title ("0.1 Entropy"); the app sets it apart in the header and contents.
-- **Who files pages:** Sophia puts pages in chapters with `set_chapter`, or with `chapter` on `write_page`. Moving a page never changes its content. A chapter with no pages is removed.
+- **Who files pages:** Sophia puts pages in chapters with `set_chapter`, or with `chapter` on `write_page`. Moving a page never changes its content. Chapters with an introduction keep their identity and introduction even when their child list becomes empty. Legacy empty chapters without an introduction stay hidden and can still be removed. An explicit chapter rename updates the introduction title only while that title still matches the previous default; this is an ordinary recorded revision. Customized introduction titles and their Undo remain unchanged by filing or renaming the group.
+
+Notebook and chapter introductions are ordinary Markdown pages with the same file identity, source editor, checked writes, person-edit protection, previous version and Undo as other pages. `overview` names the notebook introduction; each chapter may have an `intro` filename. The file is also the chapter's stable identity. `pageProperties` adds role and scope without putting structural markers in the Markdown body; those labels grant no additional agent permissions. Roles currently reserved are `content` (legacy default), `notebook`, `chapter`, `about`, `goals`, `notes` and `memory`; scope defaults to `notebook`.
+
+On opening the native notebook, introduction filenames are reserved under the lock before initially empty files are created. Reopening resumes those same reservations and never regenerates an existing body. A one-time `notebook.before-page-roots.json` keeps the original ordering metadata; existing Markdown and JSONL are preserved. Initialization is a client `initialize_page` record, not an authored change with destructive new-page Undo. Later writes and edits use normal page actions. The outline is a current projection of membership, attached after the authored body; it is never inserted into the source or generated on navigation.
 
 ### Pages
 
@@ -135,9 +141,9 @@ Every entry: `{ "id", "at", "role": "person" | "sophia" | "tool" | "client", ...
 - `{ "role": "person", "purpose": "release_edit", "entry": <edit_page id>, "page" }` lets Sophia change that edit's lines; `{ "role": "client", "purpose": "undo_release", "entry": <release id>, "page" }` takes it back.
 
 **What a thread shows and what Sophia receives.** Nothing below is stored; each is worked out from the entries above when the thread is shown or a message is sent. A thread's "messages" are its person and Sophia entries without a `purpose`.
-- **What Sophia has word for word.** A thread's messages from just after the latest checkpoint's `through`, counted from the position of `through` rather than of the checkpoint entry, because a message sent while notes were being written falls between the two. Before that point she has her notes. She also gets the thread's last 6 messages at or before `through` (the carried exchanges). Nothing before the thread's latest `clear` is sent again. The message being answered is not repeated in the context; it arrives as the turn itself. Her context also shows, where they happened, one line for each page write, refused write and release in the thread, plus each WebFetch response (failed/declined requests are labeled as outcomes, not extracted passages); these are not messages. None of this is marked for the person: a thread reads as one conversation, and the exact words of anything older come back through `recall`.
+- **What Sophia has word for word.** A thread's messages from just after the latest checkpoint's `through`, counted from the position of `through` rather than of the checkpoint entry, because a message sent while notes were being written falls between the two. Before that point Sophia has Sophia's notes. Sophia also gets the thread's last 6 messages at or before `through` (the carried exchanges). Nothing before the thread's latest `clear` is sent again. The message being answered is not repeated in the context; it arrives as the turn itself. Sophia's context also shows, where they happened, one line for each page write, refused write and release in the thread, plus each WebFetch response (failed/declined requests are labeled as outcomes, not extracted passages); these are not messages. None of this is marked for the person: a thread reads as one conversation, and the exact words of anything older come back through `recall`.
 - **Earlier on this page (proposed UI).** Fold a thread's entries before its latest legacy/proposed `clear`; the current native app does not show this control.
-- **Creating exchange (implemented context helper; proposed card UI).** A page's origin is derived from the `write_page` entry that created it, and remains in the transcript. Its `page` names the thread; the person's message before it in that thread is the question; Sophia's first text in that same turn, before the next person message, is her first line, and if there is none the card shows the question alone. The derived exchange is supplied in that page thread's context. A persistent “Started from” card/link and folded-history reveal are not present in the current native UI; a page with no creating entry has no derived exchange.
+- **Creating exchange (implemented context helper; proposed card UI).** A page's origin is derived from the `write_page` entry that created it, and remains in the transcript. Its `page` names the thread; the person's message before it in that thread is the question; Sophia's first text in that same turn, before the next person message, is Sophia's first line, and if there is none the card shows the question alone. The derived exchange is supplied in that page thread's context. A persistent “Started from” card/link and folded-history reveal are not present in the current native UI; a page with no creating entry has no derived exchange.
 - **Opened source evidence.** A `role: "tool", tool: "WebFetch"` transcript entry retains the exact provider `content`, `is_error`, requested `url` and `tool_use_id` in the originating conversation. `returned_url`, `http_status` and `location` are included only when the actual tool result reports them. The viewer shows plain selectable extraction text, distinct from Sophia's interpretation; it does not execute HTML or claim raw full text/independently verified quotation. Approval itself is temporary process state, never a notebook allowlist. Denied/failed tool outcomes are evidence too.
 - **An unfinished question.** The latest person question in a thread without a later `replied`, `stopped` or `clear` boundary is eligible for explicit **Retry** when that thread has no running or queued reply. It shows **Not answered yet**, or **Reply interrupted** if partial Sophia text exists. Retry reuses the exact saved id/text and stores no new person entry. Older questions without a `page` field are eligible when they have no later reply or tool output, or when page-stamped reply or tool output identifies a newer retry attempt (shared-memory housekeeping is excluded); genuinely old output is ambiguous because old clients wrote no completion markers. A crash after a complete-looking reply but before `replied` is recorded still counts as interrupted.
 
@@ -225,8 +231,8 @@ A goal's history is its chain of `replaces`: rewording, adding criteria, confirm
    - **During the conversation**, with the `note` tool:
      - Kinds `attempt`, `question`, `follow_up` and `background`.
      - At most 8 new notes per session; revising one doesn't count.
-     - The store finds the person's message that a quote comes from: first in this conversation, then anywhere in this session. A goal Sophia records cites the latest message in the conversation she is answering.
-     - Sophia may revise her own notes, for example to close a follow-up, by writing a record that `replaces` the old one. She may not revise a note the person corrected.
+     - The store finds the person's message that a quote comes from: first in this conversation, then anywhere in this session. A goal Sophia records cites the latest message in the conversation Sophia is answering.
+     - Sophia may revise Sophia's own notes, for example to close a follow-up, by writing a record that `replaces` the old one. Sophia may not revise a note the person corrected.
      - Each note gets a `{role: "tool", tool: "note", record}` transcript entry, shown as one line in the conversation.
    - **The checkpoint:** a list of `attempt`, `read`, `question`, `follow_up`, `background` and `next_step` records, adding only what the live notes missed.
    - **The return briefing:** one `briefing` record.
@@ -271,22 +277,22 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 
   "Show record" exposes any raw entry.
 - **Sophia**, when a thread's conversation starts, receives:
-  - the goals, About you, her memory, other notebooks by title, and the page list;
+  - the goals, About you, Sophia's memory, other notebooks by title, and the page list;
   - for a page thread:
     - that page's body;
-    - her notes that cite the page or a message in its thread;
+    - Sophia's notes that cite the page or a message in its thread;
     - if the page was written from another conversation, the derived exchange that created it;
   - the thread's carried exchanges and its later messages, word for word.
 
   Other pages come through `read_page`, and older exchanges through `recall`.
 - **With each message**, the app sends Sophia:
-  - the page edits, releases and undos since her last turn in that thread;
-  - a line if her page was revised from another conversation, or a change of hers to it was undone;
+  - the page edits, releases and undos since Sophia's last turn in that thread;
+  - a line if Sophia's page was revised from another conversation, or a change by Sophia to it was undone;
   - one line per other thread active since then.
 
-  She never gets another thread's words.
+  Sophia never gets another thread's words.
 
-  The briefing she writes must reference the records it rests on, so the person can follow every claim to its evidence and correct it.
+  The briefing Sophia writes must reference the records it rests on, so the person can follow every claim to its evidence and correct it.
 
 ## Why each retained part is needed
 
@@ -298,7 +304,7 @@ Page writes and edits are undone by the rule in "The conversation log", not this
 - **Session stamp and `through`:** needed so quotes can be limited to the messages a checkpoint covers (which prevents a deleted attempt being recreated) and so the app can count what each checkpoint noted.
 - **Chapter structure only in notebook.json:** one source of truth for structure; a chapter field in each page header would duplicate it.
 - **`page` on transcript entries, stamped where each entry is written:** needed so each page's thread shows only its own conversation, refusals and edit markers, and so a page Sophia writes from another page's thread names where it started. Two simpler options were rejected:
-  - Assigning entries by position fails: a message sent in one thread while Sophia answers in another lands among her later entries.
+  - Assigning entries by position fails: a message sent in one thread while Sophia answers in another lands among Sophia's later entries.
   - A file per thread was rejected because the transcript already orders everything.
 
   A missing `page` means Contents, so older notebooks need no migration.

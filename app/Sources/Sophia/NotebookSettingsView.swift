@@ -52,20 +52,3 @@ struct NotebookSettingsView: View {
         .onChange(of: session.pendingSectionID) { _, _ in close() }
     }
 }
-
-/// Shared records retain their existing confirmation/correction rules, outside page conversation.
-struct SharedAboutView: View {
-    @ObservedObject var session: NotebookSession
-    let close: () -> Void
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Shared across your Library").font(.headline)
-                Spacer()
-                Button("Done", action: close).keyboardShortcut(.cancelAction)
-            }.padding(18)
-            Divider()
-            AboutView(session: session)
-        }.frame(width: 740, height: 540)
-    }
-}
