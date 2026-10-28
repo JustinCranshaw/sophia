@@ -5,7 +5,7 @@ import SophiaReader
 /// One open notebook: its files, its conversation process, and what the person is looking at.
 /// The person's actions write through the store; Sophia's output is checked before it is stored.
 final class NotebookSession: ObservableObject {
-    enum Place: Hashable { case contents, goals, notes, about, chapter(String), page(String) }
+    enum Place: Hashable { case contents, goals, notes, memory, about, chapter(String), page(String) }
     enum Request: Equatable {
         /// Notes on the person's messages up to `through`; quotes may come only from `entries`.
         case checkpoint(through: String, entries: Set<String>, catchUp: Bool)
@@ -35,7 +35,9 @@ final class NotebookSession: ObservableObject {
         case .contents, .about: activeThread = ""
         case .chapter(let id): activeThread = store.chapters.first { $0.id == id }?.intro?.file ?? ""
         case .page(let file): activeThread = file
-        default: break
+        case .goals: activeThread = store.notebookPage(role: .goals)?.file ?? ""
+        case .notes: activeThread = store.notebookPage(role: .notes)?.file ?? ""
+        case .memory: activeThread = store.notebookPage(role: .memory)?.file ?? ""
         } }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
         pendingSource = engines[activeThread]?.pendingSource
@@ -44,6 +46,9 @@ final class NotebookSession: ObservableObject {
     var visiblePage: NotebookStore.Page? {
         switch place {
         case .page(let file): return store.page(file)
+        case .goals: return store.notebookPage(role: .goals)
+        case .notes: return store.notebookPage(role: .notes)
+        case .memory: return store.notebookPage(role: .memory)
         case .about where isSharedAbout: return store.page(ClaudeEngine.sharedAboutFile)
         case .contents: return isSharedAbout ? store.page(ClaudeEngine.sharedAboutFile) : store.overviewPage
         case .chapter(let id): return store.chapters.first { $0.id == id }?.intro
@@ -61,12 +66,8 @@ final class NotebookSession: ObservableObject {
     @Published var pendingSource: SourcePermissionBridge.Request?
     @Published var editRecovery = PageEditRecovery()
     @Published var problem: String?
-    @Published var goalReviewID: String?
-    @Published var goalProblem: String?
-    @Published var learningProblem: String? // Notes feedback must not replace an unsaved page-edit recovery message.
     @Published var editing: PageEditing?             // the range of a page open in the editor
     @Published var composerFocused = false           // the conversation's composer has focus; an open editor's strip dims
-    @Published var lastDeleted: [JSONObject]?        // records; Undo lasts until the next message
     struct SectionNavigation {
         let id = UUID()
         let target: SectionTarget?
@@ -132,7 +133,10 @@ final class NotebookSession: ObservableObject {
         store = try NotebookStore.open(url: url)
         library = LibraryStore(root: libraryRoot ?? url.deletingLastPathComponent())
         session = store.newSessionID()
-        do { if !isSharedAbout { try store.ensureOverviewPages(session: session) } }
+        do { if !isSharedAbout {
+            try store.ensureOverviewPages(session: session)
+            try store.ensureNotebookPages(session: session)
+        } }
         catch { problem = "The introduction could not be prepared. Existing pages remain available. " + error.localizedDescription }
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
         store.endEdit()
@@ -310,7 +314,7 @@ final class NotebookSession: ObservableObject {
     func send(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty, canSend else { return }
-        problem = nil; lastDeleted = nil
+        problem = nil
         do {
             let entry = try store.appendTranscript(["role": .string("person"), "page": .string(activeThread), "session": .string(session), "text": .string(t)])
             queue.append(Turn(id: entry.str("id")!, thread: activeThread, text: t))
@@ -332,7 +336,7 @@ final class NotebookSession: ObservableObject {
             if engine === old { engine = nil }
             old.stop()
         }
-        problem = nil; lastDeleted = nil; briefAfterNotes = false
+        problem = nil; briefAfterNotes = false
         if request == .briefing { dropBriefing = true }
         let retry = "[Sophia app] The person chose Retry for saved question \(entryID). Use any reply or page changes already in the conversation; continue the answer without repeating saved writes. Their unchanged question follows.\n\n" + text
         queue.append(Turn(id: entryID, thread: thread, text: retry))
@@ -402,7 +406,7 @@ final class NotebookSession: ObservableObject {
         switch r {
         case .checkpoint(let through, let entries, let catchUp):
             do {
-                let result = try store.finishCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
+                let result = try store.finishNotebookPageCheckpoint(text, failed: failed, through: through, entries: entries, session: session, catchUp: catchUp)
                 if result == .saved { engines.values.forEach { $0.stop() }; engines = [:] }
                 else {
                     briefAfterNotes = false
@@ -602,87 +606,8 @@ final class NotebookSession: ObservableObject {
         changed()
     }
 
-    // MARK: The person's records
-
-    @discardableResult
-    func addGoal(_ text: String) -> Bool {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return false }
-        do {
-            let saved = try store.appendLearning(["kind": .string("goal"), "text": .string(t), "status": .string("working"), "criteria": .array([])], by: "person", session: session)
-            goalReviewID = saved.str("id"); goalProblem = nil; changed(); return true
-        } catch { goalReviewID = nil; goalProblem = error.localizedDescription; changed(); return false }
-    }
-
-    func reviewGoal(_ recordID: String, navigate: Bool = true) {
-        store.reload()
-        let root = store.rootID(of: recordID)
-        let current = store.goals.first { store.rootID(of: $0.str("id") ?? "") == root }
-        goalReviewID = current?.str("id")
-        goalProblem = current?.str("id") == recordID ? nil : "That goal changed. Review its current version before deciding."
-        if navigate { show(.goals) }
-    }
-
-    /// Person edits apply only to the current confirmed version, never an unseen proposal.
-    @discardableResult
-    func updateGoal(_ goal: JSONObject, text: String? = nil, status: String? = nil, addCriterion: String? = nil) -> Bool {
-        guard let id = goal.str("id") else { return false }
-        do {
-            let saved = try store.updatePersonGoal(id, text: text, status: status, addCriterion: addCriterion, session: session)
-            goalReviewID = saved.str("id"); goalProblem = nil; changed(); return true
-        } catch { goalActionFailed(goal, error: error); return false }
-    }
-
-    func confirmGoal(_ goal: JSONObject) {
-        guard let id = goal.str("id") else { return }
-        do {
-            let saved = try store.confirmGoalProposal(id, session: session)
-            goalReviewID = saved.str("id"); goalProblem = nil
-        } catch { goalActionFailed(goal, error: error) }
-        changed()
-    }
-
-    func dropGoalProposal(_ goal: JSONObject) {
-        guard let id = goal.str("id") else { return }
-        do {
-            let saved = try store.dropGoalProposal(id, session: session)
-            goalReviewID = saved.str("id"); goalProblem = nil
-        } catch { goalActionFailed(goal, error: error) }
-        changed()
-    }
-
-    func discardGoal(_ goal: JSONObject) {
-        guard let id = goal.str("id") else { return }
-        do {
-            let removed = try store.declineGoalProposal(id, session: session)
-            if !removed.isEmpty { lastDeleted = removed }
-            goalProblem = nil
-        } catch { goalActionFailed(goal, error: error) }
-        changed()
-    }
-
-    private func goalActionFailed(_ goal: JSONObject, error: Error) {
-        let root = store.rootID(of: goal.str("id") ?? "")
-        goalReviewID = store.goals.first { store.rootID(of: $0.str("id") ?? "") == root }?.str("id")
-        goalProblem = error.localizedDescription
-        changed()
-    }
-
     // MARK: About you and links (library-wide)
 
-    func confirmAbout(_ line: JSONObject) {
-        try? library.setAbout(text: line.str("text") ?? "", replacing: line.str("id"), notebook: nil)
-        changed()
-    }
-
-    func editAbout(_ line: JSONObject?, text: String) {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return }
-        try? library.setAbout(text: t, replacing: line?.str("id"), notebook: line == nil ? store.name : nil)
-        changed()
-    }
-
-    func deleteAbout(_ id: String) { try? library.deleteAbout(id); changed() }
     func confirmLink(_ id: String) { try? library.confirmLink(id); changed() }
     func removeLink(_ id: String) { try? library.deleteLink(id); changed() }
 
@@ -702,26 +627,4 @@ final class NotebookSession: ObservableObject {
 
     func setSeparate(_ on: Bool) { try? store.setSeparate(on); changed() }
 
-    @discardableResult
-    func correct(_ recordID: String, text: String) -> Bool {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { return false }
-        do {
-            try store.appendLearning(["kind": .string("correction"), "replaces": .string(recordID), "text": .string(t)], by: "person", session: session)
-            learningProblem = nil; changed(); return true
-        } catch { learningProblem = "Couldn't save your correction: " + error.localizedDescription; changed(); return false }
-    }
-
-    func delete(_ recordID: String) {
-        do { lastDeleted = try store.deleteLearning(recordID); learningProblem = nil }
-        catch { learningProblem = "Couldn't delete that record: " + error.localizedDescription }
-        changed()
-    }
-
-    func undoDelete() {
-        guard let records = lastDeleted else { return }
-        do { try store.restoreLearning(records); lastDeleted = nil; learningProblem = nil }
-        catch { learningProblem = "Couldn't restore those records: " + error.localizedDescription }
-        changed()
-    }
 }

@@ -133,8 +133,6 @@ struct OpenNotebookRows: View {
         .help(p.title)
     }
 
-    var noteCount: Int { session.store.shownNotes.count }
-
     @ViewBuilder
     func row(_ place: NotebookSession.Place, _ title: String, _ icon: String, bold: Bool = false, indent: Bool = false,
              indentBy: CGFloat? = nil, number: String? = nil, trailing: String? = nil, subtitle: String? = nil) -> some View {

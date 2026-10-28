@@ -191,7 +191,7 @@ func readPage(_ name: String?, notebook other: String?, section: String?) -> Str
         return "# \(page.title)\n(from the notebook \(other))\n\n\(page.body)"
     }
     guard let name, !name.isEmpty else {
-        return local.pageFiles.isEmpty ? "The book has no pages yet." : local.pageList()
+        return local.pageFiles.isEmpty ? "The book has no pages yet." : local.pageList(includeNotebookPages: true)
     }
     let file = name
     guard let page = local.readPage(file) else { return "No page named \(name). Call read_page without a file name to list the pages." }
@@ -307,6 +307,7 @@ func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
         case "set_goal":
             guard let content = a["content"] as? String else { return "Not proposed: supply the complete Markdown content." }
             let proposal = try store.proposeGoalsPage(content: content, quote: a["quote"] as? String ?? "", session: session, thread: thread)
+            try store.appendTranscript(["role": .string("tool"), "tool": .string("set_goal"), "session": .string(session), "page": .string(thread), "record": proposal["id"]!])
             return "Proposed Goals page change \(proposal.str("id") ?? ""). The person must review and accept it; the saved page is unchanged."
         default:
             return "Unknown tool."

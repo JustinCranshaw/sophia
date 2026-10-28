@@ -32,9 +32,10 @@ public enum Prompts {
 
     /// The book's pages by chapter, with file names, for Sophia. With `sections`, each page's
     /// section titles follow it (used for other notebooks, so Sophia can link into a section).
-    public static func pageList(_ store: NotebookStore, sections: Bool = false) -> String {
+    public static func pageList(_ store: NotebookStore, sections: Bool = false, includeNotebookPages: Bool = false) -> String {
         let overview = store.overviewPage.map { "Notebook introduction: \($0.file) — \($0.title)\n" } ?? ""
-        return overview + pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
+        let notebookPages = includeNotebookPages ? store.pages.filter { [.goals, .notes, .memory].contains($0.role) }.map { "Notebook page: \($0.file) — \($0.title)" }.joined(separator: "\n") + "\n" : ""
+        return overview + notebookPages + pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
             sections ? store.sections(of: file).map(\.title) : []
         }
     }
@@ -105,7 +106,7 @@ public enum Prompts {
     /// Added to the system prompt when the conversation process starts.
     public static func context(_ store: NotebookStore, thread: String = "", before: String? = nil, canOpenSources: Bool = false) -> String {
         _ = try? store.ensureNotebookPages(session: "context")
-        let pages = pageList(store)
+        let pages = pageList(store, includeNotebookPages: true)
         let library = LibraryStore(root: store.url.deletingLastPathComponent())
         let separate = store.isSeparate
         let linkTool = separate ? "" : "\n- Other notebooks are listed below by chapter and page title; that's all you see of them. Sections (§) are listed under each page. When a page or section here genuinely connects to one there, `link` proposes the link with a one-line reason; link to a section when the connection is that specific. Once the person confirms a link you can read that page, or just the section, with `read_page` (pass `notebook`, and `section`). Propose a link only when the connection would help, not for every shared word."
@@ -125,7 +126,7 @@ public enum Prompts {
         - The person can edit pages themselves, a section at a time. You're told about their edits at your next turn. Lines they wrote, and block quotes of their words, are protected: a `write_page` revision that drops or changes them is refused and nothing is saved. Keep their lines exactly and revise around them; if their text itself should change, say why in the conversation and pass the reason as `why`. They can let you change it, and you'll be told. While they have a section open, revisions that change it are refused; don't retry, answer in the conversation.
         - `read_page` takes a file name from the list below; without one it lists the pages. The list below is from when this conversation started, so call `read_page` for the current list.
         - `set_goal` proposes a complete Markdown Goals page body, based on the person’s exact words as `quote`. Preserve accepted goals they still want. A proposal does not change the saved page: the person reviews and accepts it. Goals are ordinary prose; formatting does not create formal status or evidence of understanding. Do not infer confirmation, met or dropped status from a Markdown edit.
-        - Pages and your replies render Markdown with LaTeX math. Use $...$ for inline mathematics and $$ on separate lines for display equations. Use LaTeX for fractions, subscripts, matrices, and aligned derivations; don't put equations in code fences. Escape literal currency dollars as \\$ in Markdown. Music goes in ```abc fences (ABC notation), which the reader typesets as staff notation. Keep page titles, goal titles, and goal criteria in plain text.
+        - Pages and your replies render Markdown with LaTeX math. Use $...$ for inline mathematics and $$ on separate lines for display equations. Use LaTeX for fractions, subscripts, matrices, and aligned derivations; don't put equations in code fences. Escape literal currency dollars as \\$ in Markdown. Music goes in ```abc fences (ABC notation), which the reader typesets as staff notation. Keep page titles in plain text; Goals uses ordinary Markdown prose.
         - Current Markdown pages take precedence over historical note, goal and memory records. Historical source records preserve provenance and evidence; do not treat those records as a second current version of edited pages.
         - Messages that begin with "[Sophia app]" come from the app, not the person. Follow their output format exactly.
 

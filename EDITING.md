@@ -8,6 +8,9 @@ This reverses the earlier "no conventional editor" scope. It came from outside r
 
 ## Current implementation and evidence
 
+The same editor and checked write/Undo path apply to notebook and chapter introductions, Goals, Sophia’s notes, Working memory and the shared About page. Role metadata changes tool permissions, not the Markdown body format. Accepted whole-page proposals are person edits; a pending proposal is stale after any file change. Imported legacy protection has `migrationSource` and is not a new person action or Undo.
+
+
 Phase 1 is implemented: CodeMirror styled-source editing in the local reader, protected/open-range checks, byte-exact range splicing, previous-version Undo and explicit permission release. The reader also reports editor drafts/caret/commit events and notation warnings; it is not only a height bridge. Authored page Undo lasts until the next action on that page, across messages and relaunch, subject to current/previous hashes. Unchanged commits write nothing. Unknown-provenance disk states are inspected, never inferred to be undoable authored edits.
 
 The October 15 reader/scroll-spike results below are recorded observations, not rerun by this documentation change. [The later package report](research/2026-10-25-packaged-release/README.md) records actual release reader checks and distinguishes them from packaged native UI. Manual VoiceOver, physical trackpad/selection and other unresolved checks stay explicit. The original pre-editor source inspection (“no way to write a page”, Undo until the next message) is superseded by the implemented rules above.

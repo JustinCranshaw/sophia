@@ -224,7 +224,7 @@ extension NotebookStore {
                 let result = try writeNotebookLearningPage(role: role, content: body, quote: quote, refs: refs, session: session, thread: "", quoteEntries: entries)
                 if result["refused"] == .bool(true) { return .failed }
             }
-            try appendTranscript(["role": .string("client"), "purpose": .string("checkpoint"), "page": .string(""), "through": .string(through), "session": .string(session), "catch_up": .bool(catchUp), "kept": .array([])])
+            try appendTranscript(["role": .string("client"), "purpose": .string("checkpoint"), "page": .string(""), "through": .string(through), "session": .string(session), "catch_up": .bool(catchUp), "page_format": .string("markdown"), "kept": .array([])])
             return .saved
         }
     }

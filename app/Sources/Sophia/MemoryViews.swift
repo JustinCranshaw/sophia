@@ -4,114 +4,6 @@ import SophiaCore
 // What Sophia keeps beyond a single note: Sophia's working memory for the notebook, "About you"
 // (shared by every notebook), and links between notebooks. The person can see and change all of it.
 
-/// "What Sophia is keeping in mind": Sophia's working memory, at the top of Sophia's notes.
-struct MemoryCard: View {
-    @ObservedObject var session: NotebookSession
-    @State private var correcting: String?
-    @State private var draft = ""
-
-    var body: some View {
-        let store = session.store
-        VStack(alignment: .leading, spacing: 10) {
-            Text("WHAT SOPHIA IS KEEPING IN MIND").font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(Brand.plum)
-            if store.memory.isEmpty {
-                Text("Nothing yet. Sophia keeps a few lines here on where things stand, and looks up Sophia's notes when Sophia needs more.")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-            ForEach(store.memory, id: \.self.line) { m in
-                let id = m.str("id") ?? ""
-                VStack(alignment: .leading, spacing: 4) {
-                    if let c = store.correction(of: id) {
-                        Text(c.str("text") ?? "").font(.system(size: 15, design: .serif))
-                        Text("Your correction. Sophia had: “\(m.str("text") ?? "")”").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        Text(m.str("text") ?? "").font(.system(size: 15, design: .serif))
-                    }
-                    if correcting == id {
-                        TextField("What's true instead?", text: $draft).textFieldStyle(.roundedBorder)
-                        HStack {
-                            Button("Save") { if session.correct(id, text: draft) { correcting = nil } }.buttonStyle(.borderedProminent)
-                            Button("Cancel") { correcting = nil }
-                        }.controlSize(.small)
-                    } else {
-                        HStack(spacing: 10) {
-                            EvidenceLinks(session: session, refs: (m["refs"]?.array ?? []).compactMap(\.string))
-                            Spacer()
-                            Button(store.correction(of: id) == nil ? "Correct" : "Edit correction") {
-                                draft = store.correction(of: id)?.str("text") ?? m.str("text") ?? ""
-                                correcting = id
-                            }
-                            Button("Forget", role: .destructive) { session.delete(id) }
-                        }.controlSize(.mini).buttonStyle(.link)
-                    }
-                }
-                .padding(.vertical, 2)
-            }
-        }
-        .card()
-    }
-}
-
-/// "About you": what Sophia knows about the person in every notebook.
-struct AboutView: View {
-    @ObservedObject var session: NotebookSession
-    @State private var editing: String?      // a line's id, or "new"
-    @State private var draft = ""
-
-    var body: some View {
-        let lines = session.library.aboutLines
-        Sheet {
-            ReadingTitle(title: "About you", scope: "Shared across your Library")
-            Intro("What Sophia knows about you in every notebook: your background and how you like to work. Sophia proposes lines from what you say. A line stays in the notebook it came from until you confirm it. Topic details stay in each notebook's notes.")
-            if lines.isEmpty {
-                Text("Nothing yet.").foregroundStyle(.secondary)
-            }
-            VStack(alignment: .leading, spacing: 14) {
-                ForEach(lines, id: \.self.line) { l in row(l) }
-            }
-            if editing == "new" {
-                editor(nil)
-            } else {
-                Button("Add a line") { draft = ""; editing = "new" }
-            }
-        }
-    }
-
-    @ViewBuilder
-    func row(_ l: JSONObject) -> some View {
-        let id = l.str("id") ?? ""
-        let provisional = LibraryStore.isProvisional(l)
-        VStack(alignment: .leading, spacing: 8) {
-            Text(provisional ? "PROPOSED BY SOPHIA · IN \(l.str("notebook")?.uppercased() ?? "ONE NOTEBOOK") ONLY UNTIL YOU CONFIRM" : "CONFIRMED")
-                .font(.system(size: 10, weight: .bold)).tracking(0.6).foregroundStyle(provisional ? Color.orange : .secondary)
-            if editing == id {
-                editor(l)
-            } else {
-                Text(l.str("text") ?? "").font(.system(size: 17, design: .serif))
-                if let q = l["quote"]?["text"]?.string { PersonQuote(text: q) }
-                HStack {
-                    if provisional { Button("Confirm") { session.confirmAbout(l) }.buttonStyle(.borderedProminent) }
-                    Button("Edit") { draft = l.str("text") ?? ""; editing = id }
-                    Button(provisional ? "Not right" : "Delete", role: .destructive) { session.deleteAbout(id) }
-                }.controlSize(.small)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) { Divider() }
-    }
-
-    @ViewBuilder
-    func editor(_ l: JSONObject?) -> some View {
-        TextField("For example: PhD in computer science; prefer formal definitions first", text: $draft)
-            .textFieldStyle(.roundedBorder)
-        HStack {
-            Button("Save") { session.editAbout(l, text: draft); editing = nil }.buttonStyle(.borderedProminent)
-            Button("Cancel") { editing = nil }
-        }.controlSize(.small)
-    }
-}
-
 /// Links from this notebook (or one of its pages) to pages in other notebooks.
 struct LinksList: View {
     @ObservedObject var session: NotebookSession
@@ -203,8 +95,8 @@ struct LibraryProposalCard: View {
                 }
             }.padding(12).background(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary.opacity(0.1)))
         } else {
-        let rec = (isLink ? session.library.currentLinks : session.library.aboutLines).first { $0.str("id") == id }
-        let confirmed = (isLink ? session.library.currentLinks : session.library.aboutLines).contains { $0.str("replaces") == id }
+        let rec = session.library.currentLinks.first { $0.str("id") == id }
+        let confirmed = session.library.currentLinks.contains { $0.str("replaces") == id }
         HStack(alignment: .center, spacing: 10) {
             Image(systemName: isLink ? "link" : "person.crop.circle").foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
@@ -220,8 +112,8 @@ struct LibraryProposalCard: View {
             }
             .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
-            if let r = rec {
-                Button("Confirm") { isLink ? session.confirmLink(id) : session.confirmAbout(r) }
+            if rec != nil {
+                Button("Confirm") { session.confirmLink(id) }
             }
             Button(isLink ? "Notebook connections…" : "About you…") {
                 if isLink { model.showNotebookSettings(session.store.url) }

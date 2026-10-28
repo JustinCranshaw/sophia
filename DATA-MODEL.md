@@ -4,12 +4,12 @@ Documentation reconciled October 25, 2026. Current store behavior is described b
 
 ## Purpose
 
-A notebook holds knowledge that both Justin and Sophia read, rely on, and correct: pages, goals, attempts, Sophia's interpretations, and the conversation they came from. These are shared objects. Each must say who said it, what it rests on, and who may change it, in a form a person can read on screen and an agent can parse without guessing. This plan defines the smallest set of records that does that, and the rules the client enforces so the guarantees hold even when the model misbehaves.
+A notebook holds Markdown pages that both the person and Sophia read, rely on, and correct. Notebook introductions, chapter introductions, Goals, Sophia’s notes and Working memory use that same page object; role and scope are external metadata. Conversations and evidence remain distinct audit records. Each must say who said it, what it rests on, and who may change it, in a form a person can read on screen and an agent can parse without guessing. This plan defines the smallest set of records that does that, and the rules the client enforces so the guarantees hold even when the model misbehaves.
 
 ## Scope and exclusions
 
 - Included: the files in a notebook, the record shapes inside them, who may write each, how corrections and deletions work, how page writes are recorded and undone, and how the person and Sophia each read the state back.
-- Excluded now: a source catalog, a separate chapter or book object, experiment proposals, chapter proposals, hand-edited goal or note files, and any record that summarizes the person (level, profile, ability).
+- Excluded now: a source catalog, a separate chapter or book object, experiment proposals, chapter proposals, and any record that summarizes the person (level, profile, ability).
 
 ## Requirements and constraints
 
@@ -24,7 +24,7 @@ A notebook holds knowledge that both Justin and Sophia read, rely on, and correc
 
 ## Evidence used
 
-- PLAN.md §4 defines the current files: notebook.json, pages, one previous page version, transcript.jsonl, learning.jsonl. This plan keeps those files and adds none.
+- PLAN.md §4 defines the current files: notebook.json, pages, one previous page version, transcript.jsonl, learning.jsonl. Current role pages reuse Markdown and the existing logs; immutable migration snapshots and external whole-page proposal history preserve earlier information.
 - The MCP tools are `read_page`, `write_page`, `set_chapter`, `set_goal`, `note`, `set_memory`, `recall`, `about_you`, and `link`. They write through the same store code as the app, under a lock on the notebook. The live `note` and `set_memory` handlers and the client-requested checkpoint all use the store checks; they have distinct timing and quotas described below.
 - The historical UI mock (mock/index.html) explored these objects and exposed two earlier design conflicts: two different "next steps" on Goals and Notes, and goal criteria with "Done once / Partly / Not tried" labels that work like a stored score.
 
@@ -57,13 +57,11 @@ library/.sophia/
 
 Sophia has three layers of memory.
 
-**Working memory (one notebook).**
-- **What it is:** `memory` records in learning.jsonl. At most 10 short lines on where the inquiry stands now. Each line has `refs` that must resolve: notes, messages, pages, or goal criteria. Forgetting a line therefore loses no evidence.
-- **Who writes it:** Sophia rewrites the set whole, with `set_memory` or in the checkpoint reply (`{"notes": […], "memory": […]}`). The store keeps unchanged lines, writes a replacing record for a reworded line, and writes a `retired` record for a line left out. A checkpoint reply with no memory, or an empty one, leaves the memory unchanged.
-- **The person's control:** they can correct or forget a line, and Sophia can't change or drop a line they corrected.
-- **What Sophia sees:** the memory at the start of each conversation, and Sophia's notes only through `recall`.
+**Working memory and Sophia’s notes (one notebook).** These are ordinary Markdown pages with `memory` and `notes` roles in `notebook.json`. The person reads, edits and undoes changes in the main page pane, using the same source editor and protections as any other page. Notebook context actions and settings links navigate to these pages; there is no second card editor or permanent sidebar row.
 
-**Long-term notes (one notebook).** The notes described below. `recall` finds them by id, by page reference, or by words (all must appear), and it also finds matching messages from the person.
+Sophia supplies a complete Markdown body through `note` or `set_memory`, plus checked evidence references and an optional exact person quote for notes. Each successful changed body is a normal recorded `write_page` with the existing single previous version and Undo. A `page_evidence` learning record is written as a candidate before the body; only the successful page write and `notebook_page_evidence` link establish that it was applied. A candidate alone is not a save or confirmation. Person edits and imported exact quotes/corrections remain protected.
+
+Fresh conversation context, ongoing turn prefixes and return briefings read the canonical Markdown, including direct person edits. `recall` includes those pages and can still resolve historical record identities and messages. No per-line memory records are a second editable authority.
 
 **About you (shared across the Library).**
 - **What it is:** an ordinary Markdown page at `<library>/.sophia/about/pages/about-you.md`, represented by the same `NotebookStore.Page` as other pages, with external role `about` and scope `library`. It uses the same reader, byte-exact section/whole-page editor, personal-line protection, previous version and Undo. The body has no structured record markers.
@@ -185,7 +183,18 @@ A release (below) follows the same rule: it can be undone only while it is the l
 
 Older notebooks may hold `proposal` and `decision` entries from when pages were accepted. On opening, any proposal nobody accepted or discarded is saved as a page and marked with a `filed_draft` entry.
 
-### The learning log: learning.jsonl
+### Canonical Goals, Notes and Working memory pages
+
+`NotebookStore.ensureNotebookPages` reserves each role’s stable filename in `notebook-pages-migration.json` and snapshots the complete original learning records before initializing Markdown. Confirmed goal ancestors become prose; unresolved Sophia goal versions become external whole-page proposals against the original body hash. Original IDs, quote/evidence metadata and JSONL remain history. Restart is idempotent and never regenerates a body over later person edits. Missing previously initialized files fail rather than being silently recreated. Migration protection entries carry `migrationSource`, no authored-action hash or Undo, and never appear as new person activity.
+
+`set_goal` proposes the complete Goals body against a whole-file base hash. Only the person accepts or rejects; any intervening edit makes a proposal stale. Accept uses the ordinary whole-page checked person edit and Undo. Goals have no required body markers, criterion parser or special status controls. A person can describe an aim or its completion in normal prose. Old `g-…#criterion` references resolve historical evidence, never a claim about later prose.
+
+Checkpoint JSON is `{ "notes": "complete Markdown or null", "memory": "complete Markdown or null", "refs": ["checked evidence IDs"], "quote": "optional exact person words" }`. `null` leaves a body unchanged. Evidence and protection for both pages are validated before writes; the covered `through` boundary advances only after both succeed. A later persistence failure may leave an earlier recorded, undoable body write while the boundary remains pending; retry uses current Markdown and is not a cross-file transaction. Ordinary `write_page` rejects these reserved roles so it cannot bypass the checked proposal/evidence paths.
+
+### Historical learning records and checks
+
+The following envelope, structured kinds and compatibility mutations describe retained historical evidence and legacy checks. They are not current page authoring controls. Current content is the Markdown described above; the native history disclosure and evidence resolver retain access to the original records.
+
 
 Every record has the same envelope:
 
@@ -233,7 +242,7 @@ Example records:
 
 A goal's history is its chain of `replaces`: rewording, adding criteria, confirming, and marking it met are each a new `goal` record. A goal is provisional while its current record is by Sophia; the person's Confirm writes the same goal as a record by the person. References to a goal always use the id of its first record (`g-1#2` means criterion 2 of the goal first recorded as `g-1`), and criteria are only added to the end, never reordered, so references survive rewording. Criterion progress is not stored. The app shows each criterion with the attempts that reference it, Sophia's latest `read` about it (with its dates), and the person's `take`. If a newer attempt references the criterion after Sophia's read, the app marks the read "newer attempt since". No record has a `partly`/`done` value.
 
-### How records arrive, and what the client checks
+### Historical structured record delivery and compatibility checks
 
 1. **The person writes** goals, confirmations, takes, and corrections through the app. The client stamps `by: person`.
 2. **Sophia writes goals through `set_goal`** during the conversation. The store stamps `by: sophia`, keeps the current `status` (new goals are `working`; Sophia cannot mark one met or dropped), keeps existing criteria and only appends new ones, keeps a `quote` only if it appears exactly in one of the person's messages, and references the person's latest message.
@@ -272,7 +281,7 @@ A goal's history is its chain of `replaces`: rewording, adding criteria, confirm
 
 These checks are what make "Sophia never marks a goal met", "your words are quoted exactly", and "no summaries of you" true in code, not only in the prompt.
 
-### Deletion and undo
+### Historical record deletion and undo
 
 The person can delete any learning record. The client removes the record and every record whose `replaces` chain leads to it, then rewrites learning.jsonl atomically. Undo holds the removed records in memory until the person's next message, in any thread. The conversation itself still contains the words, and the app says so. Because checkpoint quotes must come from the session being summarized, a deleted attempt cannot be recreated by a later checkpoint.
 

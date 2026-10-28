@@ -14,8 +14,9 @@ struct BookView: View {
             case .contents:
                 if let page = session.store.overviewPage { PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file)) }
                 else { Sheet { ReadingTitle(title: session.store.name); Banner(tone: .problem, text: "The introduction is unavailable. Existing pages are still readable."); ContentsOutline(session: session) } }
-            case .goals: GoalsView(session: session)
-            case .notes: NotesView(session: session)
+            case .goals, .notes, .memory:
+                if let page = session.visiblePage { PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file)) }
+                else { Sheet { Intro("This notebook page is unavailable. Your existing pages and history remain available.") } }
             case .about:
                 if session.isSharedAbout, let page = session.visiblePage { PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file)) }
                 else { Sheet { Text("Choose About you in the Library to open its shared page and conversation.") } }
@@ -309,9 +310,9 @@ struct PageView: View {
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
                 let rootChapter = store.chapters.first(where: { $0.intro?.file == file })
                 ReadingTitle(title: title,
-                             scope: store.page(file)?.role == .about ? "Shared across your Library" : rootChapter != nil ? store.name : chapter?.heading,
+                             scope: store.page(file)?.role == .about ? "Shared across your Library" : [.goals, .notes, .memory].contains(store.page(file)?.role) || rootChapter != nil ? store.name : chapter?.heading,
                              number: rootChapter?.number ?? number)
-                if store.page(file)?.role == .about {
+                if [.about, .goals].contains(store.page(file)?.role) {
                     Text("Sophia proposes changes for you to review.").font(.callout).foregroundStyle(.secondary)
                 }
                 HStack {
@@ -371,6 +372,9 @@ struct PageView: View {
                 } else if store.page(file)?.role == .chapter,
                           let chapter = store.chapters.first(where: { $0.intro?.file == file }) {
                     ContentsOutline(session: session, chapterID: chapter.id)
+                }
+                if [.goals, .notes, .memory].contains(store.page(file)?.role) {
+                    NotebookPageHistory(session: session)
                 }
                 let links = session.library.links(touching: store.name).filter { l in
                     (l["from"]?["notebook"]?.string == store.name && l["from"]?["page"]?.string == file)
@@ -445,265 +449,4 @@ struct PageView: View {
     }
 
 
-}
-
-// MARK: Notes
-
-struct NotesView: View {
-    @ObservedObject var session: NotebookSession
-    @State private var correcting: String?
-    @State private var draft = ""
-
-    var body: some View {
-        let store = session.store
-        let notes = store.shownNotes
-        Sheet {
-            Text("Sophia's notes").font(.system(size: 28, weight: .semibold, design: .serif))
-            Intro("Sophia keeps these as you talk, and adds to them when you come back after a break or end a session. Sophia uses them to follow up and to pick up where you left off. They aren't pages and they aren't a score. Every note rests on something you said or did. Correct or delete anything.")
-            if let problem = session.learningProblem {
-                HStack(alignment: .top) {
-                    Banner(tone: .problem, text: problem)
-                    Button("Dismiss") { session.learningProblem = nil }.controlSize(.small)
-                }
-            }
-            if let removed = session.lastDeleted {
-                HStack { Banner(tone: .plain, text: "Deleted \(removed.count) record\(removed.count == 1 ? "" : "s"). Your words are still in the conversation."); Button("Undo") { session.undoDelete() } }
-            }
-            MemoryCard(session: session)
-            if notes.isEmpty {
-                Text("No notes yet. Sophia adds them as you talk, when something is worth checking on later.").foregroundStyle(.secondary)
-            }
-            VStack(spacing: 14) { ForEach(notes.reversed(), id: \.self.line) { r in card(r) } }
-        }
-    }
-
-    @ViewBuilder
-    func card(_ r: JSONObject) -> some View {
-        let id = r.str("id") ?? ""
-        let kind = r.str("kind") ?? ""
-        let correction = session.store.correction(of: id)
-        VStack(alignment: .leading, spacing: 8) {
-            Text("\(kind.replacingOccurrences(of: "_", with: " ").prefix(1).uppercased() + kind.replacingOccurrences(of: "_", with: " ").dropFirst()) · \(shortDate(r.str("at")))").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-            if let q = r["quote"]?.object {
-                PersonQuote(text: q.str("text") ?? "")
-            } else if r["paraphrase"] == .bool(true) {
-                Text("Sophia's paraphrase — the exact words couldn't be matched to the conversation.").font(.caption).italic().foregroundStyle(.secondary)
-            }
-            if let c = correction {
-                HStack(alignment: .top, spacing: 8) {
-                    RoundedRectangle(cornerRadius: 1).fill(Color.primary).frame(width: 3)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Your correction · \(shortDate(c.str("at")))").font(.caption2.weight(.bold)).foregroundStyle(.primary)
-                        Text(c.str("text") ?? "").font(.system(size: 15, design: .serif))
-                    }
-                }
-                Text("Was, Sophia's read: “\(r.str("text") ?? "")”").font(.caption).foregroundStyle(.secondary)
-            } else {
-                SophiaText(label: kind == "attempt" ? "Sophia's read" : "Sophia", text: r.str("text") ?? "")
-            }
-            let refs = (r["refs"]?.array ?? []).compactMap(\.string)
-            EvidenceLinks(session: session, refs: refs)
-            if correcting == id {
-                TextEditor(text: $draft).font(.system(size: 15, design: .serif)).frame(height: 70)
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
-                HStack { Button("Save correction") { if session.correct(id, text: draft) { correcting = nil } }.buttonStyle(.borderedProminent); Button("Cancel") { correcting = nil } }
-            } else {
-                HStack {
-                    Button(correction == nil ? "Correct" : "Edit correction") {
-                        draft = correction?.str("text") ?? r.str("text") ?? ""
-                        correcting = id
-                    }
-                    Button("Delete", role: .destructive) { session.delete(id) }
-                    ShowRecord(record: r)
-                }.controlSize(.small)
-            }
-        }
-        .card()
-    }
-}
-
-struct ShowRecord: View {
-    let record: JSONObject
-    @State private var shown = false
-    var body: some View {
-        Button(shown ? "Hide record" : "Show record") { shown.toggle() }
-            .popover(isPresented: $shown) {
-                ScrollView { Text(JSON.object(record).pretty).font(.caption.monospaced()).textSelection(.enabled).padding(12) }
-                    .frame(width: 420, height: 240)
-            }
-    }
-}
-
-// MARK: Goals
-
-struct GoalsView: View {
-    @ObservedObject var session: NotebookSession
-    @State private var newGoal = ""
-    @State private var editing: String?
-    @State private var text = ""
-    @State private var criterion = ""
-
-    private var hasStaleDraft: Bool {
-        guard let editing else { return false }
-        return !session.store.goals.contains { $0.str("id") == editing }
-    }
-
-    var body: some View {
-        let store = session.store
-        ScrollViewReader { proxy in
-            Sheet {
-                Text("Goals").font(.system(size: 28, weight: .semibold, design: .serif))
-                Intro("What you want from this notebook. Sophia notes goals as you talk; they stay provisional until you confirm them. Under each goal: what you've done toward it and what Sophia makes of it. There's no score, and only you mark a goal met or drop it.")
-                if let problem = session.goalProblem, session.goalReviewID == nil {
-                    HStack { Banner(tone: .problem, text: problem); Button("Dismiss") { session.goalProblem = nil } }
-                }
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("New goal").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    TextField("What do you want from this notebook?", text: $newGoal, axis: .vertical)
-                        .font(.system(size: 17, design: .serif)).textFieldStyle(.roundedBorder)
-                        .onSubmit { if session.addGoal(newGoal) { newGoal = "" } }
-                    Button("Add goal") { if session.addGoal(newGoal) { newGoal = "" } }.disabled(newGoal.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-                if hasStaleDraft {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Unsaved goal wording").font(.headline)
-                        Text("The goal changed before this wording could be saved. Copy it before dismissing if you want to use it later.").font(.caption).foregroundStyle(.secondary)
-                        Text(text).textSelection(.enabled)
-                        Button("Dismiss unsaved wording") { editing = nil; text = "" }
-                    }.card().id("unsaved-goal-wording")
-                }
-                VStack(spacing: 14) { ForEach(store.goals.reversed(), id: \.self.line) { g in goalCard(g).id(g.str("id") ?? "") } }
-                if !store.attemptsWithoutCriterionLinks.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Captured attempts not linked to a criterion").font(.headline)
-                        Text("These saved attempts have no current criterion link. They may have a read elsewhere; no relevance or completion is inferred here.").font(.caption).foregroundStyle(.secondary)
-                        ForEach(store.attemptsWithoutCriterionLinks, id: \.self.line) { attempt in attemptEvidence(attempt) }
-                    }.card()
-                }
-            }
-            .onChange(of: session.goalReviewID, initial: true) { _, id in
-                guard let target = hasStaleDraft ? "unsaved-goal-wording" : id else { return }
-                DispatchQueue.main.async { proxy.scrollTo(target, anchor: .top) }
-            }
-        }
-    }
-
-    @ViewBuilder
-    func goalCard(_ g: JSONObject) -> some View {
-        let store = session.store
-        let id = g.str("id") ?? ""
-        let root = store.rootID(of: id)
-        let status = g.str("status") ?? "working"
-        VStack(alignment: .leading, spacing: 10) {
-            let provisional = store.isProvisional(g)
-            HStack(spacing: 6) {
-                Text(status == "working" ? "WORKING ON" : status == "met" ? "✓ MET · marked by you" : "DROPPED")
-                    .font(.caption2.weight(.bold)).foregroundStyle(status == "met" ? Color.green : Color.secondary)
-                if provisional {
-                    Text("· PROVISIONAL · \(g.str("replaces") == nil ? "noted" : "revised") by Sophia").font(.caption2.weight(.bold)).foregroundStyle(.orange)
-                }
-            }
-            if let problem = session.goalProblem, session.goalReviewID == id {
-                HStack { Banner(tone: .problem, text: problem); Button("Dismiss") { session.goalProblem = nil } }
-            }
-            if editing == id {
-                TextField("Goal", text: $text, axis: .vertical).font(.system(size: 19, design: .serif)).textFieldStyle(.roundedBorder)
-                HStack { Button("Save") { if session.updateGoal(g, text: text) { editing = nil } }.buttonStyle(.borderedProminent); Button("Cancel") { editing = nil } }
-            } else {
-                Text(MarkdownView.scripts(AttributedString(g.str("text") ?? ""), size: 20, design: .serif)).font(.system(size: 20, weight: .semibold, design: .serif))
-            }
-            if provisional, let q = g["quote"]?.object?.str("text") { PersonQuote(text: q) }
-            if provisional, let prevID = g.str("replaces"), let prev = store.record(prevID) {
-                Text("Earlier version: \(prev.str("text") ?? "")").font(.system(size: 12)).foregroundStyle(.secondary)
-                Text("\(store.isProvisional(prev) ? "Provisional" : "Confirmed by you") · \(prev["criteria"]?.array?.count ?? 0) criteria").font(.caption).foregroundStyle(.secondary)
-            }
-            let criteria = (g["criteria"]?.array ?? []).compactMap(\.string)
-            ForEach(Array(criteria.enumerated()), id: \.offset) { i, c in
-                criterionRow(root: root, index: i + 1, text: c)
-            }
-            if provisional {
-                HStack {
-                    Button("Confirm") { session.confirmGoal(g) }.buttonStyle(.borderedProminent)
-                    let previous = g.str("replaces").flatMap { store.record($0) }
-                    let compatible = previous.map { ($0["criteria"]?.array ?? []) == (g["criteria"]?.array ?? []) } ?? false
-                    Button(g.str("replaces") == nil ? "Not my goal" : "Keep the earlier version") { session.discardGoal(g) }
-                        .disabled(g.str("replaces") != nil && !compatible)
-                    if g.str("replaces") != nil { Button("Drop goal") { session.dropGoalProposal(g) } }
-                }.controlSize(.small)
-                if let previousID = g.str("replaces"), let previous = store.record(previousID), (previous["criteria"]?.array ?? []) != (g["criteria"]?.array ?? []) {
-                    Text("Earlier criteria differ. Keeping that version could reassign saved or undoable evidence; leave this provisional, drop the whole goal, or choose a separate narrower goal.").font(.caption).foregroundStyle(.secondary)
-                } else {
-                    Text("You can leave this provisional and keep talking without confirming.").font(.caption).foregroundStyle(.secondary)
-                }
-            } else {
-                HStack {
-                    TextField("Add what “there” looks like…", text: $criterion).textFieldStyle(.roundedBorder)
-                        .onSubmit { if session.updateGoal(g, addCriterion: criterion) { criterion = "" } }
-                }
-                HStack {
-                    if status == "working" {
-                        Button("Mark as met") { session.updateGoal(g, status: "met") }
-                        Button("Reword") { text = g.str("text") ?? ""; editing = id }.disabled(hasStaleDraft)
-                        Button("Drop") { session.updateGoal(g, status: "dropped") }
-                    } else {
-                        Button("Reopen") { session.updateGoal(g, status: "working") }
-                    }
-                    Spacer()
-                    ShowRecord(record: g)
-                }.controlSize(.small)
-            }
-            if provisional { ShowRecord(record: g).controlSize(.small) }
-        }
-        .card()
-    }
-
-    @ViewBuilder
-    func interpretation(_ record: JSONObject, label: String) -> some View {
-        if let correction = session.store.correction(of: record.str("id") ?? "") {
-            Text("Your correction · \(shortDate(correction.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(.primary)
-            Text(correction.str("text") ?? "").textSelection(.enabled)
-            Text("Was, Sophia's read: “\(record.str("text") ?? "")”").font(.caption).foregroundStyle(.secondary)
-        } else {
-            SophiaText(label: label, text: record.str("text") ?? "", trailing: "· " + shortDate(record.str("at")))
-        }
-    }
-
-    @ViewBuilder
-    func attemptEvidence(_ attempt: JSONObject) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Captured attempt · \(shortDate(attempt.str("at")))").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            let sources = session.store.attemptSourceReferences(attempt)
-            if let quote = attempt["quote"]?["text"]?.string {
-                PersonQuote(text: quote).textSelection(.enabled)
-            } else {
-                Text(sources.isEmpty ? "No exact words or exchange were saved with this attempt note." : "No exact quote saved with this attempt note; inspect its cited material.").font(.caption).foregroundStyle(.secondary)
-            }
-            interpretation(attempt, label: "Sophia's read · tentative")
-            EvidenceLinks(session: session, refs: sources)
-        }.padding(.vertical, 6)
-    }
-
-    @ViewBuilder
-    func criterionRow(root: String, index: Int, text: String) -> some View {
-        let store = session.store
-        let ref = "\(root)#\(index)"
-        let evidence = store.evidence(forCriterion: ref)
-        VStack(alignment: .leading, spacing: 8) {
-            Text(MarkdownView.scripts(AttributedString("\(index). \(text)"), size: 17, design: .serif)).font(.system(size: 17, design: .serif)).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
-            if evidence.attempts.isEmpty {
-                Text("No saved attempt linked to this criterion.").font(.caption).italic().foregroundStyle(.secondary)
-            } else {
-                ForEach(evidence.attempts, id: \.self.line) { attempt in attemptEvidence(attempt) }
-                if evidence.read == nil { Text("No criterion-level read saved yet.").font(.caption).foregroundStyle(.secondary) }
-            }
-            if let read = evidence.read {
-                interpretation(read, label: "Sophia's criterion read · tentative")
-                EvidenceLinks(session: session, refs: (read["refs"]?.array ?? []).compactMap(\.string).filter { $0 != ref })
-                if evidence.newerEvidence {
-                    Text("Newer attempt or correction since this read.").font(.caption).foregroundStyle(.orange)
-                }
-            }
-        }
-        .padding(.vertical, 4)
-    }
 }

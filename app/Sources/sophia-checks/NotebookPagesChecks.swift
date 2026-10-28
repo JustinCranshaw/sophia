@@ -17,6 +17,14 @@ func notebookLearningPagesKeepMarkdownAndHistoricalEvidence() throws {
     let staleToolStore = try NotebookStore(url: store.url)
     let imported = try store.ensureNotebookPages(session: "migration")
     expect(imported.count == 3)
+    let ownList = Prompts.pageList(store, includeNotebookPages: true)
+    for page in imported {
+        expect(ownList.contains(page.file))
+        expect(!Prompts.pageList(store).contains(page.file)) // no auxiliary titles in other-notebook indexes
+        expect(!store.unfiledPages.contains { $0.file == page.file })
+        expect(ExistingNotebook(root: store.url.deletingLastPathComponent(), name: store.name)?.pageList().contains(page.file) == false)
+        expect(ExistingNotebook(root: store.url.deletingLastPathComponent(), name: store.name)?.pageList(includeNotebookPages: true).contains(page.file) == true)
+    }
     let goals = store.notebookPage(role: .goals)!, notes = store.notebookPage(role: .notes)!, memory = store.notebookPage(role: .memory)!
     expect(store.readPage(goals.file)!.body.contains("## Understand entropy\n"))
     expect(!store.readPage(goals.file)!.body.contains("with music"))

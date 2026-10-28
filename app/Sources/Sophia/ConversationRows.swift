@@ -28,7 +28,7 @@ func conversationRows(_ entries: [JSONObject], streaming: String, scope: String,
         // Even a hidden record is a boundary; never group across a checkpoint or action.
         previousWasUpdate = false
         if let thread, NotebookStore.thread(of: entry) != thread { continue }
-        if entry["recovered"] == .bool(true) { continue }
+        if entry["recovered"] == .bool(true) || entry["migrationSource"] != nil { continue }
         guard let id = entry.str("id") else { continue }
         let role = entry.str("role") ?? ""
         if NotebookStore.isPersonMessage(entry) { origin = id; originThread = NotebookStore.thread(of: entry); block = 0 }

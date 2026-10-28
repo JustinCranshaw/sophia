@@ -185,7 +185,12 @@ final class AppModel: ObservableObject {
     func showNotebookSettings(_ url: URL, section: NotebookSettingsSection = .notebook) {
         if open?.store.url != url, !openNotebook(url, allowAutomaticReturn: false) { return }
         guard open?.store.url == url else { return }
-        notebookSettings = NotebookSettingsSelection(url: url, section: section)
+        switch section {
+        case .goals: open?.show(.goals); notebookSettings = nil
+        case .notes: open?.show(.notes); notebookSettings = nil
+        case .memory: open?.show(.memory); notebookSettings = nil
+        case .notebook: notebookSettings = NotebookSettingsSelection(url: url)
+        }
     }
 
     @discardableResult
@@ -293,7 +298,7 @@ struct RootView: View {
         .sheet(isPresented: $almanac.settingsShown) { AlmanacSettingsView(almanac: almanac) }
         .sheet(item: $model.notebookSettings) { selection in
             if let session = model.open, session.store.url == selection.url {
-                NotebookSettingsView(session: session, section: selection.section) { model.notebookSettings = nil }
+                NotebookSettingsView(session: session) { model.notebookSettings = nil }
             }
         }
         .onChange(of: almanac.worker?.url) { _, _ in model.notebooks = model.library.notebooks }

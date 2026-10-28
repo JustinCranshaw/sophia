@@ -28,6 +28,7 @@ struct NotebookCopyActions: ViewModifier {
             Button("Notebook settings…") { model.showNotebookSettings(url) }
             Button("Goals…") { model.showNotebookSettings(url, section: .goals) }
             Button("Sophia’s notes…") { model.showNotebookSettings(url, section: .notes) }
+            Button("Working memory…") { model.showNotebookSettings(url, section: .memory) }
             Divider()
             Button("Show Notebook in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Button("Copy & Restore…") { helpShown = true }
