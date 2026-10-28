@@ -212,6 +212,17 @@ final class NotebookSession: ObservableObject {
         queue = []; isResponding = false; streaming = ""; activity = nil; turnTexts = []; pendingTools = [:]
     }
 
+    func resumeAfterRemoval() { shuttingDown = false; store.reload(); changed() }
+
+    /// Removal must wait for the exact owned CLI/MCP descendants, not just request a stop.
+    func quiesceForRemoval(_ completion: @escaping () -> Void) {
+        let active = Array(engines.values) + [checkpointEngine].compactMap { $0 }
+        shutdown()
+        let group = DispatchGroup()
+        for engine in active { group.enter(); engine.whenStopped { group.leave() } }
+        group.notify(queue: .main, execute: completion)
+    }
+
     private func handle(_ event: ClaudeEngine.Event, identity: ObjectIdentifier, thread: String, internalRequest: Bool) {
         // A terminating process may report its exit after a replacement has started.
         let source = internalRequest ? checkpointEngine : engines[thread]

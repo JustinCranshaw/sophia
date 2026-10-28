@@ -38,6 +38,7 @@ let requestedSharedAbout = args.count > 4
 let sharedLibraryRoot: URL? = args.count == 8 && args[4] == "--scope" && args[5] == "shared-about" && args[6] == "--library-root" && !args[7].isEmpty
     ? URL(fileURLWithPath: args[7]) : nil
 let validScope = !requestedSharedAbout || sharedLibraryRoot.map { ClaudeEngine.isSharedAboutLocation(notebook, libraryRoot: $0, page: thread) } == true
+let launchedNotebookIdentity = NotebookStore.identity(at: notebook)
 var writableStore: NotebookStore?
 
 func send(_ obj: [String: Any]) {
@@ -157,7 +158,10 @@ func callSharedAbout(_ name: String?, _ a: [String: Any]) -> String {
     }
     guard name == "about_you" else { return "Not allowed: this conversation only reads About you or proposes a reviewed change." }
     do {
-        if writableStore == nil { writableStore = try NotebookStore(url: notebook) }
+        if writableStore == nil {
+            guard FileManager.default.fileExists(atPath: notebook.appendingPathComponent("notebook.json").path) else { return "This notebook is no longer available. No change was saved." }
+            writableStore = try NotebookStore(url: notebook, existingOnly: true)
+        }
         let store = writableStore!
         store.reload()
         let content = a["content"] as? String ?? "", quote = (a["quote"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -218,12 +222,16 @@ func refusalText(_ e: JSONObject) -> String {
 
 func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
     guard validScope else { return "Unavailable: invalid About conversation scope; no notebook tools were opened." }
+    guard launchedNotebookIdentity != nil, NotebookStore.identity(at: notebook) == launchedNotebookIdentity else { return "This notebook is no longer available. No change was saved." }
     if requestedSharedAbout { return callSharedAbout(name, a) }
     if name == "read_page" {
         return readPage(a["file"] as? String, notebook: a["notebook"] as? String, section: a["section"] as? String)
     }
     do {
-        if writableStore == nil { writableStore = try NotebookStore(url: notebook) }
+        if writableStore == nil {
+            guard FileManager.default.fileExists(atPath: notebook.appendingPathComponent("notebook.json").path) else { return "This notebook is no longer available. No change was saved." }
+            writableStore = try NotebookStore(url: notebook, existingOnly: true)
+        }
         let store = writableStore!
         let library = LibraryStore(root: notebook.deletingLastPathComponent())
         switch name {

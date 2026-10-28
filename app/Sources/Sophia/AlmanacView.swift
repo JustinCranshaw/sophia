@@ -20,6 +20,7 @@ final class AlmanacModel: ObservableObject {
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
     private var awake = true
     private var stopped = false
+    private var removals: Set<URL> = []
 
     init(root: URL, connection: ConnectionState) {
         self.root = root; self.connection = connection
@@ -53,7 +54,7 @@ final class AlmanacModel: ObservableObject {
 
     func discover() {
         guard !stopped else { return }
-        configured = Library(root: root).notebooks.filter { Almanac.isConfigured(url: $0) }
+        configured = Library(root: root).notebooks.filter { !removals.contains($0) && Almanac.isConfigured(url: $0) }
         if let worker {
             guard configured.contains(worker.url) else {
                 worker.shutdown(); self.worker = nil
@@ -137,6 +138,37 @@ final class AlmanacModel: ObservableObject {
     func disable() {
         guard var settings = worker?.snapshot.settings else { return }
         settings.enabled = false; save(settings)
+    }
+
+    func quiesceForRemoval(url: URL, disable: Bool, _ completion: @escaping (Error?) -> Void) {
+        removals.insert(url)
+        if let worker, worker.url == url {
+            self.worker = nil
+            worker.quiesceForRemoval(disable: disable, completion)
+        } else {
+            // Multiple configured Almanacs can exist, even though only one owns a worker.
+            // Any trashed Almanac must stay disabled when its folder is restored.
+            do {
+                if disable, Almanac.isConfigured(url: url) {
+                    let store = try NotebookStore(url: url, existingOnly: true)
+                    guard var settings = store.almanacSnapshot.settings else { throw AlmanacError.notConfigured }
+                    settings.enabled = false
+                    try store.configureAlmanac(settings)
+                }
+                completion(nil)
+            } catch { completion(error) }
+        }
+    }
+    func finishRemoval(url: URL) { removals.remove(url); discover() }
+    func removeThemeNotebook(_ name: String) throws {
+        for url in Library(root: root).notebooks where Almanac.isConfigured(url: url) {
+            let store = try NotebookStore(url: url, existingOnly: true)
+            if var settings = store.almanacSnapshot.settings, settings.selectedNotebooks.contains(name) {
+                settings.selectedNotebooks.removeAll { $0 == name }
+                try store.configureAlmanac(settings)
+            }
+        }
+        worker?.refresh()
     }
 
     func shutdown() {

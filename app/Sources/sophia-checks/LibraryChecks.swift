@@ -20,6 +20,6 @@ func createdAndEnumeratedNotebooksHaveTheSameURL() throws {
     expect(try NotebookStore(url: created).url == enumerated)
     // AppModel.follow builds its URL this way; selecting/reopening uses enumeration.
     expect(library.root.appendingPathComponent("New inquiry") == enumerated)
-    expect(try library.create(named: "New inquiry") == enumerated)
+    expectThrows { try library.create(named: "New inquiry") } // creation never silently reopens a colliding notebook
     expect(Library(root: alias).notebooks == [created])
 }

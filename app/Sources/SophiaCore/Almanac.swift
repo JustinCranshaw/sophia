@@ -135,6 +135,8 @@ extension NotebookStore {
                 state.phase = .failed; state.problem = "Preparation was interrupted. Choose Retry when you are ready."; state.run = nil
             }
             if let waiting = state.waitingEntry, !pageFiles.contains(waiting.file) || readPage(waiting.file) == nil { state.waitingEntry = nil }
+            if let latest = state.latestEntry, !pageFiles.contains(latest.file) || readPage(latest.file) == nil { state.latestEntry = nil }
+            if state.phase == .ready, state.waitingEntry == nil, state.latestEntry == nil { state.phase = .idle }
             if state != original { try Almanac.save(state, in: self) }
         }
     }

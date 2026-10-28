@@ -335,6 +335,11 @@ struct EntryView: View {
     var body: some View {
         let role = entry.str("role") ?? ""
         switch role {
+        case "person" where ["delete_page", "restore_page"].contains(entry.str("purpose") ?? ""):
+            HStack {
+                Label(entry.str("purpose") == "delete_page" ? "You deleted this page." : "You restored this page.", systemImage: entry.str("purpose") == "delete_page" ? "trash" : "arrow.uturn.backward")
+
+            }.font(.caption).foregroundStyle(.secondary)
         case "person" where entry.str("purpose") == "edit_page":
             EditLine(session: session, entry: entry)
         case "person":

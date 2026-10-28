@@ -148,7 +148,7 @@ public final class LibraryStore {
     // MARK: Links
 
     /// A link joins a page (or a whole notebook) here to a page in another notebook, with a reason.
-    public var currentLinks: [JSONObject] { Self.current(links) }
+    public var currentLinks: [JSONObject] { Self.current(links).filter { $0["retired"] != .bool(true) } }
 
     public func links(touching notebook: String) -> [JSONObject] {
         currentLinks.filter { $0["from"]?["notebook"]?.string == notebook || $0["to"]?["notebook"]?.string == notebook }
@@ -202,6 +202,23 @@ public final class LibraryStore {
             var rec: JSONObject = ["replaces": .string(id)]
             for k in ["from", "to", "reason"] { if let v = cur[k] { rec[k] = v } }
             return try append(rec, by: "person", prefix: "l-", to: linksURL, list: &links)
+        }
+    }
+
+    /// Retain link history but retire grants involving a removed identity. Restoration does not
+    /// silently re-confirm permission for a replacement notebook or page.
+    public func retireLinks(notebook: String, page: String? = nil) throws {
+        try locked {
+            let targets = currentLinks.filter { link in
+                ["from", "to"].contains { side in
+                    link[side]?["notebook"]?.string == notebook && (page == nil || link[side]?["page"]?.string == page)
+                }
+            }
+            for link in targets {
+                var record = link
+                record["replaces"] = link["id"]; record["retired"] = .bool(true)
+                _ = try append(record, by: "person", prefix: "l-", to: linksURL, list: &links)
+            }
         }
     }
 

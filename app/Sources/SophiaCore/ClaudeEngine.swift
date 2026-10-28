@@ -259,6 +259,10 @@ public final class ClaudeEngine {
         }
     }
 
+    public func whenStopped(_ completion: @escaping () -> Void) {
+        if let ownedProcess { ownedProcess.whenStopped(completion) } else { DispatchQueue.main.async(execute: completion) }
+    }
+
     /// Ends the current reply immediately.
     public func cancel() {
         let wasRunning = isRunning

@@ -140,5 +140,20 @@ final class AlmanacPreparation: ObservableObject {
         do { try store.acknowledgeAlmanacOpening(file: file); snapshot = store.almanacSnapshot }
         catch { problem = "Could not record opening this entry. Earlier pages remain available." }
     }
+    func quiesceForRemoval(disable: Bool, _ completion: @escaping (Error?) -> Void) {
+        // Capture before configure(), whose cancellation drops its engine reference.
+        let active = engine
+        var failure: Error?
+        do {
+            if disable {
+                guard var settings = snapshot.settings else { throw AlmanacError.notConfigured }
+                settings.enabled = false
+                try configure(settings)
+            }
+        } catch { failure = error }
+        shutdown()
+        if let active { active.whenStopped { completion(failure) } }
+        else { DispatchQueue.main.async { completion(failure) } }
+    }
     func shutdown() { cancel(); closed = true }
 }

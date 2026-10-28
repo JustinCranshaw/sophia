@@ -228,3 +228,11 @@ Unresolved page edits block page and notebook/About switches, Quit and the main 
 Goals, Sophia’s notes and Working memory are canonical Markdown pages opened in the main page pane from notebook context actions or notebook settings links. The reader, section/source editor, person-edit protection and latest-action Undo are shared with ordinary content and introductions. These auxiliary pages add no permanent sidebar rows. Their historical learning records remain inspectable as read-only evidence, not another current card editor.
 
 `set_goal` proposes a whole Goals body for person review. `note` and `set_memory` write complete evidence-checked Markdown bodies. Checkpoints use complete bodies or null, advance coverage only after successful writes, and preserve an earlier recorded write if a later persistence step fails. Immutable migration snapshots retain raw legacy records and IDs; migration never refreshes over later prose edits.
+
+## Delete and recover
+
+Open a page’s … menu or right-click its sidebar row for **Delete Page…**. The confirmation names the exact page and notebook; Cancel changes nothing. The page moves to this notebook’s **Deleted Pages…** list in the notebook actions menu. Restore keeps its original bytes, previous version, conversation and history; a conflicting external file is never overwritten. Required introductions, Goals, Notes, Working memory and About you cannot be removed: use Edit to clear their content. No chapter is deleted along with a page.
+
+Use **Move Notebook to Trash…** at the bottom of a notebook’s actions menu. Replies/preparation stop before the folder moves to macOS Trash. With Sophia quit, Finder’s Put Back recovers the entire notebook; do not replace an existing notebook. A restored Almanac requires enabling preparation again. Links to/from removed identities are retired and need to be added and confirmed again, including after restoration.
+
+Removal is recoverable, not erasure: conversations, source evidence and earlier copies remain; page recovery archives stay inside the notebook even after restoration. Whole-folder copies include those archives. There is no permanent page-purge command. Unresolved source edits or kept text block removal until explicitly resolved. Unsaved composer drafts remain window-local, as before. Sophia has no delete tool.

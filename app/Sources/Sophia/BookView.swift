@@ -337,6 +337,8 @@ struct PageView: View {
                     Button("Edit") { session.beginEdit(file: file, key: "(page)", atVisibleTop: true) }
                         .buttonStyle(.bordered).controlSize(.small).disabled(session.editing != nil)
                         .accessibilityLabel("Edit page")
+                    Menu { PageRemovalActions(store: store, file: file) } label: { Image(systemName: "ellipsis") }
+                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Page actions")
                     if let write = session.undoableWrite(for: file), let action = store.transcript.first(where: { $0.str("id") == write }) {
                         Button { session.undoWrite(write) } label: {
                             Label(action.str("purpose") == "edit_page" ? "Undo edit" : action.str("purpose") == "release_edit" ? "Undo permission" : "Undo change", systemImage: "arrow.uturn.backward")

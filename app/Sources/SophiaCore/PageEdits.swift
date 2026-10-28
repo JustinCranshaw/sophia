@@ -139,7 +139,7 @@ extension NotebookStore {
 
     /// Closes whatever is open for editing. Called on commit, revert, and launch (after a crash).
     public func endEdit() {
-        locked { try? FileManager.default.removeItem(at: editMarkerURL) }
+        try? locked { try? FileManager.default.removeItem(at: editMarkerURL) }
     }
 
     // MARK: The person's commit

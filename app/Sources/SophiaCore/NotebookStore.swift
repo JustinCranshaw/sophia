@@ -18,6 +18,14 @@ public final class NotebookStore {
     public private(set) var meta: JSONObject
     public private(set) var transcript: [JSONObject] = []
     public private(set) var learning: [JSONObject] = []
+    private var directoryIdentity: String = ""
+    private var writerGeneration: JSON?
+    public var isAvailable: Bool { Self.identity(at: url) == directoryIdentity && FileManager.default.fileExists(atPath: metaURL.path) }
+    public static func identity(at url: URL) -> String? {
+        var info = stat()
+        guard lstat(url.path, &info) == 0, (info.st_mode & S_IFMT) == S_IFDIR else { return nil }
+        return "\(info.st_dev):\(info.st_ino):\(info.st_birthtimespec.tv_sec):\(info.st_birthtimespec.tv_nsec)"
+    }
 
     public var name: String { url.lastPathComponent }
     var metaURL: URL { url.appendingPathComponent("notebook.json") }
@@ -25,19 +33,23 @@ public final class NotebookStore {
     var learningURL: URL { url.appendingPathComponent("learning.jsonl") }
     public var pagesURL: URL { url.appendingPathComponent("pages") }
 
-    public init(url: URL) throws {
+    public init(url: URL, existingOnly: Bool = false) throws {
         self.url = url
         let fm = FileManager.default
-        try fm.createDirectory(at: url.appendingPathComponent("pages"), withIntermediateDirectories: true)
+        if !existingOnly { try fm.createDirectory(at: url.appendingPathComponent("pages"), withIntermediateDirectories: true) }
+        else { guard Self.identity(at: url) != nil else { throw StoreError.unavailable } }
         if let data = try? Data(contentsOf: url.appendingPathComponent("notebook.json")),
            let obj = (try? JSONDecoder().decode(JSON.self, from: data))?.object {
             meta = obj
         } else {
+            guard !existingOnly else { throw StoreError.unavailable }
             meta = ["chapters": .array([]), "unfiled": .array([])]
             try writeMeta()
         }
         transcript = Self.readLines(transcriptURL)
         learning = Self.readLines(learningURL)
+        directoryIdentity = Self.identity(at: url) ?? ""
+        writerGeneration = meta["writerGeneration"]
     }
 
     /// Rereads the notebook files, for changes made by the other process.
@@ -51,11 +63,15 @@ public final class NotebookStore {
     private var lockFD: Int32 = -1
 
     /// Runs a write under an exclusive lock on the notebook, after rereading its files.
-    func locked<T>(_ body: () throws -> T) rethrows -> T {
+    func locked<T>(_ body: () throws -> T) throws -> T {
         if lockDepth == 0 {
+            guard isAvailable else { throw StoreError.unavailable }
             lockFD = Darwin.open(url.appendingPathComponent(".lock").path, O_CREAT | O_RDWR, 0o644)
-            if lockFD >= 0 { flock(lockFD, LOCK_EX) }
+            guard lockFD >= 0 else { throw StoreError.unavailable }
+            flock(lockFD, LOCK_EX)
+            guard isAvailable else { flock(lockFD, LOCK_UN); close(lockFD); lockFD = -1; throw StoreError.unavailable }
             reload()
+            guard meta["writerGeneration"] == writerGeneration else { flock(lockFD, LOCK_UN); close(lockFD); lockFD = -1; throw StoreError.unavailable }
         }
         lockDepth += 1
         defer {
@@ -73,7 +89,7 @@ public final class NotebookStore {
     /// Only the application reconciles unrecorded disk changes. Hashes do not establish authorship;
     /// these records preserve visibility, not permission to undo. Tool processes use the plain initializer.
     public static func open(url: URL) throws -> NotebookStore {
-        let store = try NotebookStore(url: url)
+        let store = try NotebookStore(url: url, existingOnly: true)
         try store.locked {
             let launchFiles = Set(store.pageFiles)
             let recordedFiles = Set(store.transcript.compactMap { $0.str("file") })
@@ -501,7 +517,7 @@ public final class NotebookStore {
     }
 
     public func readPage(_ file: String) -> (title: String, body: String)? {
-        guard let text = try? String(contentsOf: pagesURL.appendingPathComponent(file), encoding: .utf8) else { return nil }
+        guard !deletedPageFiles.contains(file), let text = try? String(contentsOf: pagesURL.appendingPathComponent(file), encoding: .utf8) else { return nil }
         return Self.splitFrontmatter(text)
     }
 
@@ -523,7 +539,7 @@ public final class NotebookStore {
     func recoverOrphanPages() {
         let files = (try? FileManager.default.contentsOfDirectory(atPath: pagesURL.path)) ?? []
         let known = Set(pageFiles)
-        let orphans = files.filter { $0.hasSuffix(".md") && !$0.hasSuffix(".previous.md") && !known.contains($0) }.sorted()
+        let orphans = files.filter { $0.hasSuffix(".md") && !$0.hasSuffix(".previous.md") && !known.contains($0) && !deletedPageFiles.contains($0) }.sorted()
         guard !orphans.isEmpty else { return }
         var unfiled = meta["unfiled"]?.array ?? []
         unfiled.append(contentsOf: orphans.map { .string($0) })
@@ -612,6 +628,7 @@ public final class NotebookStore {
     public func writePage(title: String, content: String, revising file: String?, session: String, toolUseID: String,
                           why: String? = nil, thread: String = "") throws -> JSONObject {
         try locked {
+            guard file == nil || !deletedPageFiles.contains(file!), thread.isEmpty || !deletedPageFiles.contains(thread) else { throw StoreError.unavailable }
             let titleJSON = JSON.string(title).line
             let text = "---\ntitle: \(titleJSON)\n---\n" + content + "\n"
             if let file, pageFiles.contains(file), let refusal = refusal(revising: file, content: content) {
@@ -685,7 +702,7 @@ public final class NotebookStore {
     public func latestPageAction(for file: String) -> JSONObject? {
         transcript.last { e in
             actionFile(e) == file && ((e.str("tool") == "write_page" && e["refused"] != .bool(true))
-                || ["edit_page", "release_edit", "undo_page", "undo_release"].contains(e.str("purpose") ?? ""))
+                || ["edit_page", "release_edit", "undo_page", "undo_release", "delete_page", "restore_page"].contains(e.str("purpose") ?? ""))
         }
     }
 
@@ -711,9 +728,10 @@ public final class NotebookStore {
     public func pageWrite(toolUse id: String) -> JSONObject? { pageWrites.last { $0.str("tool_use") == id } }
 
     public enum StoreError: Error, LocalizedError {
-        case notFound, learningIdentityConflict, learningIDLimit
+        case notFound, learningIdentityConflict, learningIDLimit, unavailable
         public var errorDescription: String? {
             switch self {
+            case .unavailable: return "This notebook is no longer available. No change was saved."
             case .notFound: return "That change can't be undone any more."
             case .learningIdentityConflict: return "Some note records have the same ID. The action wasn't applied; existing records were kept. Preserve the notebook and its backup before resolving those identities."
             case .learningIDLimit: return "The notebook can't safely allocate another note ID. Existing records were kept."
@@ -947,5 +965,119 @@ extension NotebookStore {
     func preserveLearningIDFloor(adding records: [JSONObject] = []) throws {
         let floor = JSON.object(learningIDFloor(adding: records).mapValues { .string(String($0)) })
         if meta["learning_ids"] != floor { meta["learning_ids"] = floor; try writeMeta() }
+    }
+}
+
+
+extension NotebookStore {
+    /// Person-only recoverable removal. Neither this API nor restoration is an MCP tool.
+    public struct DeletedPage: Identifiable {
+        public let id: String, file: String, title: String, deletedAt: String
+    }
+    var deletedPageFiles: Set<String> { Set((meta["deletedPages"]?.array ?? []).compactMap { $0["file"]?.string }) }
+    public var deletedPages: [DeletedPage] {
+        (meta["deletedPages"]?.array ?? []).compactMap {
+            guard let id = $0["id"]?.string, let file = $0["file"]?.string, let title = $0["title"]?.string else { return nil }
+            return DeletedPage(id: id, file: file, title: title, deletedAt: $0["at"]?.string ?? "")
+        }.reversed()
+    }
+    public func canDeletePage(_ file: String) -> Bool { contentPages.contains { $0.file == file } && readPage(file) != nil }
+    private func archiveURL(_ id: String) throws -> URL {
+        guard UUID(uuidString: id) != nil else { throw StoreError.notFound }
+        return url.appendingPathComponent("deleted-pages", isDirectory: true).appendingPathComponent(id, isDirectory: true)
+    }
+    @discardableResult
+    public func deletePage(_ file: String, session: String) throws -> String {
+        try locked {
+            guard ExistingNotebook.validComponent(file), canDeletePage(file), editMarker == nil else { throw StoreError.notFound }
+            let fm = FileManager.default, id = UUID().uuidString, archive = try archiveURL(id)
+            try fm.createDirectory(at: archive, withIntermediateDirectories: true)
+            let current = try Data(contentsOf: pagesURL.appendingPathComponent(file))
+            try current.write(to: archive.appendingPathComponent(file), options: .atomic)
+            if hasPreviousVersion(file) {
+                try Data(contentsOf: pagesURL.appendingPathComponent(Self.previousName(file))).write(to: archive.appendingPathComponent(Self.previousName(file)), options: .atomic)
+            }
+            var record: JSONObject = ["id": .string(id), "file": .string(file), "title": .string(readPage(file)!.title), "at": .string(Self.now())]
+            let groups = meta["chapters"]?.array ?? []
+            if let group = groups.first(where: { ($0["pages"]?.array ?? []).contains(.string(file)) }) {
+                record["chapter"] = group["intro"]
+                record["chapterTitle"] = group["title"]
+                record["chapterNumber"] = group["number"]
+                record["index"] = .number(Double((group["pages"]?.array ?? []).firstIndex(of: .string(file)) ?? 0))
+            } else { record["index"] = .number(Double((meta["unfiled"]?.array ?? []).firstIndex(of: .string(file)) ?? 0)) }
+            try Data(JSON.object(record).pretty.utf8).write(to: archive.appendingPathComponent("record.json"), options: .atomic)
+            _ = try appendTranscriptLocked(["role": .string("person"), "purpose": .string("delete_page"), "file": .string(file), "page": .string(file), "archive": .string(id), "session": .string(session)])
+            meta["deletedPages"] = .array((meta["deletedPages"]?.array ?? []) + [.object(record)])
+            meta["unfiled"] = .array((meta["unfiled"]?.array ?? []).filter { $0 != .string(file) })
+            meta["chapters"] = .array(groups.map { value in
+                var group = value.object!; group["pages"] = .array((group["pages"]?.array ?? []).filter { $0 != .string(file) }); return .object(group)
+            })
+            // Archive first, then durable removal reservation, then remove physical copies.
+            // A crash here cannot turn the leftover file into an orphan page.
+            meta["writerGeneration"] = .string(UUID().uuidString)
+            try writeMeta()
+            writerGeneration = meta["writerGeneration"]
+            try fm.removeItem(at: pagesURL.appendingPathComponent(file))
+            let previous = pagesURL.appendingPathComponent(Self.previousName(file))
+            if fm.fileExists(atPath: previous.path) { try fm.removeItem(at: previous) }
+            return id
+        }
+    }
+    @discardableResult
+    public func restoreDeletedPage(_ id: String, session: String) throws -> String {
+        try locked {
+            guard editMarker == nil, let record = (meta["deletedPages"]?.array ?? []).first(where: { $0["id"]?.string == id })?.object,
+                  let file = record.str("file"), ExistingNotebook.validComponent(file), !pageFiles.contains(file) else { throw StoreError.notFound }
+            let fm = FileManager.default, archive = try archiveURL(id)
+            let names = [file, Self.previousName(file)]
+            // Refuse collisions before writing anything. Identical leftovers from an interrupted
+            // removal are safe; different bytes always require manual inspection.
+            for name in names {
+                let source = archive.appendingPathComponent(name), destination = pagesURL.appendingPathComponent(name)
+                if fm.fileExists(atPath: destination.path) {
+                    guard fm.fileExists(atPath: source.path), try Data(contentsOf: source) == Data(contentsOf: destination) else { throw RemovalError.collision }
+                }
+            }
+            guard fm.fileExists(atPath: archive.appendingPathComponent(file).path) else { throw StoreError.notFound }
+            for name in names where fm.fileExists(atPath: archive.appendingPathComponent(name).path) {
+                if !fm.fileExists(atPath: pagesURL.appendingPathComponent(name).path) {
+                    try fm.copyItem(at: archive.appendingPathComponent(name), to: pagesURL.appendingPathComponent(name))
+                }
+            }
+            _ = try appendTranscriptLocked(["role": .string("person"), "purpose": .string("restore_page"), "file": .string(file), "page": .string(file), "archive": .string(id), "session": .string(session)])
+            var groups = meta["chapters"]?.array ?? []
+            let target = groups.firstIndex { group in
+                if let intro = record.str("chapter") { return group["intro"]?.string == intro }
+                return record.str("chapterTitle") != nil && group["title"] == record["chapterTitle"] && group["number"] == record["chapterNumber"]
+            }
+            func inserting(_ values: [JSON]) -> JSON {
+                var values = values; let rawIndex: Double; if case .number(let n) = record["index"] { rawIndex = n } else { rawIndex = 0 }; let index = min(max(0, Int(rawIndex)), values.count)
+                values.insert(.string(file), at: index); return .array(values)
+            }
+            if let target {
+                var group = groups[target].object!; group["pages"] = inserting(group["pages"]?.array ?? []); groups[target] = .object(group)
+                meta["chapters"] = .array(groups)
+            } else { meta["unfiled"] = inserting(meta["unfiled"]?.array ?? []) }
+            meta["deletedPages"] = .array((meta["deletedPages"]?.array ?? []).filter { $0["id"]?.string != id })
+            try writeMeta()
+            // Keep the archive as retained recovery evidence; it is not another editable page.
+            return file
+        }
+    }
+    public enum RemovalError: Error, LocalizedError {
+        case collision
+        public var errorDescription: String? { "A different file already uses this page’s name. Nothing was replaced. Inspect the notebook in Finder before restoring." }
+    }
+    /// Holds the notebook lock through the move. Cached stores reject the moved/replaced directory.
+    public func moveNotebook(to destination: (URL) throws -> Void) throws {
+        try locked {
+            guard editMarker == nil else { throw StoreError.notFound }
+            meta["writerGeneration"] = .string(UUID().uuidString)
+            try writeMeta()
+            // The moved notebook keeps this new generation. Every old store remains retired,
+            // even if Finder later puts the same directory back at its old path.
+            do { try destination(url) }
+            catch { writerGeneration = meta["writerGeneration"]; throw error }
+        }
     }
 }

@@ -131,6 +131,7 @@ struct OpenNotebookRows: View {
         }
         .buttonStyle(.plain)
         .help(p.title)
+        .contextMenu { PageRemovalActions(store: session.store, file: p.file) }
     }
 
     @ViewBuilder

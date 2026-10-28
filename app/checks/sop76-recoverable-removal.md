@@ -1,0 +1,54 @@
+# SOP76: person-owned recoverable removal
+
+Implemented from main `75a8eb1` in an isolated worktree. The original dirty checkout and earlier user build were untouched. No provider/auth/backend changes or live provider requests were made for this issue.
+
+## Implemented boundaries
+
+Ordinary content pages, including Almanac entries, use Delete Page… in the existing page-header menu and sidebar context menu. A confirmation names the exact target/notebook, the recovery list, retained history, stopped activity and retired links. Required introductions, Goals, Notes, Working memory and About retain their page identity; their disabled menu explains clearing through Edit. No chapter cascade or permanent page purge.
+
+Deleted Pages… restores exact current/previous bytes and filing, refusing different destination bytes. Original transcripts/evidence and archive copies remain. Whole notebooks use macOS Trash after exact owned writers drain. A removed Almanac is saved disabled. Removed identity link grants retire without discarding history, and Almanac theme selections remove deleted notebook names. Recovery requires adding/confirming links again.
+
+## Observed checks
+
+- `swift run --package-path app sophia-checks`: **all 128 passed**. New checks exercise current/previous bytes and chapter position, no stale filename resurrection or old Undo, required roles, archive failure, open editor, interrupted physical leftovers, restore collision, moved/replaced/Put-Back directory identity and generation, retired grants and same-name creation collisions, deleted Almanac readiness. Existing controlled process checks additionally verify `whenStopped` runs only after the exact owned parent/child drain. No real provider process was needed.
+- Actual local stdio MCP smoke advertised nine handlers, no delete/restore tool, and denied cached/fresh-process writes to a missing notebook without recreating it. `python3 app/checks/root-page-tools.py app/.build/debug/sophia-mcp` passed after its fixture was updated to create the notebook before starting the existing-only MCP. Its initial missing-notebook setup failed as expected under the new contract; production checks were not relaxed.
+- `app/scripts/make-app.sh debug`: native app and adjacent MCP built. Local output logs are `/tmp/sophia-deletion-core-final.log` and `/tmp/sophia-deletion-bundle-final.log`.
+- Native debug harness, isolated bundle identity `dev.sophia.ux.deletion.20261028`, disposable Library `/tmp/sophia-native-deletion-ux/run1/library`: actual long-title confirmation, Cancel unchanged, selected page Delete → next page, Restore from Deleted Pages to original position, last page → Contents empty state, unresolved personal edit conflict blocked deletion with both draft and external bytes preserved, explicit Revert, unselected notebook Trash kept current selection, Almanac Trash → next notebook, last notebook Trash → empty Library.
+- Native Almanac Trash returned an exact OS receipt for the disposable folder; original was absent and archived settings had `enabled: false`. With the app normally quit, only that receipt-identified folder was moved back to its empty original destination. Cold reopen showed disabled preparation. Deleting its synthetic entry removed current readiness. This verifies documented folder recovery, **not the Finder Put Back gesture itself**. Other receipt-identified disposable Trash targets were also recovered while quit; no personal Trash items were enumerated or changed.
+
+Native artifacts are under `/tmp/sophia-native-deletion-ux/run1/results/`:
+
+| State | PNG suffix |
+|---|---|
+| Revised page confirmation | `1793213231399653000-8c8e1f.png` |
+| Revised recovery list | `1793213248862329000-d5a0f7.png` |
+| Settled next-page body | `1793213238963090000-5f8e26.png` |
+| Kept draft after refused Delete | `1793213286958428000-eaaba3.png` |
+| Almanac Trash confirmation | `1793213329929453000-8f996b.png` |
+| After Almanac Trash | `1793213336495104000-da7344.png` |
+| Last page → empty Contents | `1793213459767031000-fc5331.png` |
+| Unselected notebook removed | `1793213483696133000-69f18c.png` |
+| Recovered disabled Almanac; entry removed | `1793213500827887000-92e080.png` |
+| Last notebook → empty Library | `1793213530062739000-6b3669.png` |
+
+## Design and limits
+
+Official Claude Code 2.1.310 resumed the established Mara/Marcus/Imani standard convergent charrette with canonical `claude-opus-5-5` observed in message streams and high effort configured (not independently measured). The first actual-render critique found missing link-retirement disclosure in the page confirmation. The revision adds explicit “added and confirmed again” wording and local deletion dates; the same voices inspected the revised states and all three reported CLEAR. The host observed only canonical Opus 5.5 in the final round; high effort was configured, not independently measured. No new branding or layout mode.
+
+The missing-CLI banner is intentional synthetic fixture setup. Header-menu deletion was exercised natively; a temporary right-click harness attempt was ineffective and reverted, so sidebar context-menu interaction is source-verified, not claimed as an automated native pass. Required-page menu deletion was unavailable; disabled explanation is additionally source-verified. VoiceOver, physical mouse/trackpad behavior, permanent purge and external simultaneous Library mutation are not established. This is recoverable removal, not a privacy erasure feature. Provider billing and commercial eligibility are unrelated and remain inconclusive.
+
+## Bounded lifecycle follow-up
+
+The adaptive lead’s questions prompted builder verification of two source gaps: a configured Almanac without the attached worker bypassed disabling, and `configure()` could cancel/drop an active engine before quiescence captured it. The follow-up disables any configured target and captures the exact worker engine before configure/cancel, then waits for its owned tree. No new feature or provider capability.
+
+The final app/MCP bundle built. A native inactive secondary-Almanac Trash preserved the current notebook and archived `enabled: false` (`1793214075155044000-7dbb4d.png` under run1). A separate `/tmp/sophia-native-deletion-ux/worker` fixture injected an explicitly controlled local protocol executable, not Claude or a provider request. It launched an owned parent and child that ignored TERM; the child would write into/recreate the old notebook after EOF if left alive. Native Prepare → notebook Trash completed; both exact captured PIDs were gone, original directory absent, no late file, archived Almanac disabled. Evidence: `worker/quiescence-result.json` and `worker/results/1793214174545260000-0c939d.png`. Only the receipt-owned folder was recovered to its empty original location while the app was quit. This is controlled cancellation evidence, not a real service outage or model interaction. No personal auth or caches were read or changed.
+
+## Independent-review repairs
+
+The initial independent adaptive review of `75a8eb1` → `b6e1597` verified four FIX NOW findings: disable an inactive configured Almanac; disclose possible partial side effects and preflight unopened editing markers; surface Restore errors inside the sheet; refresh the open session’s link cache after removal. All are repaired. Related small cleanup gates New Notebook/Almanac commands and normal Close/Quit only while removal is active, and removes the unreachable conversation Restore button while keeping the canonical recovery list.
+
+After these repairs, the native app/MCP build and **all 128 Core checks passed again**. The removal test now first proves the latest revision is Undo-eligible, then proves deletion/restoration ends that eligibility; a person edit is likewise no longer Undo-eligible after restore, and a Sophia revision still cannot drop those restored protected lines. Core production code did not require further changes.
+
+Actual native collision recovery now shows its error inline in Deleted Pages (`run1/results/1793214722571136000-74b900.png`) and preserves the external file’s exact bytes and the archived page. Actual native Trash of an unopened notebook with a leftover edit marker refuses before link retirement (`1793214734973246000-9d1a72.png`); the notebook, marker and seeded confirmed link remain unchanged. `/tmp/sophia-native-deletion-ux/run1/failure-path-results.json` records assertions. The same three design voices read both revised error states and reported CLEAR. Partial OS-failure wording and command/Close gates are source-verified, not claimed as separately exercised native failures.
+
+If macOS cannot terminate an owned process, removal continues waiting and the notebook is not moved. Normal Close/Quit is blocked during that wait; Force Quit may be needed. No timeout moves a notebook while a known writer is still active. Previously detached stopped processes remain governed by the directory identity/generation write guards. This limitation is separate from the controlled successful parent/child-drain observation.

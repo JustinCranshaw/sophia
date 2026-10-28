@@ -1143,6 +1143,11 @@ func overviewPagesUseTheSameWritesEditsAndUndo() throws {
 }
 
 let all: [(String, () throws -> Void)] = [
+    ("deletedAlmanacEntryIsNotAdvertisedAsReady", deletedAlmanacEntryIsNotAdvertisedAsReady),
+    ("failedRemovalPreservesOriginalAndOpenEdits", failedRemovalPreservesOriginalAndOpenEdits),
+    ("deletedPagesRecoverExactBytesAndFiling", deletedPagesRecoverExactBytesAndFiling),
+    ("removalRecoveryRefusesCollisionAndSurvivesLeftovers", removalRecoveryRefusesCollisionAndSurvivesLeftovers),
+    ("movedNotebooksRejectStaleStoresAndRetireLinkGrants", movedNotebooksRejectStaleStoresAndRetireLinkGrants),
     ("notebookCheckpointQuotaDoesNotConsumeLiveUpdates", notebookCheckpointQuotaDoesNotConsumeLiveUpdates),
     ("notebookCheckpointParaphraseStillRequiresValidEvidence", notebookCheckpointParaphraseStillRequiresValidEvidence),
     ("notebookAutomaticPromptsExcludeUndoneBodySnapshots", notebookAutomaticPromptsExcludeUndoneBodySnapshots),

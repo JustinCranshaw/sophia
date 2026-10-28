@@ -28,6 +28,13 @@ public final class OwnedClaudeProcess {
     private var timer: DispatchSourceTimer?
     private var terminateAt: Date?
     private var killAt: Date?
+    private var stoppedCallbacks: [() -> Void] = []
+    public func whenStopped(_ completion: @escaping () -> Void) {
+        Self.queue.async {
+            if self.known.isEmpty { DispatchQueue.main.async(execute: completion) }
+            else { self.stoppedCallbacks.append(completion) }
+        }
+    }
 
     private init(_ process: Process) {
         root = Identity.read(process.processIdentifier)
@@ -96,6 +103,8 @@ public final class OwnedClaudeProcess {
         if known.isEmpty {
             timer?.cancel(); timer = nil
             Self.live[id] = nil
+            let stopped = stoppedCallbacks; stoppedCallbacks = []
+            for callback in stopped { DispatchQueue.main.async(execute: callback) }
             if Self.live.isEmpty {
                 let callbacks = Self.waiters; Self.waiters = []
                 for callback in callbacks { DispatchQueue.main.async(execute: callback) }
