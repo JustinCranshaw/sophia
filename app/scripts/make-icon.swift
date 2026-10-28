@@ -28,8 +28,9 @@ struct MakeIcon {
                 context.addPath(CGPath(roundedRect: CGRect(x: 100, y: 100, width: 824, height: 824),
                                        cornerWidth: 185, cornerHeight: 185, transform: nil))
                 context.fillPath()
-                context.translateBy(x: 252, y: 772)
-                context.scaleBy(x: 2.6, y: -2.6)
+                let markScale: CGFloat = 3.6
+                context.translateBy(x: 512 - 100 * markScale, y: 512 + 100 * markScale)
+                context.scaleBy(x: markScale, y: -markScale)
                 context.setFillColor(NSColor(srgbRed: 110.0/255, green: 47.0/255, blue: 85.0/255, alpha: 1).cgColor)
                 context.addPath(BrandMark.unitPath.cgPath)
                 context.fillPath()
