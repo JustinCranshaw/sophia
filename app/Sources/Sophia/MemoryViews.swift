@@ -61,12 +61,12 @@ struct AboutView: View {
     var body: some View {
         let lines = session.library.aboutLines
         Sheet {
-            Text("About you").font(.system(size: 28, weight: .semibold, design: .serif))
+            ReadingTitle(title: "About you", scope: "Shared across your Library")
             Intro("What Sophia knows about you in every notebook: your background and how you like to work. She proposes lines from what you say. A line stays in the notebook it came from until you confirm it. Topic details stay in each notebook's notes.")
             if lines.isEmpty {
                 Text("Nothing yet.").foregroundStyle(.secondary)
             }
-            VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 ForEach(lines, id: \.self.line) { l in row(l) }
             }
             if editing == "new" {
@@ -96,7 +96,9 @@ struct AboutView: View {
                 }.controlSize(.small)
             }
         }
-        .card()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 10)
+        .overlay(alignment: .bottom) { Divider() }
     }
 
     @ViewBuilder
@@ -203,7 +205,7 @@ struct LibraryProposalCard: View {
             }
             Button(isLink ? "Notebook connections…" : "About you…") {
                 if isLink { model.showNotebookSettings(session.store.url) }
-                else { model.aboutShown = true }
+                else { session.show(.about) }
             }
         }
         .controlSize(.small)

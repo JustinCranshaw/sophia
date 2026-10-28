@@ -42,6 +42,12 @@ The user selected DC Trued Channel in solid paired Plum, then Palatino for the S
 
 Recorded Almanac dates distinguish its entries without changing page titles or using modification times. Routine write banners become contextual page-header Undo; unknown-provenance, refusal, error and kept-edit exceptions stay explicit. Preparation/notification controls are local to the Almanac, with an actionable global new-entry affordance rather than permanent status/options controls. [Native implementation evidence](app/checks/sop59-notebook-orientation.md) separates controlled fixtures, observations and remaining limits; the parallel branding explorations do not change the app’s fonts, palette or identity here.
 
+### Shared page foundations — October 27, 2026
+
+The next implementation direction uses actual Markdown pages for every durable surface, with role/scope metadata rather than separate authoring models. The first slice makes notebook and chapter introductions real pages through the existing reader, source editor, protected writes and Undo, with a deterministic current child outline attached after the body. Existing raw content is preserved; empty introductions contain no generated prose. About you, goals, notes and memory remain on their earlier records until their dependent migrations are implemented and checked; this slice does not claim the full unification is complete.
+
+The workspace uses one layout: Library sidebar, conversation in the middle, main page on the right. A global persisted conversation collapse preference controls an explicit middle rail; navigation never changes the layout or resets that preference. Connection and data information lives in native Settings and contextual recovery, with the first-use disclosure retained.
+
 ## Launch scope — founder proposals from October 14, 2026
 
 This section records the proposed paid-release scope, rather than claiming those launch conditions are met. The original ACP/HTTP experiment below remains a fallback investigation, rather than a prerequisite to rebuild before using the existing native prototype. Current page behavior is direct writes with undo, as defined in SOPHIA.md and DATA-MODEL.md.

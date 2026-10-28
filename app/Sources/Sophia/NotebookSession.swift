@@ -5,7 +5,7 @@ import SophiaReader
 /// One open notebook: its files, its conversation process, and what the person is looking at.
 /// The person's actions write through the store; Sophia's output is checked before it is stored.
 final class NotebookSession: ObservableObject {
-    enum Place: Hashable { case contents, goals, notes, about, page(String) }
+    enum Place: Hashable { case contents, goals, notes, about, chapter(String), page(String) }
     enum Request: Equatable {
         /// Notes on the person's messages up to `through`; quotes may come only from `entries`.
         case checkpoint(through: String, entries: Set<String>, catchUp: Bool)
@@ -23,11 +23,19 @@ final class NotebookSession: ObservableObject {
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
         if oldValue != place { pendingSection = nil; navigationProblem = nil }
-        switch place { case .contents: activeThread = ""; case .page(let file): activeThread = file; default: break }
+        switch place { case .contents, .chapter, .about: activeThread = ""; case .page(let file): activeThread = file; default: break }
         for (thread, engine) in engines { engine.setSourceAccessActive(thread == activeThread) }
         pendingSource = engines[activeThread]?.pendingSource
-        if case .page(let f) = place, f == editing?.file { return }; commitEdit()
+        if visiblePage?.file == editing?.file, editing != nil { return }; commitEdit()
     } }
+    var visiblePage: NotebookStore.Page? {
+        switch place {
+        case .page(let file): return store.page(file)
+        case .contents: return store.overviewPage
+        case .chapter(let id): return store.chapters.first { $0.id == id }?.intro
+        default: return nil
+        }
+    }
     @Published private(set) var activeThread = ""
     var conversationName: String { activeThread.isEmpty ? "Contents" : store.readPage(activeThread)?.title ?? activeThread }
     var visibleActivity: String? { running?.thread == activeThread && request == nil ? activity : nil }
@@ -61,8 +69,8 @@ final class NotebookSession: ObservableObject {
         get { if case .title(let title) = sectionNavigation.target?.selector { return title }; return nil }
         set {
             let target: SectionTarget?
-            if let title = newValue, case .page(let file) = place {
-                target = SectionTarget(notebook: store.url, file: file, selector: .title(title))
+            if let title = newValue, let page = visiblePage {
+                target = SectionTarget(notebook: store.url, file: page.file, selector: .title(title))
             } else { target = nil }
             sectionNavigation = SectionNavigation(target: target)
         }
@@ -107,6 +115,7 @@ final class NotebookSession: ObservableObject {
         store = try NotebookStore.open(url: url)
         library = LibraryStore(root: url.deletingLastPathComponent())
         session = store.newSessionID()
+        try store.ensureOverviewPages(session: session)
         // A marker left by a crash would keep Sophia out of a section nobody is editing.
         store.endEdit()
         store.fileUndecidedDrafts(session: session)
@@ -123,7 +132,11 @@ final class NotebookSession: ObservableObject {
         if let terminating { NotificationCenter.default.removeObserver(terminating) }
     }
 
-    func changed() { objectWillChange.send() }
+    func changed() {
+        do { try store.ensureOverviewPages(session: session) }
+        catch { problem = error.localizedDescription }
+        objectWillChange.send()
+    }
 
     // MARK: The conversation process
 
@@ -397,7 +410,13 @@ final class NotebookSession: ObservableObject {
     // MARK: Pages Sophia writes
 
     /// Shows a place in the book, opening the book if it is hidden.
-    func show(_ p: Place) { pendingSection = nil; navigationProblem = nil; place = p; bookShown = true }
+    func show(_ p: Place) {
+        pendingSection = nil; navigationProblem = nil
+        if case .page(let file) = p, store.overviewPage?.file == file { place = .contents }
+        else if case .page(let file) = p, let chapter = store.chapters.first(where: { $0.intro?.file == file }) { place = .chapter(chapter.id) }
+        else { place = p }
+        bookShown = true
+    }
 
     /// Undo the latest eligible action, rechecked under the notebook lock.
     func undoWrite(_ entryID: String) {
@@ -496,8 +515,8 @@ final class NotebookSession: ObservableObject {
 
     /// ⌘E: the whole page, with the caret where the person is reading.
     func editWholePage() {
-        guard bookShown, case .page(let file) = place else { return }
-        beginEdit(file: file, key: "(page)", atVisibleTop: true)
+        guard bookShown, let page = visiblePage else { return }
+        beginEdit(file: page.file, key: "(page)", atVisibleTop: true)
     }
 
     /// Permission applies on the next message; it remains undoable until the next page action.

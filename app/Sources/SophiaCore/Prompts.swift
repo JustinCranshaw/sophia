@@ -35,7 +35,8 @@ public enum Prompts {
     /// The book's pages by chapter, with file names, for Sophia. With `sections`, each page's
     /// section titles follow it (used for other notebooks, so Sophia can link into a section).
     public static func pageList(_ store: NotebookStore, sections: Bool = false) -> String {
-        pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
+        let overview = store.overviewPage.map { "Notebook introduction: \($0.file) — \($0.title)\n" } ?? ""
+        return overview + pageList(chapters: store.chapters, loose: store.unfiledPages) { file in
             sections ? store.sections(of: file).map(\.title) : []
         }
     }
@@ -47,6 +48,7 @@ public enum Prompts {
         }
         for c in chapters {
             lines.append("\(c.heading):")
+            if let intro = c.intro { lines += page(intro, indent: "  Introduction: ") }
             lines += c.pages.flatMap { page($0, indent: "  ") }
         }
         if !loose.isEmpty {

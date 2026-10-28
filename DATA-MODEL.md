@@ -81,7 +81,9 @@ Pages may also contain music as ABC notation in ```` ```abc ```` fences ([MUSIC.
 
 ```json
 { "chapters": [ { "number": "0", "title": "Foundations", "pages": ["0-0-probability.md", "0-1-entropy.md"] } ],
-  "unfiled": ["roadmap.md"] }
+  "unfiled": ["roadmap.md"],
+  "overview": "notebook-introduction.md",
+  "pageProperties": {"notebook-introduction.md": {"role": "notebook", "scope": "notebook"}} }
 ```
 
 `learning_ids` is a small per-prefix high watermark, for example `{"n": "37", "g": "4"}` (decimal strings avoid JSON number precision loss). Learning writes reserve the next ID here under the notebook lock before appending; failed writes may leave gaps. Deletion preserves the watermark, and reopening never recycles an issued identity. Legacy notebooks seed the floor from existing learning IDs and known structured references, not prose. Restore refuses an ID collision before changing records and keeps the pending Undo available with an error. Existing duplicated identities are not guessed apart or repaired automatically; preserve the notebook and a known-good backup before resolving past ambiguity.
@@ -89,7 +91,11 @@ Pages may also contain music as ABC notation in ```` ```abc ```` fences ([MUSIC.
 This is the only place chapter membership and order live. A page's header holds its title and sources, not its chapter.
 - **Chapter number:** optional. Numbered chapters are kept in number order.
 - **Page numbers:** a page's section number, if any, is part of its title ("0.1 Entropy"); the app sets it apart in the header and contents.
-- **Who files pages:** Sophia puts pages in chapters with `set_chapter`, or with `chapter` on `write_page`. Moving a page never changes its content. A chapter with no pages is removed.
+- **Who files pages:** Sophia puts pages in chapters with `set_chapter`, or with `chapter` on `write_page`. Moving a page never changes its content. Chapters with an introduction keep their identity and introduction even when their child list becomes empty. Legacy empty chapters without an introduction can still be removed.
+
+Notebook and chapter introductions are ordinary Markdown pages with the same file identity, source editor, checked writes, person-edit protection, previous version and Undo as other pages. `overview` names the notebook introduction; each chapter may have an `intro` filename. The file is also the chapter's stable identity. `pageProperties` adds role and scope without putting structural markers in the Markdown body; those labels grant no additional agent permissions. Roles currently reserved are `content` (legacy default), `notebook`, `chapter`, `about`, `goals`, `notes` and `memory`; scope defaults to `notebook`.
+
+On opening the native notebook, introduction filenames are reserved under the lock before initially empty files are created. Reopening resumes those same reservations and never regenerates an existing body. A one-time `notebook.before-page-roots.json` keeps the original ordering metadata; existing Markdown and JSONL are preserved. Initialization is a client `initialize_page` record, not an authored change with destructive new-page Undo. Later writes and edits use normal page actions. The outline is a current projection of membership, attached after the authored body; it is never inserted into the source or generated on navigation.
 
 ### Pages
 

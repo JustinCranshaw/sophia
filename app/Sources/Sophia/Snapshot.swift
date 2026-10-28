@@ -32,7 +32,7 @@ enum Snapshot {
             // The conversation scrolled to its end before the resize reflowed it.
             NotificationCenter.default.post(name: .scrollConversationToEnd, object: nil)
             var places: [(String, NotebookSession.Place)] = [("contents", .contents), ("goals", .goals), ("notes", .notes), ("about", .about)]
-            if let p = s.store.pages.first { places.append(("page", .page(p.file))) }
+            if let p = s.store.contentPages.first { places.append(("page", .page(p.file))) }
             func shoot(_ i: Int) {
                 guard i < places.count else { exit(0) }
                 // SOPHIA_SNAPSHOT_SECTION: open the page scrolled to that section, as a followed link does.

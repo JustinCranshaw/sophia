@@ -47,10 +47,21 @@ final class AppModel: ObservableObject {
     @Published var open: NotebookSession?
     @Published var problem: String?
     @Published var notebookSettings: NotebookSettingsSelection?
-    @Published var aboutShown = false
+    private let preferences: UserDefaults
+    @Published var conversationCollapsed: Bool {
+        didSet { preferences.set(conversationCollapsed, forKey: "conversationCollapsed") }
+    }
     private var bookVisibility: [String: Bool] = [:]
 
     init() {
+        #if DEBUG
+        if let fixture = ProcessInfo.processInfo.environment["SOPHIA_UX_HARNESS"] {
+            preferences = UserDefaults(suiteName: "Sophia.WorkspaceFixture." + Data(fixture.utf8).base64EncodedString())!
+        } else { preferences = .standard }
+        #else
+        preferences = .standard
+        #endif
+        conversationCollapsed = preferences.bool(forKey: "conversationCollapsed")
         let library = Library(), connection = ConnectionState()
         self.library = library; self.connection = connection
         almanac = MainActor.assumeIsolated { AlmanacModel(root: library.root, connection: connection) }
@@ -80,7 +91,7 @@ final class AppModel: ObservableObject {
                 let next = try NotebookSession(url: url, allowAutomaticReturn: connection.acknowledged && allowAutomaticReturn)
                 open?.shutdown()
                 notebookSettings = nil
-                next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.pages.isEmpty
+                next.bookShown = bookVisibility[next.store.url.path] ?? !next.store.contentPages.isEmpty
                 open = next
             } catch { problem = error.localizedDescription; return false }
         }
@@ -112,6 +123,7 @@ final class AppModel: ObservableObject {
                 problem = "This notebook is no longer available."; return
             }
             let files = (meta["unfiled"]?.array ?? []) + (meta["chapters"]?.array ?? []).flatMap { $0["pages"]?.array ?? [] }
+                + [meta["overview"]].compactMap { $0 } + (meta["chapters"]?.array ?? []).compactMap { $0["intro"] }
             let pages = url.appendingPathComponent("pages", isDirectory: true).resolvingSymlinksInPath()
             let destination = pages.appendingPathComponent(page).resolvingSymlinksInPath()
             guard files.compactMap(\.string).contains(page), destination.deletingLastPathComponent() == pages,
@@ -157,7 +169,7 @@ struct SophiaApp: App {
                 .environmentObject(model)
                 .environmentObject(model.connection)
                 .environmentObject(model.almanac)
-                .frame(minWidth: 900, minHeight: 600)
+                .frame(minWidth: 1140, minHeight: 600)
         }
         .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
@@ -166,7 +178,6 @@ struct SophiaApp: App {
                     .keyboardShortcut("n")
             }
             CommandGroup(after: .appInfo) {
-                Button("Connection & Data…") { model.connection.detailsShown = true }
                 Button("Sophia’s Almanac…") {
                     if let worker = model.almanac.worker { model.openNotebook(worker.url, at: .contents, allowAutomaticReturn: false) }
                     else { model.almanac.showSettings() }
@@ -178,6 +189,11 @@ struct SophiaApp: App {
                     .keyboardShortcut("e")
             }
         }
+        Settings {
+            ConnectionView(connection: model.connection, close: { NSApp.keyWindow?.close() })
+                .frame(width: 560)
+        }
+
     }
 }
 
@@ -206,7 +222,7 @@ struct RootView: View {
             }
             NavigationSplitView {
                 SidebarView()
-                    .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 420)
+                    .navigationSplitViewColumnWidth(min: 200, ideal: 260, max: 340)
             } detail: {
                 if let s = model.open { NotebookView(session: s, drafts: $drafts) } else { EmptyLibraryView(naming: $naming) }
             }
@@ -215,11 +231,6 @@ struct RootView: View {
             ConnectionView(connection: connection).frame(width: 560)
         }
         .sheet(isPresented: $almanac.settingsShown) { AlmanacSettingsView(almanac: almanac) }
-        .sheet(isPresented: $model.aboutShown) {
-            if let session = model.open {
-                SharedAboutView(session: session) { model.aboutShown = false }
-            }
-        }
         .sheet(item: $model.notebookSettings) { selection in
             if let session = model.open, session.store.url == selection.url {
                 NotebookSettingsView(session: session, section: selection.section) { model.notebookSettings = nil }
@@ -239,9 +250,6 @@ struct RootView: View {
                 if let worker = almanac.worker {
                     AlmanacReadyControl(worker: worker, read: model.readAlmanacEntry)
                 }
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button("Connection & Data") { connection.detailsShown = true }
             }
             ToolbarItem(placement: .navigation) {
                 Button { naming = true } label: { Label("New Notebook", systemImage: "plus") }
@@ -317,7 +325,7 @@ struct RootView: View {
     }
 }
 
-/// The book sits beside the conversation when both readable columns fit, and below it otherwise.
+/// One workspace layout: conversation in the middle, main page on the right.
 /// Empty notebooks begin with the conversation; explicit book visibility remains the person's choice.
 struct NotebookView: View {
     @ObservedObject var session: NotebookSession
@@ -333,46 +341,30 @@ struct NotebookView: View {
         session.store.url.path + "/" + session.activeThread
     }
 
-    /// The book takes about 60% of the space, within a comfortable range for a 660pt text column;
-    /// the conversation takes the rest and never drops below 360.
-    static func bookWidth(_ total: CGFloat) -> CGFloat {
-        min(800, max(460, min(total * 0.6, total - 360)))
-    }
     private enum Surface: Hashable { case conversation, divider, book }
-    private var readingAlmanac: Bool {
-        guard model.almanac.worker?.url == session.store.url, session.bookShown,
-              case .page = session.place, !session.isPending(session.activeThread),
-              session.pendingSource == nil, session.problem == nil, session.editRecovery.edits.isEmpty else { return false }
-        return !session.store.threadEntries(for: session.activeThread).contains(where: NotebookStore.isMessage)
-    }
     var body: some View {
-        GeometryReader { geo in
-            let key = Self.draftKey(session)
-            let draft = Binding(get: { drafts[key] ?? "" }, set: { drafts[key] = $0 })
-            let narrow = geo.size.width < 821
-            let reading = (session.place == .contents && session.bookShown) || readingAlmanac
-            let surfaces: [Surface] = reading ? [.book, .divider, .conversation] : [.conversation, .divider, .book]
-            let layout = reading || narrow ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
-            layout {
-                // Stable surface IDs retain the reader/editor when the first question opens discussion.
-                ForEach(surfaces, id: \.self) { surface in
-                    switch surface {
-                    case .conversation:
-                        ConversationView(session: session, draft: draft, compact: reading)
-                            .frame(maxWidth: .infinity, maxHeight: reading ? nil : .infinity)
-                            .fixedSize(horizontal: false, vertical: reading)
-                    case .divider:
-                        if session.bookShown { Divider() }
-                    case .book:
-                        if session.bookShown {
-                            BookView(session: session)
-                                .frame(width: reading || narrow ? nil : Self.bookWidth(geo.size.width),
-                                       height: !reading && narrow ? max(0, min(geo.size.height * 0.55, geo.size.height - 300)) : nil)
-                        }
+        let key = Self.draftKey(session)
+        let draft = Binding(get: { drafts[key] ?? "" }, set: { drafts[key] = $0 })
+        let surfaces: [Surface] = [.conversation, .divider, .book]
+        HStack(spacing: 0) {
+            // One layout: Library, conversation, then the main page. Visibility is always explicit.
+            ForEach(surfaces, id: \.self) { surface in
+                switch surface {
+                case .conversation:
+                    ConversationView(session: session, draft: draft)
+                        .frame(width: model.conversationCollapsed ? 44 : (session.bookShown ? 360 : nil))
+                        .frame(maxWidth: !model.conversationCollapsed && !session.bookShown ? .infinity : nil,
+                               maxHeight: .infinity)
+                case .divider:
+                    if session.bookShown { Divider() }
+                case .book:
+                    if session.bookShown {
+                        BookView(session: session).frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .onReceive(NotificationCenter.default.publisher(for: .editPage)) { _ in session.editWholePage() }
         .onChange(of: session.place) { _, place in
             if case .page(let file) = place, let worker = model.almanac.worker, worker.url == session.store.url {

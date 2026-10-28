@@ -170,7 +170,7 @@ Linked notebook page reads and link-title discovery use an existing-only reader:
 
 ## Notebook Home and navigation
 
-The sidebar represents notebooks, chapters and pages. Clicking a notebook opens its Home, including an empty notebook; starting a new notebook with a question still carries that text into an unsent composer. Home puts the actual contents and confirmed working goals first. Goal proposals remain proposals, with review available through the notebook menu/settings. An optional historical inquiry quotes saved words with a caveat; the approach text is explicitly general, not a generated curriculum or assessment. Private working memory is not repurposed as an introduction.
+The sidebar represents notebooks, chapters and pages. Clicking a notebook or chapter opens its actual introduction page with a live child outline. Introductions start empty and use the same reader and editor as ordinary pages; historical inquiry, goal summaries and private working memory are not regenerated as introduction prose. Starting a new notebook with a question still carries that text into an unsent composer. Goals remain available through notebook settings until their dependent page migration.
 
 Goals and Sophia’s notes live in notebook settings, available from the notebook’s ellipsis/context menu and their existing conversation actions. They do not retarget the selected page or its conversation. About you is a separately labeled shared-Library utility using the existing confirmation/correction controls. A conversation header always identifies its page or the notebook; Home’s history can be expanded, and explicit Send expands it. A newly arriving relevant reply or return briefing labels that same Show conversation control without overriding a deliberate hide choice; opening it clears this window-local indicator. Composer drafts remain window-local and keyed by notebook/page, not durable across Quit.
 
@@ -208,3 +208,11 @@ swiftc app/Sources/Sophia/AlmanacNotifications.swift app/checks/almanac-notifica
 ```
 
 Core/worker and native build observations remain separate from these adapter checks; see [SOP57 native verification](checks/sop57-almanac-native.md). Two bounded actual entries establish delivery, not factual certification: the first exposed a physical-model error; a narrow assumptions instruction improved the second sample without establishing general accuracy.
+
+## Shared page roots and workspace
+
+The workspace has one column order at every supported size: Library, conversation, main page. The window minimum is 1140×600; it does not stack or switch layouts. Collapse the conversation with its header control; the middle rail restores it and indicates pending source decisions, errors, kept edits, replies and activity. The preference is global across notebooks/pages and survives restart. Debug harness runs isolate it from the person's preferences. Unsent drafts retain their conversation ownership.
+
+Notebook and chapter roots open actual initially empty Markdown introduction pages through the ordinary page reader, Edit/⌘E source editor, protected writes and Undo. The current child outline is attached after the authored text. Root filenames and role/scope are recorded in notebook.json; opening preserves the previous ordering metadata once as notebook.before-page-roots.json and never replaces existing page bodies. A chapter with an introduction remains selectable when its child list becomes empty. Sidebar titles occupy one line with tail ellipsis and full hover text; new companion titles are prompted toward short, specific wording.
+
+Connection & data is in **Sophia → Settings…** (⌘,), with contextual access beside a failed request. The first-use disclosure still precedes inference. About you is currently shown in the reading pane with its existing personal-record semantics; converting it and goals/notes/memory into the same actual page object is dependent work, not completed by these foundations.

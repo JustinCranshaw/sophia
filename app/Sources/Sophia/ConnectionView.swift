@@ -58,6 +58,7 @@ final class ConnectionState: ObservableObject {
 struct ConnectionView: View {
     @ObservedObject var connection: ConnectionState
     var compact = false
+    var close: (() -> Void)? = nil
     private var statusText: String {
         switch connection.status {
         case .missing: return "Claude Code not found"
@@ -87,6 +88,7 @@ struct ConnectionView: View {
                 if compact { Button("Details") { connection.detailsShown = true } }
                 Button(connection.acknowledged ? "Close" : "Keep reading") {
                     connection.acknowledge(); connection.detailsShown = false
+                    close?()
                 }
             }
             Text("Reading and drafts work without a connection. Recheck sends no notebook content. Keep reading starts no request.")

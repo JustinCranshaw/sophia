@@ -8,10 +8,15 @@ struct BookView: View {
     var body: some View {
         Group {
             switch session.place {
-            case .contents: ContentsView(session: session)
+            case .contents:
+                if let page = session.store.overviewPage { PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file)) }
             case .goals: GoalsView(session: session)
             case .notes: NotesView(session: session)
             case .about: AboutView(session: session)
+            case .chapter(let id):
+                if let page = session.store.chapters.first(where: { $0.id == id })?.intro {
+                    PageView(session: session, file: page.file).id(session.store.url.appendingPathComponent(page.file))
+                } else { Sheet { Intro("This chapter is no longer available."); Button("Open notebook contents") { session.show(.contents) } } }
             case .page(let file):
                 // A different page starts a fresh reader, including the same filename in another notebook.
                 PageView(session: session, file: file).id(session.store.url.appendingPathComponent(file))
@@ -31,6 +36,22 @@ struct Sheet<Content: View>: View {
                 .frame(maxWidth: 660, alignment: .leading)
                 .padding(.horizontal, 36).padding(.vertical, 32)
                 .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+/// Shared title treatment for notebook overviews and Library reading surfaces.
+struct ReadingTitle: View {
+    let title: String
+    var scope: String? = nil
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let scope {
+                Text(scope).font(.system(size: 11, weight: .semibold)).tracking(1.2)
+                    .textCase(.uppercase).foregroundStyle(.secondary)
+            }
+            Text(title).font(.system(size: 32, weight: .semibold, design: .serif))
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
@@ -142,66 +163,42 @@ struct ContentsRow: View {
     }
 }
 
-struct ContentsView: View {
+/// The outline is attached to an ordinary editable overview page; it is never stored as authored prose.
+struct ContentsOutline: View {
     @ObservedObject var session: NotebookSession
     @EnvironmentObject private var model: AppModel
+    var chapterID: String? = nil
     var body: some View {
         let store = session.store
-        Sheet {
-            Text(store.name).font(.system(size: 32, weight: .semibold, design: .serif))
-            if Almanac.isConfigured(url: store.url) {
-                Intro("A collection of finished discoveries. Open an entry to read; a response is never required.")
-                if let worker = model.almanac.worker, worker.url == store.url {
-                    AlmanacHomeControls(worker: worker, almanac: model.almanac)
+        VStack(alignment: .leading, spacing: 18) {
+            Divider()
+            if chapterID == nil, Almanac.isConfigured(url: store.url),
+               let worker = model.almanac.worker, worker.url == store.url {
+                AlmanacHomeControls(worker: worker, almanac: model.almanac)
+            }
+            HStack {
+                Text("Contents").font(.system(size: 23, weight: .semibold, design: .serif))
+                Spacer()
+                if chapterID == nil {
+                    Text("\(store.contentPages.count) page\(store.contentPages.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
                 }
+            }
+            if let chapterID, let chapter = store.chapters.first(where: { $0.id == chapterID }) {
+                rows(chapter.pages)
+                if chapter.pages.isEmpty { Intro("No pages in this chapter yet.") }
             } else {
-                let goals = NotebookPresentation.confirmedGoals(store)
-                if !goals.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("WHAT YOU WANT TO EXPLORE").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                        ForEach(Array(goals.prefix(3)), id: \.self.line) { goal in
-                            Text(goal.str("text") ?? "").font(.system(size: 18, design: .serif))
-                        }
+                if store.contentPages.isEmpty { Intro("No pages yet. Start with a question; keep a page when there is something useful to return to.") }
+                ForEach(store.chapters) { chapter in
+                    VStack(alignment: .leading, spacing: 12) {
+                        Button { session.show(.chapter(chapter.id)) } label: { ChapterLabel(chapter: chapter) }.buttonStyle(.plain)
+                        rows(chapter.pages)
                     }
                 }
-                HStack {
-                    Button("Goals & intentions…") { model.showNotebookSettings(store.url, section: .goals) }
-                    let proposals = store.goals.filter { store.isProvisional($0) }.count
-                    if proposals > 0 { Text("\(proposals) proposal\(proposals == 1 ? "" : "s") to review").font(.caption).foregroundStyle(.secondary) }
-                }.buttonStyle(.borderless)
-                if let inquiry = NotebookPresentation.earlyInquiry(store) {
-                    DisclosureGroup("An early question from this notebook") {
-                        Text(inquiry).textSelection(.enabled).font(.callout)
-                        Text("From the saved conversation; this may not describe your current aim.").font(.caption).foregroundStyle(.secondary)
-                    }.font(.callout)
-                }
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("HOW SOPHIA WORKS HERE · GENERAL APPROACH").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Text("Explore through explanations, questions and sources. Keep useful ideas as pages, revisit them, and change direction as your inquiry develops. This is not a prescribed course or an assessment of you.")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
+                rows(store.unfiledPages)
+                Button("Goals & intentions…") { model.showNotebookSettings(store.url, section: .goals) }.buttonStyle(.borderless)
             }
-            Divider()
-            HStack {
-                Text(Almanac.isConfigured(url: store.url) ? "Entries" : "Contents").font(.system(size: 23, weight: .semibold, design: .serif))
-                Spacer()
-                Text("\(store.pages.count) page\(store.pages.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
-            }
-            if store.pages.isEmpty {
-                Intro("No pages yet. Begin with a question in the notebook conversation; a page is kept when there is something useful to return to.")
-            }
-            ForEach(store.chapters) { chapter in
-                VStack(alignment: .leading, spacing: 12) {
-                    ChapterLabel(chapter: chapter)
-                    rows(chapter.pages)
-                }.padding(.top, 8)
-            }
-            rows(store.unfiledPages)
         }
     }
-}
-
-extension ContentsView {
     func rows(_ pages: [NotebookStore.Page]) -> some View {
         let entries = NotebookPresentation.almanacEntries(session.store)
         return VStack(alignment: .leading, spacing: 12) {
@@ -231,7 +228,7 @@ struct PageView: View {
     @State private var previous: PreviousVersion?
     @State private var headingCount = 0
     private func navigate(_ proxy: ScrollViewProxy) {
-        guard session.place == .page(file), let target = session.sectionNavigation.target else { return }
+        guard session.visiblePage?.file == file, let target = session.sectionNavigation.target else { return }
         let request = session.pendingSectionID
         guard session.editing?.file != file else {
             session.navigationProblem = .init(file: file, text: "Finish editing, then choose the section again.")
@@ -251,11 +248,11 @@ struct PageView: View {
                 return
             }
             DispatchQueue.main.async {
-                guard session.place == .page(file), session.pendingSectionID == request else { return }
+                guard session.visiblePage?.file == file, session.pendingSectionID == request else { return }
                 proxy.scrollTo("section-\(index)", anchor: .top)
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                if session.place == .page(file), session.pendingSectionID == request { session.pendingSection = nil }
+                if session.visiblePage?.file == file, session.pendingSectionID == request { session.pendingSection = nil }
             }
         }
     }
@@ -288,13 +285,13 @@ struct PageView: View {
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
                 VStack(alignment: .leading, spacing: 8) {
                     if let chapter { ChapterLabel(chapter: chapter) }
-                    // The number runs into the title, as the page's own numbered headings do, in a lighter weight.
-                    ((number.map { Text($0 + "  ").font(.system(size: 30, weight: .light, design: .serif)).foregroundColor(.secondary) } ?? Text(""))
-                        + Text(title).font(.system(size: 30, weight: .semibold, design: .serif)))
-                        .tracking(-0.3)
-                        .fixedSize(horizontal: false, vertical: true)
+                    ReadingTitle(title: (number.map { $0 + "  " } ?? "") + title,
+                                 scope: store.page(file)?.role == .notebook ? "Notebook" : nil)
                 }
                 HStack {
+                    Button("Edit") { session.beginEdit(file: file, key: "(page)", atVisibleTop: true) }
+                        .buttonStyle(.borderless).controlSize(.small).disabled(session.editing != nil)
+                        .accessibilityLabel("Edit page")
                     if let entry = NotebookPresentation.almanacEntries(store)[file] {
                         Text(NotebookPresentation.publicationDate(entry)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
                     }
@@ -334,6 +331,12 @@ struct PageView: View {
                         return MusicWarnings(file: file, page: page.title, section: section, tune: t.title, warnings: t.warnings)
                     })
                 })
+                if store.page(file)?.role == .notebook {
+                    ContentsOutline(session: session)
+                } else if store.page(file)?.role == .chapter,
+                          let chapter = store.chapters.first(where: { $0.intro?.file == file }) {
+                    ContentsOutline(session: session, chapterID: chapter.id)
+                }
                 let links = session.library.links(touching: store.name).filter { l in
                     (l["from"]?["notebook"]?.string == store.name && l["from"]?["page"]?.string == file)
                         || (l["to"]?["notebook"]?.string == store.name && l["to"]?["page"]?.string == file)

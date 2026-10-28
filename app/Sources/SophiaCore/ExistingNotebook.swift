@@ -24,7 +24,8 @@ public final class ExistingNotebook {
     public let pageFiles: [String]
     private let directory: ReadDirectory
     private let pages: ReadDirectory
-    private let groups: [(number: String?, title: String, files: [String])]
+    private let overview: String?
+    private let groups: [(number: String?, title: String, files: [String], intro: String?)]
     private let loose: [String]
 
     static func validComponent(_ name: String) -> Bool {
@@ -43,22 +44,28 @@ public final class ExistingNotebook {
             return names.count == values.count && names.allSatisfy(Self.validComponent) ? names : nil
         }
         guard let loose = files(unfiled) else { return nil }
-        var groups: [(number: String?, title: String, files: [String])] = []
+        var groups: [(number: String?, title: String, files: [String], intro: String?)] = []
         for chapter in chapters {
             guard let c = chapter.object, let title = c.str("title"), let values = c["pages"]?.array,
                   let pages = files(values), c["number"] == nil || c["number"] == .null || c.str("number") != nil else { return nil }
-            groups.append((c.str("number"), title, pages))
+            let intro = c.str("intro")
+            guard intro == nil || Self.validComponent(intro!) else { return nil }
+            groups.append((c.str("number"), title, pages, intro))
         }
         // Existing writers allowed repeated page references. Project each once in
         // stored order, without repairing metadata or confusing duplicates with privacy.
         var seen = Set<String>()
-        groups = groups.map { ($0.number, $0.title, $0.files.filter { seen.insert($0).inserted }) }
+        groups = groups.map { ($0.number, $0.title, $0.files.filter { seen.insert($0).inserted }, $0.intro) }
         let looseFiles = loose.filter { seen.insert($0).inserted }
-        let all = groups.flatMap(\.files) + looseFiles
+        let overview = meta.str("overview")
+        guard overview == nil || Self.validComponent(overview!) else { return nil }
+        let roots = [overview].compactMap { $0 } + groups.compactMap(\.intro)
+        var allSeen = Set<String>()
+        let all = (roots + groups.flatMap(\.files) + looseFiles).filter { allSeen.insert($0).inserted }
         // Absence is the supported legacy optional flag; a malformed flag is not permission.
         guard meta["separate"] == nil || meta["separate"]?.bool != nil else { return nil }
         self.almanacConfiguration = meta["almanac"]
-        self.name = name; self.directory = directory; self.pages = pages; self.groups = groups; self.loose = looseFiles
+        self.name = name; self.directory = directory; self.pages = pages; self.groups = groups; self.loose = looseFiles; self.overview = overview
         self.pageFiles = all; self.isSeparate = meta["separate"]?.bool == true
     }
 
@@ -96,10 +103,11 @@ public final class ExistingNotebook {
         // One read per listed page for this projection. No orphan discovery or metadata repair.
         let read = Dictionary(uniqueKeysWithValues: pageFiles.compactMap { file in readPage(file).map { (file, $0) } })
         func page(_ file: String) -> NotebookStore.Page { .init(file: file, title: read[file]?.title ?? "Unavailable page") }
-        let chapters = groups.filter { !$0.files.isEmpty }.map {
-            NotebookStore.Chapter(number: $0.number, title: $0.title, pages: $0.files.map(page))
+        let chapters = groups.filter { !$0.files.isEmpty || $0.intro != nil }.map {
+            NotebookStore.Chapter(number: $0.number, title: $0.title, pages: $0.files.map(page), intro: $0.intro.map(page))
         }
-        return Prompts.pageList(chapters: chapters, loose: loose.map(page)) { file in
+        let intro = overview.map { "Notebook introduction: \($0) — \(page($0).title)\n" } ?? ""
+        return intro + Prompts.pageList(chapters: chapters, loose: loose.map(page)) { file in
             sections ? (read[file]?.sections.map(\.title) ?? []) : []
         }
     }

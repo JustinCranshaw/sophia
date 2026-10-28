@@ -51,7 +51,7 @@ struct OpenNotebookRows: View {
         let entries = NotebookPresentation.almanacEntries(store)
         row(.contents, store.name, Almanac.isConfigured(url: store.url) ? "sun.max" : "book", bold: true)
             .modifier(NotebookCopyActions(url: store.url))
-        if store.pages.isEmpty {
+        if store.contentPages.isEmpty {
             Text("No pages yet.").font(.caption).lineLimit(1).foregroundStyle(.secondary).padding(.leading, 22)
         } else {
             ForEach(store.chapters) { c in
@@ -66,23 +66,31 @@ struct OpenNotebookRows: View {
 
     /// A chapter: its number and title, with a chevron that folds its pages away.
     func chapterRow(_ c: NotebookStore.Chapter) -> some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.15)) {
-                if collapsed.contains(c.id) { collapsed.remove(c.id) } else { collapsed.insert(c.id) }
+        HStack(spacing: 0) {
+            Button {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    if collapsed.contains(c.id) { collapsed.remove(c.id) } else { collapsed.insert(c.id) }
+                }
+            } label: {
+                Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(collapsed.contains(c.id) ? 0 : 90))
+                    .frame(width: 24, height: 26).contentShape(Rectangle())
             }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
-                    .rotationEffect(.degrees(collapsed.contains(c.id) ? 0 : 90)).frame(width: 16)
-                if let n = c.number { Text(n).monospacedDigit().foregroundStyle(.secondary).fixedSize() }
-                Text(c.title).fontWeight(.semibold).lineLimit(1).truncationMode(.tail)
-                Spacer(minLength: 0)
+            .accessibilityLabel((collapsed.contains(c.id) ? "Expand " : "Collapse ") + c.heading)
+            Button { session.show(.chapter(c.id)) } label: {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    if let n = c.number { Text(n).monospacedDigit().foregroundStyle(.secondary).fixedSize() }
+                    Text(c.title).fontWeight(.semibold).lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 0)
+                }
+                .padding(.vertical, 5).padding(.trailing, 6).contentShape(Rectangle())
             }
-            .padding(.leading, 14).padding(.vertical, 3).padding(.horizontal, 6)
-            .contentShape(Rectangle())
+            .help(c.heading)
         }
+        .padding(.leading, 14)
+        .background(session.place == .chapter(c.id) ? Brand.selectionFill : .clear, in: RoundedRectangle(cornerRadius: 6))
         .buttonStyle(.plain)
-        .help(c.heading)
     }
 
     /// A page: its section number in a fixed column (or a page icon), then its title on one line.
@@ -100,7 +108,7 @@ struct OpenNotebookRows: View {
                     if let entry {
                         Text(NotebookPresentation.publicationDate(entry, abbreviated: true)).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     }
-                    Text(t).lineLimit(2).truncationMode(.tail)
+                    Text(t).lineLimit(1).truncationMode(.tail)
                 }
                 Spacer(minLength: 0)
             }
@@ -146,8 +154,8 @@ struct AboutRow: View {
     @EnvironmentObject private var model: AppModel
     @ObservedObject var session: NotebookSession
     var body: some View {
-        let proposed = session.library.aboutLines(visibleIn: session.store.name).filter(LibraryStore.isProvisional).count
-        Button { model.aboutShown = true } label: {
+        let proposed = session.library.aboutLines.filter(LibraryStore.isProvisional).count
+        Button { session.show(.about) } label: {
             HStack(spacing: 6) {
                 Image(systemName: "person.crop.circle").foregroundStyle(.secondary).frame(width: 16)
                 Text("About you").lineLimit(1)
