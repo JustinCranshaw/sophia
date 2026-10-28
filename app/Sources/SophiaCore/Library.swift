@@ -29,6 +29,7 @@ public struct Library {
     public func create(named name: String) throws -> URL {
         let clean = name.replacingOccurrences(of: "/", with: "-").trimmingCharacters(in: .whitespaces)
         let url = root.appendingPathComponent(clean.isEmpty ? "Untitled" : clean, isDirectory: true)
+        guard clean != ".", clean != "..", !clean.hasPrefix("."), !FileManager.default.fileExists(atPath: url.path) else { throw CocoaError(.fileWriteFileExists) }
         _ = try NotebookStore(url: url)
         return url
     }

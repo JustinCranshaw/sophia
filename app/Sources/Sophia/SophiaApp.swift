@@ -54,6 +54,9 @@ final class AppModel: ObservableObject {
     @Published var open: NotebookSession?
     private var aboutSession: NotebookSession?
     @Published private(set) var sharedAboutStore: NotebookStore?
+    @Published var removalTarget: RemovalTarget?
+    @Published var deletedPagesNotebook: URL?
+    @Published private(set) var removing = false
     @Published var problem: String?
     @Published var notebookSettings: NotebookSettingsSelection?
     private let preferences: UserDefaults
@@ -92,6 +95,7 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func openNotebook(_ url: URL, at place: NotebookSession.Place? = nil, allowAutomaticReturn: Bool = true) -> Bool {
+        guard !removing else { return false }
         guard library.notebooks.contains(url) else { problem = "This notebook is no longer available."; return false }
         if open?.store.url != url {
             guard prepareCurrentForSwitch() else { return false }
@@ -108,6 +112,7 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func openAbout() -> Bool {
+        guard !removing else { return false }
         if open?.isSharedAbout != true, !prepareCurrentForSwitch() { return false }
         do {
             if aboutSession == nil {
@@ -193,8 +198,93 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func requestPageRemoval(_ file: String, notebook: URL) {
+        guard !removing, let current = open, current.store.url == notebook, current.store.canDeletePage(file) else { return }
+        removalTarget = RemovalTarget(notebook: notebook, file: file, title: current.store.readPage(file)?.title ?? file)
+    }
+    func requestNotebookRemoval(_ url: URL) {
+        guard !removing, library.notebooks.contains(url) else { return }
+        removalTarget = RemovalTarget(notebook: url, file: nil, title: url.lastPathComponent)
+    }
+    func performRemoval(_ target: RemovalTarget) {
+        removalTarget = nil
+        guard !removing, library.notebooks.contains(target.notebook) else { problem = "This notebook is no longer available."; return }
+        let current = open?.store.url == target.notebook ? open : nil
+        guard current?.prepareForNavigationAway() != false else { problem = "Resolve your page edit or kept text before deleting."; return }
+        let store: NotebookStore
+        do { store = try current?.store ?? NotebookStore(url: target.notebook, existingOnly: true) }
+        catch { problem = error.localizedDescription; return }
+        if let file = target.file, !store.canDeletePage(file) { problem = "This page is no longer available for deletion."; return }
+        let previousPlace = current?.place
+        let nextFile = target.file.flatMap { file -> String? in
+            let pages = store.contentPages.map(\.file)
+            guard let index = pages.firstIndex(of: file) else { return nil }
+            return pages.dropFirst(index + 1).first
+        }
+        let chapter = target.file.flatMap { store.chapter(of: $0)?.id }
+        removing = true
+        let group = DispatchGroup()
+        if let current { group.enter(); current.quiesceForRemoval { group.leave() } }
+        group.enter()
+        var preparationError: Error?
+        MainActor.assumeIsolated { almanac.quiesceForRemoval(url: target.notebook, disable: target.file == nil) { preparationError = $0; group.leave() } }
+        group.notify(queue: .main) { [self] in
+            defer { removing = false }
+            do {
+                if let preparationError { throw preparationError }
+                let shared = LibraryStore(root: library.root)
+                // Retire grants before removal; on a later storage failure the notebook remains
+                // readable locally, but permission is conservatively not silently restored.
+                try shared.retireLinks(notebook: store.name, page: target.file)
+                if let file = target.file {
+                    _ = try store.deletePage(file, session: current?.session ?? "person-removal")
+                    current?.resumeAfterRemoval()
+                    if previousPlace == .page(file) {
+                        current?.show(nextFile.map { .page($0) } ?? chapter.map { .chapter($0) } ?? .contents)
+                    }
+                } else {
+                    try MainActor.assumeIsolated { try almanac.removeThemeNotebook(store.name) }
+                    try store.moveNotebook { url in
+                        var result: NSURL?
+                        try FileManager.default.trashItem(at: url, resultingItemURL: &result)
+                        #if DEBUG
+                        if let fixture = ProcessInfo.processInfo.environment["SOPHIA_UX_HARNESS"], let result {
+                            let receipt: JSONObject = ["source": .string(url.path), "trash": .string(result.path ?? "")]
+                            try? Data(receipt.line.utf8).write(to: URL(fileURLWithPath: fixture).appendingPathComponent("trash-receipt.json"), options: .atomic)
+                        }
+                        #endif
+                    }
+                    if current != nil {
+                        open = nil
+                        removing = false
+                        if let next = library.notebooks.first { openNotebook(next, at: .contents, allowAutomaticReturn: false) }
+                    }
+                }
+                notebookSettings = nil
+            } catch {
+                current?.resumeAfterRemoval()
+                problem = "Removal could not finish: " + error.localizedDescription + " Your recovery files and history have been kept."
+            }
+            notebooks = library.notebooks
+            MainActor.assumeIsolated { almanac.finishRemoval(url: target.notebook) }
+            current?.changed()
+        }
+    }
+    func restorePage(_ id: String, notebook: URL) {
+        guard !removing, library.notebooks.contains(notebook) else { return }
+        if let current = open, current.store.url == notebook, !current.prepareForNavigationAway() {
+            problem = "Resolve your page edit or kept text before restoring."; return
+        }
+        do {
+            let store = try open?.store.url == notebook ? open!.store : NotebookStore(url: notebook, existingOnly: true)
+            _ = try store.restoreDeletedPage(id, session: open?.session ?? "person-restore")
+            open?.store.reload(); open?.changed()
+        } catch { problem = error.localizedDescription }
+    }
+
     @discardableResult
     func create(_ name: String) -> Bool {
+        guard !removing else { return false }
         guard prepareCurrentForSwitch() else { return false }
         do {
             let url = try library.create(named: name)
@@ -291,6 +381,12 @@ struct RootView: View {
                 ToolbarItem(placement: .principal) { BrandLockup() }
         }
             }
+        }
+        .disabled(model.removing)
+        .overlay { if model.removing { ProgressView("Stopping notebook activity…").padding(20).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10)) } }
+        .sheet(item: $model.removalTarget) { target in RemovalConfirmation(target: target) }
+        .sheet(isPresented: Binding(get: { model.deletedPagesNotebook != nil }, set: { if !$0 { model.deletedPagesNotebook = nil } })) {
+            if let notebook = model.deletedPagesNotebook { DeletedPagesView(notebook: notebook) }
         }
         .sheet(isPresented: $connection.detailsShown) {
             ConnectionView(connection: connection).frame(width: 560)

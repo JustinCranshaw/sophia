@@ -32,6 +32,9 @@ struct NotebookCopyActions: ViewModifier {
             Divider()
             Button("Show Notebook in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Button("Copy & Restore…") { helpShown = true }
+            Button("Deleted Pages…") { model.deletedPagesNotebook = url }
+            Divider()
+            Button("Move Notebook to Trash…", role: .destructive) { model.requestNotebookRemoval(url) }
         }
     }
 }

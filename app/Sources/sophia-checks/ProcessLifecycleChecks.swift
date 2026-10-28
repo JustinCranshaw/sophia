@@ -41,15 +41,17 @@ func ownedProcessCleanupPreservesGraceAndStopsKnownChildren() throws {
             if case .number(let pid) = ids["child"] { child = OwnedClaudeProcess.Identity.read(pid_t(pid)) }
             expect(child != nil)
         }
+        var drained = false
+        owned?.whenStopped { expect(!p.isRunning && child?.alive != true); drained = true }
         if mode == "early-exit" {
             // No EOF/Stop: the root exits unexpectedly while its known child lives.
-            expect(lifecycleWait { !p.isRunning && child?.alive != true })
+            expect(lifecycleWait { !p.isRunning && child?.alive != true && drained })
             try input.fileHandleForWriting.close()
         } else {
             owned?.stop(grace: mode == "graceful" ? 3 : 0.1)
             owned = nil // Session/engine may disappear before the cleanup deadline.
             try input.fileHandleForWriting.close()
-            expect(lifecycleWait { !p.isRunning && child?.alive != true })
+            expect(lifecycleWait { !p.isRunning && child?.alive != true && drained })
         }
         if mode == "graceful" { expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("graceful").path)) }
         else {

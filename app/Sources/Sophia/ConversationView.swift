@@ -335,6 +335,13 @@ struct EntryView: View {
     var body: some View {
         let role = entry.str("role") ?? ""
         switch role {
+        case "person" where ["delete_page", "restore_page"].contains(entry.str("purpose") ?? ""):
+            HStack {
+                Label(entry.str("purpose") == "delete_page" ? "You deleted this page." : "You restored this page.", systemImage: entry.str("purpose") == "delete_page" ? "trash" : "arrow.uturn.backward")
+                if let id = entry.str("archive"), session.store.deletedPages.contains(where: { $0.id == id }) {
+                    Button("Restore") { model.restorePage(id, notebook: session.store.url) }.buttonStyle(.link)
+                }
+            }.font(.caption).foregroundStyle(.secondary)
         case "person" where entry.str("purpose") == "edit_page":
             EditLine(session: session, entry: entry)
         case "person":
