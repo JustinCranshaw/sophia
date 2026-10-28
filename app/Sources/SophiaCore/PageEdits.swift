@@ -155,19 +155,28 @@ extension NotebookStore {
     /// text it had when the editor opened (sections above may have moved it). A commit that
     /// changes nothing writes nothing. Like a page write, it keeps the previous version and
     /// records a transcript entry, with the changed lines as hunks.
-    public func editPage(file: String, section key: String, baseHash: String, text: String, session: String) throws -> EditOutcome {
+    public func editPage(file: String, section key: String, baseHash: String, text: String, session: String, wholeBody: Bool = false) throws -> EditOutcome {
         try locked {
             guard let page = readPage(file), pageFiles.contains(file) else { return .conflict(current: nil) }
-            let ranges = editRanges(of: file)
+            guard !wholeBody || key == "(page)" else { return .conflict(current: nil) }
+            let ranges = wholeBody ? Self.editRanges(in: page.body) : editRanges(of: file)
             let wanted = ranges.first { $0.key == key }
             let matches = ranges.filter { $0.hash == baseHash && ($0.key == key || $0.index != nil && key.hasPrefix("§")) }
             guard let r = matches.first(where: { $0.key == key }) ?? matches.first else { return .conflict(current: wanted) }
-            if text == r.text { return .unchanged }
+            if wholeBody ? text == page.body : text == r.text { return .unchanged }
 
             var body = Lines(page.body)
             let before = Array(body.lines[r.lines])
-            let after = text.components(separatedBy: "\n")
-            body.lines.replaceSubrange(r.lines, with: after)
+            let after: [String]
+            if wholeBody {
+                // Reviewed proposals replace every body byte, including a repeated title
+                // and the final newline. Ordinary editor ranges keep their existing rules.
+                body = Lines(text)
+                after = body.lines
+            } else {
+                after = text.components(separatedBy: "\n")
+                body.lines.replaceSubrange(r.lines, with: after)
+            }
             // Splice bytes, not characters: the frontmatter is kept exactly as it is on disk.
             let current = pagesURL.appendingPathComponent(file)
             let raw = try Data(contentsOf: current)

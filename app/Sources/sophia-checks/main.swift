@@ -1141,6 +1141,8 @@ func overviewPagesUseTheSameWritesEditsAndUndo() throws {
 
 let all: [(String, () throws -> Void)] = [
     ("sharedAboutMigrationProposalsAndUndo", sharedAboutMigrationProposalsAndUndo),
+    ("sharedAboutMigrationRefusesIncompleteLegacyReads", sharedAboutMigrationRefusesIncompleteLegacyReads),
+    ("pageProposalAcceptanceReplacesExactWholeBody", pageProposalAcceptanceReplacesExactWholeBody),
     ("sharedAboutConversationHasOwnHistoryAndNarrowCapabilities", sharedAboutConversationHasOwnHistoryAndNarrowCapabilities),
     ("missingRootsAndLegacyEmptyChaptersPreserveReadablePages", missingRootsAndLegacyEmptyChaptersPreserveReadablePages),
     ("filingPagesKeepsCustomizedIntroAndPersonUndo", filingPagesKeepsCustomizedIntroAndPersonUndo),

@@ -35,8 +35,9 @@ extension NotebookStore {
                   let file = p.str("file"), let content = p.str("content") else { throw PageProposalError.missing }
             guard pageHash(file) == p.str("basehash") else { throw PageProposalError.stale }
             guard editMarker == nil else { throw PageProposalError.editing }
-            guard let range = editRanges(of: file).first(where: { $0.key == "(page)" }) else { throw PageProposalError.missing }
-            let result = try editPage(file: file, section: "(page)", baseHash: range.hash, text: content, session: session)
+            guard let body = readPage(file)?.body,
+                  let range = Self.editRanges(in: body).first(where: { $0.key == "(page)" }) else { throw PageProposalError.missing }
+            let result = try editPage(file: file, section: "(page)", baseHash: range.hash, text: content, session: session, wholeBody: true)
             if case .conflict = result { throw PageProposalError.stale }
             try recordProposalDecision(id, decision: "accepted", session: session)
             return result

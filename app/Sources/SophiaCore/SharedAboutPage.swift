@@ -1,7 +1,15 @@
 import Foundation
 
 extension LibraryStore {
-    public enum SharedAboutError: Error { case legacyReadOnly }
+    public enum SharedAboutError: Error, LocalizedError {
+        case legacyReadOnly, invalidLegacy
+        public var errorDescription: String? {
+            switch self {
+            case .legacyReadOnly: return "About you is a Markdown page now; the original records are historical."
+            case .invalidLegacy: return "The original About you records could not be read completely. They were preserved; no migration was accepted."
+            }
+        }
+    }
     var hasSharedAboutMigration: Bool {
         FileManager.default.fileExists(atPath: dir.appendingPathComponent("about/legacy-about.json").path)
     }
@@ -22,7 +30,16 @@ extension LibraryStore {
                     }
                     snapshot = records.compactMap(\.object)
                 } else {
-                    snapshot = about
+                    // A permissive legacy read must not turn a transient failure into an
+                    // authoritative empty snapshot. Refuse cutover until every line is readable.
+                    if FileManager.default.fileExists(atPath: aboutURL.path) {
+                        let data = try Data(contentsOf: aboutURL)
+                        guard let text = String(data: data, encoding: .utf8) else { throw SharedAboutError.invalidLegacy }
+                        snapshot = try text.split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.map { line in
+                            guard let record = JSON.parse(String(line))?.object else { throw SharedAboutError.invalidLegacy }
+                            return record
+                        }
+                    } else { snapshot = [] }
                     try Data(JSON.array(snapshot.map { .object($0) }).line.utf8).write(to: snapshotURL, options: .atomic)
                 }
                 let current = Self.current(snapshot)
