@@ -254,6 +254,9 @@ final class NotebookSession: ObservableObject {
         case .toolUse(let id, let name, let input):
             guard current else { return }
             pendingTools[id] = name
+            if name.hasPrefix("mcp__sophia__") {
+                recordHarnessDiagnostic("notebook-tool", ["attempt": .string(name), "input": input, "thread": .string(thread)])
+            }
             if name == "WebSearch" {
                 let q = input["query"]?.string ?? ""
                 activity = "Searching: \(q)"
@@ -353,7 +356,7 @@ final class NotebookSession: ObservableObject {
             let music = musicWarnings.keys.sorted().flatMap { musicWarnings[$0]! }.filter { !toldMusic.contains($0) }
             toldMusic.formUnion(music)
             store.reload()
-            let prefix = isSharedAbout ? Prompts.sharedAboutTurnPrefix(store, libraryRoot: library.root) : Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music)
+            let prefix = isSharedAbout ? Prompts.sharedAboutTurnPrefix(store, libraryRoot: library.root, before: turn.id) : Prompts.turnPrefix(store, thread: turn.thread, before: turn.id) + Prompts.musicWarnings(music)
             engine?.send(prefix + turn.text)
             return
         }
@@ -397,21 +400,25 @@ final class NotebookSession: ObservableObject {
         engine?.send(Prompts.briefing(store))
     }
 
+    /// Diagnostic output only for an explicitly opted-in disposable native harness.
+    private func recordHarnessDiagnostic(_ kind: String, _ record: JSONObject) {
+        #if DEBUG
+        guard let directory = ProcessInfo.processInfo.environment["SOPHIA_UX_HARNESS"] else { return }
+        let file = URL(fileURLWithPath: directory).appendingPathComponent(kind + "-" + UUID().uuidString + ".json")
+        try? Data(JSON.object(record).pretty.utf8).write(to: file, options: .atomic)
+        #endif
+    }
+
     private func finishRequest(failed: Bool, failureReason: String? = nil) {
         guard let r = request else { return }
         request = nil
         let text = requestText; requestText = ""
         func recordCheckpointResult(_ result: String) {
-            #if DEBUG
-            // Only the explicitly opted-in, disposable native harness records diagnostic replies.
-            guard case .checkpoint(let through, _, let catchUp) = r,
-                  let directory = ProcessInfo.processInfo.environment["SOPHIA_UX_HARNESS"] else { return }
+            guard case .checkpoint(let through, _, let catchUp) = r else { return }
             var record: JSONObject = ["response": .string(text), "providerFailed": .bool(failed), "result": .string(result),
                                       "through": .string(through), "catchUp": .bool(catchUp)]
             if let failureReason { record["failureReason"] = .string(failureReason) }
-            let file = URL(fileURLWithPath: directory).appendingPathComponent("checkpoint-" + UUID().uuidString + ".json")
-            try? Data(JSON.object(record).pretty.utf8).write(to: file, options: .atomic)
-            #endif
+            recordHarnessDiagnostic("checkpoint", record)
         }
         // Detach before stopping: its expected exit cannot clear the next conversation process.
         let finished = checkpointEngine; checkpointEngine = nil; engine = nil; finished?.stop()

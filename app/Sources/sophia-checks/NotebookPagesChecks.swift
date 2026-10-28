@@ -6,6 +6,8 @@ func notebookLearningPagesKeepMarkdownAndHistoricalEvidence() throws {
     defer { try? FileManager.default.removeItem(at: store.url) }
     let message = try store.appendTranscript(["role": .string("person"), "text": .string("I want to understand entropy, and I need musical examples."), "session": .string("s")])
     let ref = message.str("id")!
+    expect(Prompts.turnPrefix(store, thread: "", before: ref).contains("Evidence ID for the person’s message that follows: " + ref))
+    expect(!Prompts.turnPrefix(store, thread: "foreign.md", before: ref).contains("Evidence ID for the person’s message that follows: " + ref))
     let goal = try store.writeGoal(text: "Understand entropy", criteria: ["Explain uncertainty"], revising: nil, quote: "I want to understand entropy", session: "s")
     var confirmed: JSONObject = ["kind": .string("goal"), "replaces": goal["id"]!, "text": .string("Understand entropy"), "criteria": goal["criteria"]!, "status": .string("working")]
     confirmed = try store.appendLearning(confirmed, by: "person", session: "s")
@@ -120,4 +122,18 @@ func notebookPageMigrationRequiresReadableCompleteLegacyLog() throws {
     expect(store.readPage(store.notebookPage(role: .goals)!.file)!.body.contains("Actual retained aim"))
     let retained = try Data(contentsOf: log)
     expect(store.record(source.str("id")!) != nil && retained == original)
+}
+
+func queuedAndRetriedTurnsKeepTheirOwnEvidenceIDs() throws {
+    let store = try tempStore()
+    defer { try? FileManager.default.removeItem(at: store.url) }
+    let a = try store.appendTranscript(["role": .string("person"), "page": .string("a.md"), "text": .string("Queued A"), "session": .string("s")]).str("id")!
+    let b = try store.appendTranscript(["role": .string("person"), "page": .string("b.md"), "text": .string("Queued B"), "session": .string("s")]).str("id")!
+    func marker(_ id: String) -> String { "Evidence ID for the person’s message that follows: " + id }
+    let later = try store.appendTranscript(["role": .string("person"), "page": .string("a.md"), "text": .string("Later A"), "session": .string("s")]).str("id")!
+    let retry = Prompts.turnPrefix(store, thread: "a.md", before: a)
+    expect(retry.contains(marker(a)) && !retry.contains(marker(b)) && !retry.contains(marker(later)))
+    expect(Prompts.turnPrefix(store, thread: "b.md", before: b).contains(marker(b)))
+    expect(!Prompts.turnPrefix(store, thread: "a.md", before: b).contains(marker(b)))
+    expect(!Prompts.turnPrefix(store, thread: "a.md").contains("Evidence ID for the person’s message that follows:"))
 }

@@ -47,4 +47,9 @@ func sharedAboutConversationHasOwnHistoryAndNarrowCapabilities() throws {
     expect(shared.store.readPage(shared.page.file)!.body.contains("My personal edit"))
     reopened.reload()
     expect(Prompts.sharedAboutTurnPrefix(reopened, libraryRoot: root).contains("My personal edit"))
+    let own = try reopened.appendTranscript(["role": .string("person"), "page": .string(ClaudeEngine.sharedAboutFile), "text": .string("Own About queued turn"), "session": .string("s")]).str("id")!
+    let foreign = try reopened.appendTranscript(["role": .string("person"), "page": .string("foreign.md"), "text": .string("Foreign thread canary"), "session": .string("s")]).str("id")!
+    expect(Prompts.sharedAboutTurnPrefix(reopened, libraryRoot: root, before: own).contains("Evidence ID for the person’s message that follows: " + own))
+    expect(!Prompts.sharedAboutTurnPrefix(reopened, libraryRoot: root, before: foreign).contains("Evidence ID for the person’s message that follows: " + foreign))
+    expect(!Prompts.sharedAboutTurnPrefix(reopened, libraryRoot: root).contains("Evidence ID for the person’s message that follows:"))
 }

@@ -188,7 +188,7 @@ public enum Prompts {
     }
 
     /// Refresh a warm About engine without replaying history or notebook-only context.
-    public static func sharedAboutTurnPrefix(_ store: NotebookStore, libraryRoot: URL) -> String {
+    public static func sharedAboutTurnPrefix(_ store: NotebookStore, libraryRoot: URL, before: String? = nil) -> String {
         let file = ClaudeEngine.sharedAboutFile
         guard ClaudeEngine.isSharedAboutLocation(store.url, libraryRoot: libraryRoot, page: file),
               let page = store.page(file), page.role == .about, page.scope == .library,
@@ -197,7 +197,14 @@ public enum Prompts {
         return "[Sophia app] Current accepted About you Markdown (use this over earlier versions):\n" + body
             + "\nPending proposals originating in this About conversation (not accepted):\n"
             + (pending.isEmpty ? "None." : pending.map { $0.line }.joined(separator: "\n"))
-            + "\nThe person’s message follows.\n\n"
+            + "\n" + messageEvidencePrefix(store, thread: file, before: before)
+            + "The person’s message follows.\n\n"
+    }
+
+    private static func messageEvidencePrefix(_ store: NotebookStore, thread: String, before: String?) -> String {
+        guard let before, let message = store.transcript.first(where: { $0.str("id") == before }),
+              NotebookStore.isPersonMessage(message), NotebookStore.thread(of: message) == thread else { return "" }
+        return "[Sophia app] Evidence ID for the person’s message that follows: \(before). Use this existing ID when the change rests on this message.\n"
     }
 
     static func contextLine(_ e: JSONObject) -> String? {
@@ -228,6 +235,7 @@ public enum Prompts {
         let previous = max(clear, priorTurn ?? store.cursor(for: thread, before: before))
         let changes = Array(store.transcript[(previous + 1)...]).filter { $0.str("id") != before }
         var out = bookChanges(store, since: previous + 1)
+        out += messageEvidencePrefix(store, thread: thread, before: before)
         // A reused engine must receive the actual editable pages, including personal corrections.
         out += "[Sophia app] Current notebook Markdown (authoritative over historical note/memory records):\nSophia’s notes:\n"
             + notesText(store) + "\nWorking memory:\n" + memoryText(store) + "\nGoals:\n" + goalsText(store) + "\n"
