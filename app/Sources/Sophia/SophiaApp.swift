@@ -190,6 +190,7 @@ final class AppModel: ObservableObject {
 
     @discardableResult
     func create(_ name: String) -> Bool {
+        guard prepareCurrentForSwitch() else { return false }
         do {
             let url = try library.create(named: name)
             notebooks = library.notebooks

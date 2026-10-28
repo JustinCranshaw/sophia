@@ -24,6 +24,11 @@ final class NotebookSession: ObservableObject {
 
     // Leaving the page, or hiding the book, commits an open editor; it never discards it.
     @Published var place: Place = .contents { didSet {
+        if oldValue != place, editing != nil || !editRecovery.edits.isEmpty,
+           editing == nil || visiblePage?.file != editing?.file, !prepareForNavigationAway() {
+            place = oldValue
+            return
+        }
         if oldValue != place { pendingSection = nil; navigationProblem = nil }
         if isSharedAbout { activeThread = ClaudeEngine.sharedAboutFile }
         else { switch place {
