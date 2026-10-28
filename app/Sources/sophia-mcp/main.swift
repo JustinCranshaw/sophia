@@ -34,6 +34,10 @@ if args.count == 3, args[1] == "--source-permissions" {
 let notebook = URL(fileURLWithPath: args.count > 1 ? args[1] : ".")
 let session = args.count > 2 ? args[2] : "s-0"
 let thread = args.count > 3 ? args[3] : ""
+let requestedSharedAbout = args.count > 4
+let sharedLibraryRoot: URL? = args.count == 8 && args[4] == "--scope" && args[5] == "shared-about" && args[6] == "--library-root" && !args[7].isEmpty
+    ? URL(fileURLWithPath: args[7]) : nil
+let validScope = !requestedSharedAbout || sharedLibraryRoot.map { ClaudeEngine.isSharedAboutLocation(notebook, libraryRoot: $0, page: thread) } == true
 var writableStore: NotebookStore?
 
 func send(_ obj: [String: Any]) {
@@ -42,7 +46,7 @@ func send(_ obj: [String: Any]) {
     FileHandle.standardOutput.write(Data("\n".utf8))
 }
 
-let tools: [[String: Any]] = [
+let notebookTools: [[String: Any]] = [
     [
         "name": "read_page",
         "description": "Read a page from this notebook by its file name (for example \"fiedler-vector.md\"). Without a file name, lists the pages. To read a page in another notebook, pass `notebook`; that works only through a link the person confirmed. Pass `section` (a section title) to read just that section.",
@@ -158,6 +162,44 @@ let tools: [[String: Any]] = [
     ]
 ]
 
+let tools: [[String: Any]] = !validScope ? [] : requestedSharedAbout ? notebookTools.filter { ["read_page", "about_you"].contains($0["name"] as? String ?? "") }.map { tool in
+    var scoped = tool
+    if tool["name"] as? String == "read_page" {
+        scoped["description"] = "Read the shared About you page only. No other notebook or page is available in this conversation."
+        scoped["inputSchema"] = ["type": "object", "properties": ["file": ["type": "string", "enum": [ClaudeEngine.sharedAboutFile]]]]
+    }
+    return scoped
+} : notebookTools
+
+func callSharedAbout(_ name: String?, _ a: [String: Any]) -> String {
+    guard let root = sharedLibraryRoot else { return "Unavailable: invalid About conversation scope." }
+    // Reject every foreign-notebook argument, even a name that happens to match this folder.
+    guard a["notebook"] == nil else { return "Not allowed: this conversation cannot read another notebook." }
+    if name == "read_page" {
+        guard a["section"] == nil, a["file"] == nil || a["file"] as? String == ClaudeEngine.sharedAboutFile,
+              let existing = ExistingNotebook(root: notebook.deletingLastPathComponent(), name: notebook.lastPathComponent),
+              let page = existing.readPage(ClaudeEngine.sharedAboutFile) else { return "Unavailable: only the canonical About you page can be read here." }
+        return "# " + page.title + "\n\n" + page.body
+    }
+    guard name == "about_you" else { return "Not allowed: this conversation only reads About you or proposes a reviewed change." }
+    do {
+        if writableStore == nil { writableStore = try NotebookStore(url: notebook) }
+        let store = writableStore!
+        store.reload()
+        let content = a["content"] as? String ?? "", quote = (a["quote"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        func normalize(_ text: String) -> String { text.split(whereSeparator: { $0.isWhitespace }).joined(separator: " ") }
+        guard !quote.isEmpty, !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let message = store.threadEntries(for: thread).last(where: { NotebookStore.isPersonMessage($0) && normalize($0.str("text") ?? "").contains(normalize(quote)) }),
+              let entry = message.str("id") else { return "Not proposed: quote exact words from this About conversation." }
+        let shared = try LibraryStore(root: root).ensureSharedAboutPage(session: session)
+        let proposal = try shared.store.proposePageChange(file: shared.page.file, content: content,
+            originNotebook: ClaudeEngine.sharedAboutOrigin,
+            evidence: ["entry": .string(entry), "quote": .string(quote), "notebook": .string(ClaudeEngine.sharedAboutOrigin)], session: session)
+        try store.appendTranscript(["role": .string("tool"), "tool": .string("about_you"), "page": .string(thread), "session": .string(session), "record": proposal["id"]!])
+        return "Proposed \(proposal.str("id") ?? "") for About you. The person must review and accept it; accepted Markdown is unchanged."
+    } catch { return "Not proposed: \(error.localizedDescription)" }
+}
+
 func readPage(_ name: String?, notebook other: String?, section: String?) -> String {
     let root = notebook.deletingLastPathComponent()
     guard let local = ExistingNotebook(root: root, name: notebook.lastPathComponent) else { return "This notebook is unavailable." }
@@ -201,6 +243,8 @@ func refusalText(_ e: JSONObject) -> String {
 }
 
 func call(_ name: String?, _ a: [String: Any], toolUse: String) -> String {
+    guard validScope else { return "Unavailable: invalid About conversation scope; no notebook tools were opened." }
+    if requestedSharedAbout { return callSharedAbout(name, a) }
     if name == "read_page" {
         return readPage(a["file"] as? String, notebook: a["notebook"] as? String, section: a["section"] as? String)
     }

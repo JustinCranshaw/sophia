@@ -164,6 +164,33 @@ public enum Prompts {
         """
     }
 
+    /// Shared About has its own stable conversation, without another notebook's context.
+    public static func sharedAboutContext(_ store: NotebookStore, libraryRoot: URL,
+                                          thread: String = ClaudeEngine.sharedAboutFile, before: String? = nil,
+                                          canOpenSources: Bool = false) -> String {
+        guard ClaudeEngine.isSharedAboutLocation(store.url, libraryRoot: libraryRoot, page: thread),
+              let page = store.page(thread), page.role == .about, page.scope == .library,
+              let body = store.readPage(thread)?.body else { return "About conversation unavailable. Do not infer or retrieve another notebook's content." }
+        let pending = store.pendingPageProposals(originNotebook: ClaudeEngine.sharedAboutOrigin).filter { $0.str("file") == thread }
+        return """
+        # About you conversation
+        This is the one conversation beside the Library’s shared About you page. The page and this conversation have their own durable store; this is not an ordinary topic notebook.
+        Accepted Markdown below is shared with notebooks. A pending change is private to its originating conversation until the person accepts it. You see only proposals originating here, never proposals or source conversations from other notebooks.
+        `read_page` reads only about-you.md here. `about_you` proposes a complete Markdown replacement, supported by exact words from this conversation. It does not save the shared body: the person reviews the full change and accepts or rejects it. Preserve accepted content the person still wants. Do not invent background, preferences or judgments of ability.
+        No tools for other notebook reads, links, ordinary page writes, goals, notes or working memory are available here. Answer the person's actual question in the conversation; do not force a profile-writing task.
+        \(canOpenSources ? approvedResearchAccess : researchAccess)
+
+        Accepted About you Markdown:
+        \(body)
+
+        Pending proposals from this conversation (not accepted):
+        \(pending.isEmpty ? "None." : pending.map { $0.line }.joined(separator: "\n"))
+
+        Conversation in hand:
+        \((store.carried(for: thread, before: before) + store.window(for: thread, before: before)).compactMap(contextLine).joined(separator: "\n"))
+        """
+    }
+
     static func contextLine(_ e: JSONObject) -> String? {
         if NotebookStore.isMessage(e) { return "[\(e.str("id") ?? "")] \(e.str("role") ?? ""): \(e.str("text") ?? "")" }
         if e.str("role") == "sophia", e.str("purpose") == "briefing" {
