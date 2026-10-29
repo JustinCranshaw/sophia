@@ -192,9 +192,18 @@ struct ContentsOutline: View {
                let worker = model.almanac.worker, worker.url == store.url {
                 AlmanacHomeControls(worker: worker, almanac: model.almanac)
             }
-            if hasIntroduction {
-                Text("Contents").font(.system(size: 11, weight: .semibold)).tracking(1.2)
-                    .textCase(.uppercase).foregroundStyle(.secondary)
+            if hasIntroduction || chapterID == nil {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Contents").font(.system(size: 11, weight: .semibold)).tracking(1.2)
+                        .textCase(.uppercase).foregroundStyle(.secondary)
+                    Spacer()
+                    if chapterID == nil, !store.deletedPages.isEmpty {
+                        HStack(spacing: 6) {
+                            Text("\(store.deletedPages.count) deleted page\(store.deletedPages.count == 1 ? "" : "s")").foregroundStyle(.secondary)
+                            Button("Restore…") { model.deletedPagesNotebook = store.url }.buttonStyle(.link)
+                        }.font(.callout)
+                    }
+                }
             }
             if let chapterID, let chapter = store.chapters.first(where: { $0.id == chapterID }) {
                 rows(chapter.pages)
@@ -309,14 +318,15 @@ struct PageView: View {
                 let ranges = NotebookStore.editRanges(in: page.body, hidden: hidden)
                 let (number, title) = pageNumber(store, .init(file: file, title: page.title))
                 let rootChapter = store.chapters.first(where: { $0.intro?.file == file })
+                let publication = NotebookPresentation.almanacEntries(store)[file]
                 ReadingTitle(title: title,
-                             scope: store.page(file)?.role == .about ? "Shared across your Library" : [.goals, .notes, .memory].contains(store.page(file)?.role) || rootChapter != nil ? store.name : chapter?.heading,
+                             scope: store.page(file)?.role == .about ? "Shared across your Library" : [.goals, .notes, .memory].contains(store.page(file)?.role) || rootChapter != nil || publication != nil ? store.name : chapter?.heading,
                              number: rootChapter?.number ?? number)
                 if [.about, .goals].contains(store.page(file)?.role) {
                     Text("Sophia proposes changes for you to review.").font(.callout).foregroundStyle(.secondary)
                 }
                 HStack {
-                    if let entry = NotebookPresentation.almanacEntries(store)[file] {
+                    if let entry = publication {
                         Text(NotebookPresentation.publicationDate(entry)).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
                     }
                     if ranges.contains(where: { $0.index != nil }) {

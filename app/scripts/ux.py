@@ -10,7 +10,7 @@ import uuid
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("directory", type=Path)
-parser.add_argument("action", choices=["launch", "inspect", "menu", "press", "set", "key", "type", "click", "hover", "scroll", "resize"])
+parser.add_argument("action", choices=["launch", "inspect", "menu", "show-menu", "press", "set", "key", "type", "click", "hover", "scroll", "resize"])
 parser.add_argument("--id", type=int)
 parser.add_argument("--text")
 parser.add_argument("--code", type=int)

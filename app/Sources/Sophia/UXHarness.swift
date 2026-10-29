@@ -5,6 +5,7 @@ import AppKit
 /// Commands and screenshots stay inside a disposable directory selected at launch.
 enum UXHarness {
     static var timer: Timer?
+    static var menuObserver: NSObjectProtocol?
     static var root: URL?
     static var elements: [NSObject] = []
     static var elementWindows: [NSWindow] = []
@@ -27,12 +28,37 @@ enum UXHarness {
         guard let path = env["SOPHIA_UX_HARNESS"], let library = env["SOPHIA_LIBRARY"],
               library.hasPrefix(path + "/"), env["SOPHIA_SNAPSHOT"] == nil else { return }
         root = URL(fileURLWithPath: path)
+        menuObserver = NotificationCenter.default.addObserver(forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { notification in
+            guard let menu = notification.object as? NSMenu else { return }
+            let capture = Timer(timeInterval: 0.2, repeats: false) { _ in captureTrackedMenu(menu) }
+            RunLoop.main.add(capture, forMode: .eventTracking)
+        }
+
         if NSApp.responds(to: NSSelectorFromString("accessibilitySetValue:forAttribute:")) {
             NSApp.perform(NSSelectorFromString("accessibilitySetValue:forAttribute:"), with: true, with: "AXEnhancedUserInterface")
         }
         try? FileManager.default.createDirectory(at: root!.appendingPathComponent("commands"), withIntermediateDirectories: true)
         try? FileManager.default.createDirectory(at: root!.appendingPathComponent("results"), withIntermediateDirectories: true)
         timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in poll() }
+    }
+
+    /// Menu tracking has its own run-loop mode and separate windows. Capture only this
+    /// process's visible windows; never screenshot the desktop or another application's UI.
+    static func captureTrackedMenu(_ menu: NSMenu) {
+        guard let root else { return }
+        let stem = "menu-" + UUID().uuidString
+        var record: [String: Any] = ["title": menu.title, "items": menu.items.map { ["title": $0.title, "enabled": $0.isEnabled, "separator": $0.isSeparatorItem] as [String: Any] }]
+        // AppKit exposes its tracked popup as an owned window. Capturing that exact ID
+        // avoids a desktop capture and includes the real native menu rendering.
+        if let popup = NSApp.windows.first(where: { $0.isVisible && String(describing: type(of: $0)) == "NSPopupMenuWindow" }),
+           let image = CGWindowListCreateImage(.null, .optionIncludingWindow, CGWindowID(popup.windowNumber), [.boundsIgnoreFraming, .bestResolution]),
+           let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) {
+            let shot = root.appendingPathComponent("results/" + stem + ".png")
+            try? data.write(to: shot); record["screenshot"] = shot.path
+        }
+        if let data = try? JSONSerialization.data(withJSONObject: record, options: [.prettyPrinted, .sortedKeys]) {
+            try? data.write(to: root.appendingPathComponent("results/" + stem + ".json"))
+        }
     }
 
     static func tree() -> [[String: Any]] {
@@ -93,6 +119,8 @@ enum UXHarness {
                 }
             }
             result["menu"] = NSApp.mainMenu.map { menuItems($0, "") } ?? []
+        case "show-menu":
+            result["performed"] = target.map { boolean($0, "accessibilityPerformShowMenu") } ?? false
         case "press":
             result["performed"] = target.map { boolean($0, "accessibilityPerformPress") } ?? false
         case "set":

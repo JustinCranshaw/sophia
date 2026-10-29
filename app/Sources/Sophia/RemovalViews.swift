@@ -13,12 +13,15 @@ struct RemovalConfirmation: View {
     let target: RemovalTarget
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(target.file == nil ? "Move notebook to Trash?" : "Delete page?").font(.headline)
+            Text(target.file == nil ? "Delete notebook?" : "Delete page?").font(.headline)
             Text(target.title).font(.title3).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
             if target.file != nil {
-                Text("From “\(target.notebook.lastPathComponent)”. The page moves to Deleted Pages in this notebook, where you can restore it. Conversations and source history are kept. This does not erase earlier copies of its content. Links to and from this page stop working and will need to be added and confirmed again after Restore.")
+                Text("From “\(target.notebook.lastPathComponent)”. The page stays recoverable in this notebook. Restore it from Contents (select the notebook’s name in the sidebar). Conversations and source history are kept. This does not erase earlier copies of its content. Links to and from this page stop working and will need to be added and confirmed again after Restore.")
             } else {
                 Text("Its pages, conversations and history move together to macOS Trash. Use Finder’s Put Back to recover the notebook. Links to and from it stop working and will need to be added and confirmed again.")
+                if !Almanac.isConfigured(url: target.notebook), model.library.notebooks.contains(where: { $0 != target.notebook && Almanac.isConfigured(url: $0) }) {
+                    Text("Saved entries in the Almanac stay in the Almanac.")
+                }
                 if Almanac.isConfigured(url: target.notebook) {
                     Text("Daily preparation stops. After restoring, enable the Almanac again if you want preparation to resume.")
                 }
@@ -27,8 +30,8 @@ struct RemovalConfirmation: View {
             HStack {
                 Button("Cancel") { model.removalTarget = nil }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(target.file == nil ? "Move to Trash" : "Delete Page", role: .destructive) { model.performRemoval(target) }
-                    .accessibilityLabel(target.file == nil ? "Confirm Move Notebook to Trash" : "Confirm Delete Page")
+                Button(target.file == nil ? "Delete Notebook" : "Delete Page", role: .destructive) { model.performRemoval(target) }
+                    .accessibilityLabel(target.file == nil ? "Confirm Delete Notebook" : "Confirm Delete Page")
             }
         }.font(.callout).padding(24).frame(width: 480)
     }
