@@ -2,7 +2,7 @@ import SwiftUI
 import SophiaCore
 
 /// Library, then the open notebook expanded in place, in a fixed order:
-/// Goals and Sophia's notes, then the book's pages. Every row is one line: titles truncate, with the full title on hover.
+/// Notebook roots own their pages. Titles truncate, with the full title on hover.
 struct SidebarView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject private var almanac: AlmanacModel
@@ -63,7 +63,7 @@ struct OpenNotebookRows: View {
         let store = session.store
         let entries = NotebookPresentation.almanacEntries(store)
         row(.contents, store.name, Almanac.isConfigured(url: store.url) ? "sun.max" : "book", bold: true)
-            .modifier(NotebookCopyActions(url: store.url))
+            .modifier(NotebookCopyActions(url: store.url, selected: session.place == .contents))
         if store.contentPages.isEmpty {
             Text("No pages yet.").font(.caption).lineLimit(1).foregroundStyle(.secondary).padding(.leading, 22)
         } else {

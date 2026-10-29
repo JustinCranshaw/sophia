@@ -4,8 +4,8 @@ import AppKit
 /// Finder copies the ordinary folder; Sophia adds no archive or sync format.
 struct NotebookCopyActions: ViewModifier {
     let url: URL
+    var selected = false
     @EnvironmentObject private var model: AppModel
-    @State private var helpShown = false
     func body(content: Content) -> some View {
         HStack(spacing: 4) {
             content.frame(maxWidth: .infinity, alignment: .leading)
@@ -16,25 +16,15 @@ struct NotebookCopyActions: ViewModifier {
             .accessibilityLabel("Notebook actions")
             .help("Notebook actions for “\(url.lastPathComponent)”")
         }
-        .background(model.open?.store.url == url && model.open?.place == .contents ? Brand.selectionFill : .clear,
+        .background(selected ? Brand.selectionFill : .clear,
                     in: RoundedRectangle(cornerRadius: 6))
         .contextMenu { actions }
-        .sheet(isPresented: $helpShown) {
-            NotebookCopyView(url: url, close: { helpShown = false })
-        }
     }
     private var actions: some View {
         Group {
             Button("Notebook settings…") { model.showNotebookSettings(url) }
-            Button("Goals…") { model.showNotebookSettings(url, section: .goals) }
-            Button("Sophia’s notes…") { model.showNotebookSettings(url, section: .notes) }
-            Button("Working memory…") { model.showNotebookSettings(url, section: .memory) }
             Divider()
-            Button("Show Notebook in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-            Button("Copy & Restore…") { helpShown = true }
-            Button("Deleted Pages…") { model.deletedPagesNotebook = url }
-            Divider()
-            Button("Move Notebook to Trash…", role: .destructive) { model.requestNotebookRemoval(url) }
+            Button("Delete Notebook…", role: .destructive) { model.requestNotebookRemoval(url) }
         }
     }
 }
