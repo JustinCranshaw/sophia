@@ -146,7 +146,7 @@ Historical validation recorded by the development agent (October 15, 2026): the 
 
 ### Copy, back up and restore
 
-Use the ellipsis **Notebook actions** menu beside a notebook’s title in the Library sidebar and choose **Show Notebook in Finder** or **Copy & Restore…**. The same actions are available by right-clicking the notebook title. Let any reply finish, finish page edits, save any text you need from unsent composer drafts, then quit Sophia before copying. Copy the entire notebook folder, including hidden files; selecting only Markdown pages does not preserve the inquiry.
+Use the ellipsis **Notebook actions** menu beside a notebook’s title in the Library sidebar, or right-click the title, and choose **Notebook settings…**. Settings contains **Show notebook in Finder** and **Copy & restore…**. Let any reply finish, finish page edits, save any text you need from unsent composer drafts, then quit Sophia before copying. Copy the entire notebook folder, including hidden files; selecting only Markdown pages does not preserve the inquiry.
 
 The notebook folder contains `notebook.json` (ordering, chapters and identity high watermarks), `pages/` (current and single previous versions), `transcript.jsonl`, and `learning.jsonl` (goals, notes, corrections, memory and evidence references). Those relative identities survive a whole-folder copy. Provider credentials/authentication caches are not stored there. Unsent composer drafts and pending in-memory Undo for deleted learning records do not survive quitting; a backup is a snapshot, not an unlimited history or a substitute for those unsaved states.
 

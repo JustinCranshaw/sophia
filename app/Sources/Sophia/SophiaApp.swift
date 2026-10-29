@@ -279,7 +279,7 @@ final class AppModel: ObservableObject {
                     default: break
                     }
                 }
-                var consequences = " Recovery copies and history have been kept. Check Deleted Pages or the notebook in Finder before retrying."
+                var consequences = " Recovery copies and history have been kept. Open the notebook’s Contents and use Restore…, or check the notebook in Finder, before retrying."
                 if linksAttempted { consequences += " Links may have been retired and may need to be added and confirmed again." }
                 if preparationMayChange { consequences += " Almanac preparation may have been turned off." }
                 if themesAttempted { consequences += " Almanac source selections may have changed." }
